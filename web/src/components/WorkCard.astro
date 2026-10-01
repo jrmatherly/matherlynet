@@ -1,0 +1,24 @@
+---
+import type { WorkItem } from "../data/profile";
+
+interface Props {
+  item: WorkItem;
+}
+
+const { item } = Astro.props;
+---
+
+<article class="grid content-start gap-3 rounded-2xl border border-border bg-surface p-6">
+  <p class="font-mono text-xs text-muted">{item.area}</p>
+  <h3 class="text-xl font-bold tracking-tight">{item.title}</h3>
+  <p class="text-muted">{item.summary}</p>
+  {
+    item.outcomes.length > 0 && (
+      <ul class="mt-1 flex flex-wrap gap-2">
+        {item.outcomes.map((o) => (
+          <li class="rounded-full border border-border bg-accent-soft px-3 py-1 text-xs font-semibold">{o}</li>
+        ))}
+      </ul>
+    )
+  }
+</article>

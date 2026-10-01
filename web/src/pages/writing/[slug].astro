@@ -1,0 +1,22 @@
+---
+import { getEntry, render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import { formatDate } from "../../lib/writing";
+
+const post = await getEntry("writing", Astro.params.slug ?? "");
+if (!post || post.data.draft) return Astro.rewrite("/404");
+const { Content } = await render(post);
+---
+
+<Base title={post.data.title} description={post.data.description} type="article">
+  <article class="mx-auto grid max-w-3xl gap-8 px-4 py-16 sm:px-6 sm:py-20">
+    <header class="grid gap-3">
+      <a href="/writing" class="text-sm text-muted hover:text-foreground">← Writing</a>
+      <h1 class="text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">{post.data.title}</h1>
+      <time datetime={post.data.pubDate.toISOString()} class="font-mono text-xs text-muted">{formatDate(post.data.pubDate)}</time>
+    </header>
+    <div class="prose-content grid gap-5 text-lg leading-relaxed">
+      <Content />
+    </div>
+  </article>
+</Base>

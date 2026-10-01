@@ -1,0 +1,18 @@
+---
+import WorkCard from "../components/WorkCard.astro";
+import { work } from "../data/profile";
+import Base from "../layouts/Base.astro";
+import { ogImage } from "../lib/og";
+---
+
+<Base title="Work" description="AI gateways, MCP, Kubernetes and enterprise infrastructure built and run by Jason Matherly." image={ogImage("work")}>
+  <section class="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 sm:py-20">
+    <header class="grid max-w-3xl gap-3">
+      <h1 class="text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">Platforms that run in production, not in slides.</h1>
+      <p class="text-lg text-muted">The systems I've designed, built and operated at The Aaron's Company, from the AI platform down to the store network.</p>
+    </header>
+    <div class="grid gap-4 md:grid-cols-2">
+      {work.map((item) => <WorkCard item={item} />)}
+    </div>
+  </section>
+</Base>

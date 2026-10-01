@@ -1,0 +1,37 @@
+---
+import Base from "../../layouts/Base.astro";
+import { ogImage } from "../../lib/og";
+import { formatDate, publishedPosts } from "../../lib/writing";
+
+const posts = await publishedPosts();
+---
+
+<Base title="Writing" description="Notes on AI platforms, governance and infrastructure from Jason Matherly." image={ogImage("writing")}>
+  <section class="mx-auto grid max-w-3xl gap-10 px-4 py-16 sm:px-6 sm:py-20">
+    <header class="grid gap-3">
+      <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl">Writing</h1>
+      <p class="text-lg text-muted">
+        Notes on AI platforms, governance and infrastructure. <a href="/rss.xml" class="underline underline-offset-4 hover:text-foreground">RSS feed</a>
+      </p>
+    </header>
+    {
+      posts.length === 0 ? (
+        <p class="rounded-2xl border border-dashed border-border p-8 text-muted">The first posts are on their way. Subscribe to the RSS feed to get them when they land.</p>
+      ) : (
+        <ol class="grid gap-2">
+          {posts.map((p) => (
+            <li>
+              <a href={`/writing/${p.id}`} class="grid gap-1 rounded-xl p-4 -mx-4 hover:bg-surface">
+                <time datetime={p.data.pubDate.toISOString()} class="font-mono text-xs text-muted">
+                  {formatDate(p.data.pubDate)}
+                </time>
+                <span class="text-xl font-bold tracking-tight">{p.data.title}</span>
+                <span class="text-muted">{p.data.description}</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      )
+    }
+  </section>
+</Base>

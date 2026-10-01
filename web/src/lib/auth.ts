@@ -11,6 +11,9 @@ const socialProviders = Object.fromEntries(
   }),
 );
 
+// Lets pages offer only the sign-in buttons that will work.
+export const enabledProviders = Object.keys(socialProviders) as ("github" | "google")[];
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
   emailAndPassword: { enabled: true },

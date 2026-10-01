@@ -57,3 +57,17 @@
 :root:not([data-palette="signal"]) .logo-brand {
   display: none;
 }
+
+/* Markdown post bodies (writing/[slug].astro). */
+.prose-content {
+  & :where(h2) { margin-top: 1.5rem; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+  & :where(h3) { margin-top: 1rem; font-size: 1.25rem; font-weight: 700; }
+  & :where(ul, ol) { display: grid; gap: 0.5rem; padding-left: 1.25rem; }
+  & :where(ul) { list-style: disc; }
+  & :where(ol) { list-style: decimal; }
+  & :where(a) { text-decoration: underline; text-underline-offset: 4px; }
+  & :where(code) { font-family: var(--font-mono); font-size: 0.9em; }
+  & :where(pre) { overflow-x: auto; border: 1px solid var(--border); border-radius: 0.75rem; background: var(--surface); padding: 1rem; font-size: 0.9rem; }
+  & :where(blockquote) { border-left: 3px solid var(--accent); padding-left: 1rem; color: var(--muted); }
+}
+

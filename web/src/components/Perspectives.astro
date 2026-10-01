@@ -1,0 +1,47 @@
+---
+import { perspectives } from "../data/profile";
+// Native radio buttons pick the panel: works without JavaScript, and keyboard focus behaves as expected.
+---
+
+<section aria-labelledby="persp-title" class="persp grid gap-6">
+  <div class="grid gap-2">
+    <p class="font-mono text-xs tracking-wider text-muted uppercase">A profile, from your perspective</p>
+    <h2 id="persp-title" class="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">What matters to your team?</h2>
+  </div>
+  <fieldset class="flex flex-wrap gap-2">
+    <legend class="sr-only">Choose a perspective</legend>
+    {
+      perspectives.map((p, i) => (
+        <label class="cursor-pointer rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition-colors hover:text-foreground has-checked:border-accent has-checked:bg-accent has-checked:text-accent-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent">
+          <input type="radio" name="perspective" value={p.id} checked={i === 0} class="sr-only" />
+          {p.label}
+        </label>
+      ))
+    }
+  </fieldset>
+  {
+    perspectives.map((p) => (
+      <article data-panel={p.id} class="hidden max-w-3xl gap-4">
+        <p class="font-mono text-xs tracking-wider text-muted uppercase">For {p.label.toLowerCase()}</p>
+        <h3 class="text-2xl font-bold tracking-tight text-balance sm:text-3xl">{p.headline}</h3>
+        <p class="text-lg text-muted">{p.body}</p>
+        <ul class="grid gap-2">
+          {p.points.map((point) => (
+            <li class="flex gap-3">
+              <span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+              {point}
+            </li>
+          ))}
+        </ul>
+      </article>
+    ))
+  }
+</section>
+
+<style>
+  .persp:has(input[value="leaders"]:checked) [data-panel="leaders"],
+  .persp:has(input[value="security"]:checked) [data-panel="security"],
+  .persp:has(input[value="recruiters"]:checked) [data-panel="recruiters"] {
+    display: grid;
+  }
+</style>

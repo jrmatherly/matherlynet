@@ -13,4 +13,9 @@ export const person = {
 } as const;
 
 // Public, indexable routes: the header nav and sitemap both read this list.
-export const publicRoutes: { path: string; label: string; nav: boolean }[] = [{ path: "/", label: "Home", nav: false }];
+export const publicRoutes: { path: string; label: string; nav: boolean }[] = [
+  { path: "/", label: "Home", nav: false },
+  { path: "/work", label: "Work", nav: true },
+  { path: "/writing", label: "Writing", nav: true },
+  { path: "/about", label: "About", nav: true },
+];

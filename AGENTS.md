@@ -42,13 +42,15 @@ web/
   src/lib/auth.ts      better-auth server config (Drizzle adapter, social providers from env)
   src/lib/auth-client.ts  better-auth browser client
   src/lib/site.ts      public origin (from BETTER_AUTH_URL at run time), person details, public routes list
+  src/data/profile.ts  all résumé-derived copy (metrics, perspectives, work, career, skills); edit facts here
+  src/content/writing/  Markdown posts (schema in src/content.config.ts; `draft: true` hides a post everywhere)
   src/db/              Drizzle client (`APPDB_URI`) and generated auth schema
   src/middleware.ts    loads the session into Astro.locals.user / .session and the theme into .theme
   src/theme/palettes.ts  palette keys, cookie names, resolveTheme() (cookies -> theme, mode, palette)
   src/styles/           global.css (Tailwind tokens, dark variant) + palettes.css (one light-dark() block per palette)
   src/layouts/Base.astro  <html data-palette data-mode>, Seo, favicons, fonts, header/footer (chrome full|minimal)
   src/components/       Seo (canonical, OG, Person JSON-LD, noindex), SiteHeader/SiteFooter, ThemeToggle, Logo
-  src/pages/           index, sign-in (noindex), 404; robots.txt.ts + sitemap.xml.ts built at request time
+  src/pages/           index, work, about, writing/ (+[slug]), sign-in (noindex), 404; robots/sitemap/rss built per request
   src/pages/og/[slug].png.ts  share cards rendered on demand by Takumi (cards in src/lib/og.ts, colors from palettes.css)
   tests/               Vitest (node env) + Astro Container API
   src/pages/api/auth/[...all].ts  better-auth request handler
