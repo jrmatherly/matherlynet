@@ -5,15 +5,12 @@ on:
     paths:
       - 'web/**'
       - '.github/workflows/web-checks.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'web/**'
-      - '.github/workflows/web-checks.yml'
+  workflow_call: # Publish images runs this before pushing (see publish-images.yml)
   workflow_dispatch:
 
+# Suffixed: a called workflow sees the caller's github.workflow, and an identical group would cancel the caller.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-web-checks
   cancel-in-progress: true
 
 permissions: {}

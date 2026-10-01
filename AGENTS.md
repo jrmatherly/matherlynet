@@ -81,10 +81,10 @@ web/
                        -> sign-out -> password reset; each run creates an e2e-*@example.test user
   src/pages/api/auth/[...all].ts  better-auth request handler
   public/              brand favicons, web manifest, mask logo; public/pro/ = Pro monogram set
-.github/workflows/     publish-images.yml: build + push web image on main (path-filtered), signed provenance,
-                       Sentry release + source maps copied out of the pushed image (needs SENTRY_AUTH_TOKEN)
-                       web-checks.yml: astro check, lint, test, build on PRs and main (web/** only)
-                       e2e.yml: Playwright against `aspire start` on PRs and main (web/** + AppHost)
+.github/workflows/     publish-images.yml: on main (path-filtered) runs web-checks + e2e first, then builds, pushes and
+                       attests the web image; a separate no-permission job uploads Sentry source maps from it
+                       web-checks.yml: astro check, lint, test, build on PRs (web/** only) and when called
+                       e2e.yml: Playwright against `aspire start` on PRs (web/** + AppHost) and when called
 .github/dependabot.yml weekly npm (/, /web) + actions updates, 7-day cooldown, exact pins
                        (security updates, CodeQL default setup and private reporting are repo settings)
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported

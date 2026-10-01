@@ -9,19 +9,12 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/e2e.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'web/**'
-      - 'apphost.mts'
-      - 'aspire.config.json'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/e2e.yml'
+  workflow_call: # Publish images runs this before pushing (see publish-images.yml)
   workflow_dispatch:
 
+# Suffixed: a called workflow sees the caller's github.workflow, and an identical group would cancel the caller.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-e2e
   cancel-in-progress: true
 
 permissions: {}
@@ -54,9 +47,16 @@ jobs:
         with:
           package_json_file: web/package.json
 
+      # Pinned and checksum-verified (the hash is from the v13.6.0 release's .sha512 asset); bump both together.
+      # install.sh does the same download + extract into ~/.aspire/bin, without the pinned hash.
       - name: 🧰 Install Aspire CLI
+        env:
+          ASPIRE_VERSION: '13.6.0'
+          ASPIRE_SHA512: 3e93ddeae51993d687cb9240c99fc944a91ae273c99e99e3199a424a6feb5209aa076290b55fcc84731f37cb470da3c7b37da64b3370584af2ddd6b51128072a
         run: |
-          curl -sSL https://aspire.dev/install.sh | bash -s -- --version 13.6.0
+          curl -fsSLo "$RUNNER_TEMP/aspire.tgz" "https://github.com/microsoft/aspire/releases/download/v${ASPIRE_VERSION}/aspire-cli-linux-x64-${ASPIRE_VERSION}.tar.gz"
+          echo "${ASPIRE_SHA512}  $RUNNER_TEMP/aspire.tgz" | sha512sum -c -
+          mkdir -p "$HOME/.aspire/bin" && tar -xzf "$RUNNER_TEMP/aspire.tgz" -C "$HOME/.aspire/bin"
           echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
 
       - name: 📚 Install dependencies
