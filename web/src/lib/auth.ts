@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { user as userTable } from "../db/auth-schema";
 import { sendMail } from "./mail";
-import { boundedPwned } from "./pwned";
+import { pwnedPasswordCheck } from "./pwned";
 import { captureError } from "./sentry";
 
 // A provider is enabled only when both its client id and secret are set.
@@ -105,13 +105,14 @@ export const auth = betterAuth({
       captureError(error);
     },
   },
-  // APIErrors thrown inside an endpoint become responses before onAPIError (api/dispatch.mjs): e.g. the 503 from a
-  // breached-password check timeout, or a 500 from a failed session insert.
+  // APIErrors thrown inside an endpoint become responses before onAPIError (api/dispatch.mjs), e.g. a 500 from a
+  // failed session insert: this hook reports those. One thrown by a before hook (the breached-password lookup's 503)
+  // skips this hook and reaches onAPIError instead (checked against 1.7.7 through auth.handler).
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       const returned = ctx.context.returned;
       if (isAPIError(returned) && returned.statusCode >= 500) captureError(returned, { path: ctx.path });
     }),
   },
-  plugins: [admin(), boundedPwned()],
+  plugins: [admin(), pwnedPasswordCheck()],
 });

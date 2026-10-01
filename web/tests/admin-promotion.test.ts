@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({
   mails: [] as { to: string; body: string }[],
   failPromotion: false,
   dbDown: false,
+  sessionInsertFails: false,
 }));
 
 // promoteAdmin's `db.update(user).set({ role }).where(eq(user.id, id))`, applied to the memory store.
@@ -33,7 +34,15 @@ vi.mock("better-auth/adapters/drizzle", async () => {
   return {
     drizzleAdapter: () => (options: never) => {
       const a = adapter(options);
-      return { ...a, findOne: (...args: Parameters<typeof a.findOne>) => (h.dbDown ? Promise.reject(new Error("connect ECONNREFUSED")) : a.findOne(...args)) };
+      return {
+        ...a,
+        // h.sessionInsertFails makes session inserts come back empty, which better-auth turns into a 500 inside the
+        // endpoint (the after hook's path, unlike a thrown adapter error, which escapes to onAPIError).
+        create: (...args: Parameters<typeof a.create>) =>
+          h.sessionInsertFails && args[0].model === "session" ? Promise.resolve(null as never) : a.create(...args),
+        findOne: (...args: Parameters<typeof a.findOne>) =>
+          h.dbDown ? Promise.reject(new Error("connect ECONNREFUSED")) : a.findOne(...args),
+      };
     },
   };
 });
@@ -116,7 +125,7 @@ describe("admin promotion", () => {
     expect(await captureError()).toHaveBeenCalled();
   });
 
-  it("a 5xx APIError inside an endpoint (Have I Been Pwned answers 500) is reported to Sentry", async () => {
+  it("a failed breached-password lookup (Have I Been Pwned answers 500) is reported to Sentry", async () => {
     const capture = await captureError();
     capture.mockClear();
     vi.stubGlobal("fetch", vi.fn(async () => new Response("down", { status: 500 })));
@@ -128,8 +137,22 @@ describe("admin promotion", () => {
         body: JSON.stringify({ email: "f4@example.test", password: PASSWORD, name: "T" }),
       }),
     );
+    expect(res.status).toBe(503);
+    expect(capture).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 503 }));
+  });
+
+  it("a 5xx APIError thrown inside an endpoint (failed session insert) is reported with its path", async () => {
+    const capture = await captureError();
+    capture.mockClear();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 200 })));
+    await auth.api.signUpEmail({ body: { email: "f5@example.test", password: PASSWORD, name: "T" } as never });
+    h.sessionInsertFails = true;
+    const res = await auth.handler(new Request(link("f5@example.test")));
+    h.sessionInsertFails = false;
     expect(res.status).toBe(500);
-    expect(capture).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 500 }), { path: "/sign-up/email" });
+    // Only the after hook passes { path }: this pins that path, not onAPIError's.
+    expect(capture).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 500 }), { path: "/verify-email" });
   });
 
   it("a crash that escapes an endpoint (database down) is logged and reported to Sentry", async () => {

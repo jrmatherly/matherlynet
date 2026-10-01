@@ -1,43 +1,156 @@
+// pwnedPasswordCheck inside a real betterAuth (memoryAdapter), with fetch standing in for api.pwnedpasswords.com.
+import { betterAuth } from "better-auth";
+import { memoryAdapter } from "better-auth/adapters/memory";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { breachCount, passwordFrom, pwnedPasswordCheck } from "../src/lib/pwned";
 
-// The upstream plugin's wrapped hash never settles: an unreachable api.pwnedpasswords.com.
-vi.mock("better-auth/plugins/haveibeenpwned", () => ({
-  haveIBeenPwned: () => ({
-    id: "have-i-been-pwned",
-    init: () => ({ context: { password: { hash: () => new Promise(() => {}) } } }),
-  }),
-}));
+const SAFE = "a-long-unpwned-test-password-91";
+// SHA-1("password") = 5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8; the range response lists suffixes after the prefix.
+const BREACHED = "password";
+const BREACHED_RANGE = "0018A45C4D1DEF81644B54AB7F969B88D65:0\r\n1E4C9B93F3F0682250B6CF8331B7EE68FD8:9999\r\n";
+const CLEAN_RANGE = "0018A45C4D1DEF81644B54AB7F969B88D65:0\r\n";
 
-const { boundedPwned, withTimeout } = await import("../src/lib/pwned");
+// Typed through the generic: unused `_url`/`_init` parameters fail this repo's lint.
+const answer = (body: string) =>
+  vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () => new Response(body, { status: 200 }));
+// Never answers; rejects when aborted, like a real fetch.
+const hang = () => {
+  const signals: AbortSignal[] = [];
+  const fn = vi.fn(
+    (_url: string, init?: RequestInit) =>
+      new Promise<Response>((_, reject) => {
+        const signal = init!.signal!;
+        signals.push(signal);
+        signal.addEventListener("abort", () => reject(signal.reason));
+      }),
+  );
+  return { fn, signals };
+};
+
+function makeAuth(timeoutMs = 200) {
+  let resetToken = "";
+  const db: Record<string, unknown[]> = { user: [], session: [], account: [], verification: [] };
+  const auth = betterAuth({
+    baseURL: "http://localhost:4321",
+    secret: "test-secret-test-secret-test-secret-123",
+    database: memoryAdapter(db),
+    emailAndPassword: {
+      enabled: true,
+      sendResetPassword: async ({ token }) => {
+        resetToken = token;
+      },
+    },
+    plugins: [pwnedPasswordCheck(timeoutMs)],
+  });
+  return { auth, db, resetToken: () => resetToken };
+}
+const signUp = (auth: ReturnType<typeof makeAuth>["auth"], email: string, password: unknown = SAFE) =>
+  auth.api.signUpEmail({ body: { email, password: password as string, name: "T" } });
 
 afterEach(() => {
-  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
-describe("withTimeout", () => {
-  it("rejects with the timeout error when the promise never settles", async () => {
-    vi.useFakeTimers();
-    const result = withTimeout(new Promise(() => {}), 50, () => new Error("too slow"));
-    const assertion = expect(result).rejects.toThrow("too slow");
-    await vi.advanceTimersByTimeAsync(50);
-    await assertion;
+describe("breachCount", () => {
+  it("reads the count for the matching suffix, case-insensitively", () => {
+    expect(breachCount(BREACHED_RANGE, "1E4C9B93F3F0682250B6CF8331B7EE68FD8")).toBe(9999);
+    expect(breachCount(BREACHED_RANGE.toLowerCase(), "1E4C9B93F3F0682250B6CF8331B7EE68FD8")).toBe(9999);
   });
-  it("passes a value through", async () => {
-    await expect(withTimeout(Promise.resolve(true), 50, () => new Error("too slow"))).resolves.toBe(true);
+  it("counts padding entries and absent suffixes as 0", () => {
+    expect(breachCount(BREACHED_RANGE, "0018A45C4D1DEF81644B54AB7F969B88D65")).toBe(0);
+    expect(breachCount(CLEAN_RANGE, "1E4C9B93F3F0682250B6CF8331B7EE68FD8")).toBe(0);
   });
-  it("passes a rejection through", async () => {
-    await expect(withTimeout(Promise.reject(new Error("compromised")), 50, () => new Error("too slow"))).rejects.toThrow("compromised");
+  it("throws on a malformed count, so the check fails closed", () => {
+    expect(() => breachCount("1E4C9B93F3F0682250B6CF8331B7EE68FD8:lots", "1E4C9B93F3F0682250B6CF8331B7EE68FD8")).toThrow(/malformed/);
   });
 });
 
-describe("boundedPwned", () => {
-  it("fails closed with SERVICE_UNAVAILABLE when the check hangs", async () => {
-    vi.useFakeTimers();
-    const plugin = boundedPwned(50);
-    const ctx = { password: { hash: async () => "hashed" } };
-    const { context } = plugin.init!(ctx as never) as { context: { password: { hash: (p: string) => Promise<string> } } };
-    const assertion = expect(context.password.hash("correct horse")).rejects.toMatchObject({ status: "SERVICE_UNAVAILABLE" });
-    await vi.advanceTimersByTimeAsync(50);
-    await assertion;
+describe("passwordFrom", () => {
+  it("reads the field each password endpoint uses", () => {
+    expect(passwordFrom("/sign-up/email", { password: "a" })).toBe("a");
+    expect(passwordFrom("/admin/create-user", { password: "b" })).toBe("b");
+    expect(passwordFrom("/change-password", { newPassword: "c", currentPassword: "x" })).toBe("c");
+    expect(passwordFrom("/reset-password", { newPassword: "d", token: "t" })).toBe("d");
+    expect(passwordFrom("/admin/set-user-password", { newPassword: "e", userId: "u" })).toBe("e");
+  });
+  it("returns null for other paths and for missing, empty or non-string values", () => {
+    expect(passwordFrom("/sign-in/email", { password: "a" })).toBeNull();
+    expect(passwordFrom(undefined, { password: "a" })).toBeNull();
+    expect(passwordFrom("/sign-up/email", { password: 123 })).toBeNull();
+    expect(passwordFrom("/sign-up/email", { password: "" })).toBeNull();
+    expect(passwordFrom("/sign-up/email", undefined)).toBeNull();
+    expect(passwordFrom("/reset-password", { password: "wrong field" })).toBeNull();
+  });
+});
+
+describe("pwnedPasswordCheck in better-auth", () => {
+  it("refuses a breached password, sending only the 5-character hash prefix", async () => {
+    const fetch = answer(BREACHED_RANGE);
+    vi.stubGlobal("fetch", fetch);
+    await expect(signUp(makeAuth().auth, "a@example.test", BREACHED)).rejects.toMatchObject({ status: "BAD_REQUEST" });
+    expect(String(fetch.mock.calls[0][0])).toBe("https://api.pwnedpasswords.com/range/5BAA6");
+  });
+
+  it("accepts a password that isn't listed", async () => {
+    vi.stubGlobal("fetch", answer(CLEAN_RANGE));
+    await expect(signUp(makeAuth().auth, "b@example.test")).resolves.toMatchObject({ user: { email: "b@example.test" } });
+  });
+
+  it("fails closed with a 503 within the bound, aborts the lookup and logs it", async () => {
+    const { fn, signals } = hang();
+    vi.stubGlobal("fetch", fn);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const t0 = Date.now();
+    await expect(signUp(makeAuth(100).auth, "c@example.test")).rejects.toMatchObject({ status: "SERVICE_UNAVAILABLE", statusCode: 503 });
+    expect(Date.now() - t0).toBeLessThan(1500);
+    expect(signals[0].aborted).toBe(true);
+    expect(log.mock.calls.flat().join(" ")).toMatch(/pwnedpasswords/);
+  });
+
+  it("fails closed when the service answers with an error status", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 503 })));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(signUp(makeAuth().auth, "d@example.test")).rejects.toMatchObject({ status: "SERVICE_UNAVAILABLE" });
+  });
+
+  it("skips non-string passwords and leaves them to the endpoint's validation", async () => {
+    const fetch = answer(CLEAN_RANGE);
+    vi.stubGlobal("fetch", fetch);
+    // Body validation errors carry a numeric status (400), unlike APIError's "BAD_REQUEST".
+    await expect(signUp(makeAuth().auth, "e@example.test", 12345678)).rejects.toMatchObject({ status: 400 });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("doesn't check on sign-in", async () => {
+    const fetch = answer(CLEAN_RANGE);
+    vi.stubGlobal("fetch", fetch);
+    const { auth } = makeAuth();
+    await signUp(auth, "f@example.test");
+    fetch.mockClear();
+    await auth.api.signInEmail({ body: { email: "f@example.test", password: SAFE } });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  // better-auth 1.7.7 consumes the reset token before hashing (better-auth#10632); checking first keeps it usable.
+  it("keeps the reset link usable after a refused password or a lookup outage", async () => {
+    vi.stubGlobal("fetch", answer(CLEAN_RANGE));
+    const { auth, resetToken } = makeAuth(100);
+    await signUp(auth, "g@example.test");
+    await auth.api.requestPasswordReset({ body: { email: "g@example.test", redirectTo: "/" } });
+    const token = resetToken();
+    expect(token).not.toBe("");
+
+    vi.stubGlobal("fetch", answer(BREACHED_RANGE));
+    await expect(auth.api.resetPassword({ body: { token, newPassword: BREACHED } })).rejects.toMatchObject({ status: "BAD_REQUEST" });
+
+    vi.stubGlobal("fetch", hang().fn);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(auth.api.resetPassword({ body: { token, newPassword: "another-unlisted-password-42" } })).rejects.toMatchObject({
+      status: "SERVICE_UNAVAILABLE",
+    });
+
+    vi.stubGlobal("fetch", answer(CLEAN_RANGE));
+    await expect(auth.api.resetPassword({ body: { token, newPassword: "another-unlisted-password-42" } })).resolves.toMatchObject({ status: true });
   });
 });
