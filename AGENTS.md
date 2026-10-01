@@ -50,7 +50,8 @@ web/
   src/lib/auth.ts      better-auth: email verification, reset, admin + haveIBeenPwned plugins, DB rate limit,
                        admin-email promotion hook, social providers from env
   src/lib/mail.ts      nodemailer over SMTP_URL (Mailpit locally); fire-and-forget
-  src/lib/site-settings.ts  site_settings row (theme, Sentry, Umami), 30 s per-process cache; reconfigures Sentry
+  src/lib/site-settings.ts  site_settings row (theme, Sentry, Umami), 30 s per-process cache; reconfigures Sentry;
+                       database down: last known (or default) settings, retried every 5 s, so pages stay up
   src/lib/settings-form.ts  SiteSettings type + /admin form validation (pure, unit-tested)
   src/lib/sentry.ts    server Sentry (@sentry/node): errors only, one client; DSN changes retarget its transport
   src/lib/scrub-url.ts stripQuery(): path-only URLs for browser Sentry events/breadcrumbs (reset tokens)
