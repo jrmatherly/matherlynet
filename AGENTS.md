@@ -45,7 +45,7 @@ web/
   src/middleware.ts    loads the session into Astro.locals.user / .session
   src/pages/api/auth/[...all].ts  better-auth request handler
   public/              favicons, web manifest, logo
-.github/workflows/     publish-images.yml: build + push web image on main
+.github/workflows/     publish-images.yml: build + push web image on main (path-filtered)
 out/                   aspire publish output (gitignored)
 ```
 
@@ -85,6 +85,9 @@ out/                   aspire publish output (gitignored)
   run-once resource broke publishing.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
+- The image workflow runs only when the image can change (`web/**` minus docs, AppHost files, root `package*.json`,
+  the workflow itself); `workflow_dispatch` bypasses the filter. `paths-ignore` can't take `!` exceptions, so it is
+  an include list.
 - Markdown is linted by markdownlint-cli2 via a pre-commit hook (staged files only).
 - `.gitignore` excludes local tooling state: `.codegraph/`, `.remember/`, `.serena/cache/`, `private/`,
   `.claude/settings.local.json`, `CLAUDE.local.md` and `.claude/auto-memory/dirty-files*`.
