@@ -8,3 +8,5 @@
   Serena's "Edit is forbidden for code files" applies only to files its language server serves.
 - Never search or read inside `.aspire/modules/` to learn the AppHost API wholesale: it is a ~117k-line
   generated file. Grep it for the one signature you need (e.g. `grep -n "withHelm(" .aspire/modules/aspire.mts`).
+- Change files with Edit/Write (or Serena's symbol tools), not python/sed through Bash: the PostToolUse lint hook
+  only sees those tools.
