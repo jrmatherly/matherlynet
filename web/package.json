@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "e2e": "playwright test",
-    "start": "node migrate.mjs && node --import ./otel.mjs ./dist/server/entry.mjs",
+    "start": "node migrate.mjs && exec node --import ./otel.mjs ./server.mjs",
     "preview": "astro preview",
     "astro": "astro",
     "db:generate": "auth generate --config src/lib/auth.ts --output src/db/auth-schema.ts --yes && drizzle-kit generate"

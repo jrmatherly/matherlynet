@@ -1,0 +1,6 @@
+# The generated Dockerfile installs dependencies in the image and then copies the context over them.
+node_modules
+dist
+.astro
+test-results
+playwright-report
