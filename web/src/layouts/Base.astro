@@ -1,13 +1,16 @@
 ---
 import { Font } from "astro:assets";
+import Seo, { type Props as SeoProps } from "../components/Seo.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
 import "../styles/global.css";
 
-interface Props {
-  title: string;
-  description?: string;
+interface Props extends SeoProps {
+  // "minimal" (sign-in, 404) drops the nav, account link and footer.
+  chrome?: "full" | "minimal";
 }
 
-const { title, description = "Jason Matherly: AI platform and infrastructure leader." } = Astro.props;
+const { chrome = "full", ...seo } = Astro.props;
 const { theme, mode, palette } = Astro.locals.theme;
 const icons = theme === "pro" ? "/pro/" : "/";
 ---
@@ -17,8 +20,7 @@ const icons = theme === "pro" ? "/pro/" : "/";
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
+    <Seo {...seo} />
     <link rel="icon" href={`${icons}favicon.ico`} sizes="48x48" data-icon="favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href={`${icons}favicon-32x32.png`} data-icon="favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href={`${icons}favicon-16x16.png`} data-icon="favicon-16x16.png" />
@@ -27,7 +29,14 @@ const icons = theme === "pro" ? "/pro/" : "/";
     <Font cssVariable="--font-geist" preload />
     <Font cssVariable="--font-geist-mono" />
   </head>
-  <body class="min-h-dvh bg-background text-foreground">
-    <slot />
+  <body class="flex min-h-dvh flex-col bg-background text-foreground">
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-accent-foreground">
+      Skip to content
+    </a>
+    <SiteHeader minimal={chrome === "minimal"} />
+    <main id="main" class="flex-1">
+      <slot />
+    </main>
+    {chrome === "full" && <SiteFooter />}
   </body>
 </html>

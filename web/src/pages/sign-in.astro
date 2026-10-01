@@ -1,0 +1,91 @@
+---
+import Base from "../layouts/Base.astro";
+import Logo from "../components/Logo.astro";
+
+const { user } = Astro.locals;
+const field = "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted focus:border-accent";
+const primary = "rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground";
+const secondary = "rounded-full border border-border bg-surface-2 px-4 py-2.5 text-sm font-semibold";
+---
+
+<Base title="Sign in" description="Sign in to your account." chrome="minimal" noindex>
+  <div class="mx-auto grid max-w-md gap-6 px-4 py-16 sm:px-6">
+    <div class="mx-auto"><Logo size="size-20" /></div>
+    <section class="grid gap-4 rounded-2xl border border-border bg-surface p-6">
+      {
+        user ? (
+          <>
+            <h1 class="text-2xl font-extrabold tracking-tight">Your account</h1>
+            <p id="who" class="text-sm">
+              Signed in as <span class="font-semibold">{user.email}</span>
+            </p>
+            <button id="sign-out" class={secondary}>Sign out</button>
+          </>
+        ) : (
+          <>
+            <h1 class="text-2xl font-extrabold tracking-tight">Sign in</h1>
+            <form id="email-form" class="grid gap-3">
+              <label class="grid gap-1.5 text-sm font-semibold">
+                <span>
+                  Name <span class="font-normal text-muted">(sign-up only)</span>
+                </span>
+                <input name="name" autocomplete="name" class={field} />
+              </label>
+              <label class="grid gap-1.5 text-sm font-semibold">
+                Email
+                <input name="email" type="email" required autocomplete="email" class={field} />
+              </label>
+              <label class="grid gap-1.5 text-sm font-semibold">
+                Password
+                <input name="password" type="password" required minlength="8" autocomplete="current-password" class={field} />
+              </label>
+              <div class="grid grid-cols-2 gap-2">
+                <button name="action" value="sign-in" class={primary}>Sign in</button>
+                <button name="action" value="sign-up" class={secondary}>Sign up</button>
+              </div>
+            </form>
+            <div class="grid grid-cols-2 gap-2">
+              <button data-provider="github" class={secondary}>GitHub</button>
+              <button data-provider="google" class={secondary}>Google</button>
+            </div>
+            <p id="error" role="alert" class="text-sm text-danger empty:hidden" />
+          </>
+        )
+      }
+    </section>
+    <a href="/" class="text-center text-sm text-muted hover:text-foreground">← Back to the site</a>
+  </div>
+</Base>
+
+<script>
+  import { authClient } from "../lib/auth-client";
+
+  const showError = (message?: string) => {
+    document.querySelector("#error")!.textContent = message ?? "Something went wrong";
+  };
+
+  document.querySelector("#sign-out")?.addEventListener("click", async () => {
+    await authClient.signOut();
+    location.reload();
+  });
+
+  document.querySelector<HTMLFormElement>("#email-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget as HTMLFormElement);
+    const email = String(form.get("email"));
+    const password = String(form.get("password"));
+    const { error } =
+      (e.submitter as HTMLButtonElement).value === "sign-up"
+        ? await authClient.signUp.email({ email, password, name: String(form.get("name") || email) })
+        : await authClient.signIn.email({ email, password });
+    if (error) return showError(error.message);
+    location.reload();
+  });
+
+  document.querySelectorAll<HTMLButtonElement>("[data-provider]").forEach((button) =>
+    button.addEventListener("click", async () => {
+      const { error } = await authClient.signIn.social({ provider: button.dataset.provider!, callbackURL: "/sign-in" });
+      if (error) showError(error.message);
+    }),
+  );
+</script>

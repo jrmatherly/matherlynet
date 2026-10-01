@@ -1,0 +1,49 @@
+---
+import Logo from "./Logo.astro";
+import ThemeToggle from "./ThemeToggle.astro";
+import { person, publicRoutes } from "../lib/site";
+import { SITE_DEFAULTS } from "../theme/palettes";
+
+interface Props {
+  // Minimal chrome (sign-in, 404): no nav or account link.
+  minimal?: boolean;
+}
+
+const { minimal = false } = Astro.props;
+const { user, theme } = Astro.locals;
+const path = Astro.url.pathname;
+const nav = minimal ? [] : publicRoutes.filter((r) => r.nav);
+const link = "rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-foreground aria-[current=page]:text-foreground";
+---
+
+<header class="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
+    <a href="/" class="inline-flex items-center gap-2.5 font-extrabold tracking-tight">
+      <Logo />{person.name}
+    </a>
+    {
+      nav.length > 0 && (
+        <nav aria-label="Main" class="flex flex-1 flex-wrap gap-1">
+          {nav.map((r) => (
+            <a href={r.path} class={link} aria-current={path === r.path ? "page" : undefined}>
+              {r.label}
+            </a>
+          ))}
+        </nav>
+      )
+    }
+    <div class="ml-auto flex flex-wrap items-center gap-3">
+      <ThemeToggle theme={theme.theme} mode={theme.mode} proPalette={SITE_DEFAULTS.proPalette} />
+      {
+        !minimal &&
+          (user ? (
+            <a href="/sign-in" class={link}>Account</a>
+          ) : (
+            <a href="/sign-in" class="rounded-full border border-border px-3.5 py-1.5 text-sm font-semibold hover:bg-surface-2">
+              Sign in
+            </a>
+          ))
+      }
+    </div>
+  </div>
+</header>

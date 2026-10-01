@@ -1,0 +1,47 @@
+---
+import { person, siteOrigin } from "../lib/site";
+
+export interface Props {
+  title: string;
+  description?: string;
+  // Absolute or root-relative image URL; defaults to the generated card for this page.
+  image?: string;
+  type?: "website" | "article" | "profile";
+  noindex?: boolean;
+}
+
+const { title, description = person.description, image, type = "website", noindex = false } = Astro.props;
+const origin = siteOrigin();
+const canonical = new URL(Astro.url.pathname, origin).href;
+const fullTitle = title === person.name ? title : `${title} · ${person.name}`;
+const imageUrl = image ? new URL(image, origin).href : undefined;
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: person.name,
+  jobTitle: person.jobTitle,
+  url: origin.href,
+  address: { "@type": "PostalAddress", addressLocality: person.locality },
+  sameAs: person.sameAs,
+};
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+{noindex && <meta name="robots" content="noindex, nofollow" />}
+<meta property="og:type" content={type} />
+<meta property="og:site_name" content={person.name} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:locale" content="en_US" />
+{imageUrl && <meta property="og:image" content={imageUrl} />}
+{imageUrl && <meta property="og:image:width" content="1200" />}
+{imageUrl && <meta property="og:image:height" content="630" />}
+{imageUrl && <meta property="og:image:alt" content={fullTitle} />}
+<meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+{imageUrl && <meta name="twitter:image" content={imageUrl} />}
+{!noindex && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}

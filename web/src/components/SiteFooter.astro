@@ -1,0 +1,21 @@
+---
+import { person } from "../lib/site";
+
+const year = new Date().getFullYear();
+const label: Record<string, string> = { "www.linkedin.com": "LinkedIn", "github.com": "GitHub" };
+---
+
+<footer class="border-t border-border">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6">
+    <span>© {year} {person.name} · {person.locality}</span>
+    <nav aria-label="Elsewhere" class="flex gap-4">
+      {
+        person.sameAs.map((href) => (
+          <a href={href} rel="me noopener" class="hover:text-foreground">
+            {label[new URL(href).host] ?? new URL(href).host}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</footer>
