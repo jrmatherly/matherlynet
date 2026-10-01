@@ -92,7 +92,8 @@ out/                   aspire publish output (gitignored)
   enforces the match).
 - CSP (`security.csp` in `astro.config.mjs`, sent as a header; `astro dev` skips it, so check a build): no inline
   `style` attributes, `on*=` handlers or unhashed inline scripts. Third-party origins are added per request with
-  `Astro.csp` (see Telemetry.astro). Markdown highlighting is off: Shiki needs inline styles; Prism is CSP-safe.
+  `Astro.csp` (see Telemetry.astro). Code blocks use Prism (token classes, colored from the palette in
+  global.css), not Shiki, whose inline styles the CSP blocks.
 
 <!-- END AUTO-MANAGED -->
 
@@ -144,6 +145,8 @@ out/                   aspire publish output (gitignored)
 
 - Run the app only through Aspire. Never run `astro dev` or `pnpm dev` directly: they start without
   the database, secrets, or the fixed port 4321 that auth callbacks depend on.
+- After editing `web/astro.config.mjs` or web dependencies, run `aspire resource web restart`: the in-process
+  dev restart leaves Vite's optimized deps stale (pages answer `504 Outdated Optimize Dep`, scripts never run).
 - `apphost.mts` is the source of truth for infrastructure. Dockerfiles, Compose files and Helm charts
   are generated into `out/` (gitignored); never hand-edit or commit them.
 - Never edit `.aspire/` (generated TypeScript SDK). Regenerate with `aspire restore`; add integrations

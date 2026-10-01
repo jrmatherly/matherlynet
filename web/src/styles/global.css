@@ -71,3 +71,15 @@
   & :where(blockquote) { border-left: 3px solid var(--accent); padding-left: 1rem; color: var(--muted); }
 }
 
+/* Prism token classes in code blocks, from the active palette (so every palette and mode has matching code). */
+.prose-content .token {
+  &:where(.comment, .prolog, .doctype, .cdata) { color: var(--muted); font-style: italic; }
+  &:where(.keyword, .atrule, .important, .selector, .tag) { color: var(--accent); }
+  &:where(.string, .char, .attr-value, .regex, .inserted) { color: var(--success); }
+  &:where(.number, .boolean, .constant, .symbol, .builtin) { color: var(--warning); }
+  &:where(.function, .class-name, .attr-name, .property) { color: var(--info); }
+  &:where(.deleted) { color: var(--danger); }
+  &:where(.punctuation, .operator) { color: var(--muted); }
+  &:where(.important, .bold) { font-weight: 700; }
+}
+
