@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Runs matherlynet's full local verification (AppHost eslint and tsc, Markdown and workflow lint, web build, Aspire smoke test) and reports PASS/FAIL per step. Use before committing, after changing apphost.mts, dependencies or the auth/database code, or when the user says "verify", "run the checks", "is everything green", or invokes /verify.
+description: Runs matherlynet's full local verification (AppHost eslint and tsc, Markdown and workflow lint, web astro check and build, Aspire smoke test) and reports PASS/FAIL per step. Use before committing, after changing apphost.mts, dependencies or the auth/database code, or when the user says "verify", "run the checks", "is everything green", or invokes /verify.
 argument-hint: "[--no-stack]"
 allowed-tools: Bash(.claude/skills/verify/scripts/verify.sh *)
 ---

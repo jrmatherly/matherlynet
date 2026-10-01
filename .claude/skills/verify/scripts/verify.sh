@@ -25,6 +25,7 @@ step "AppHost eslint"        npm run --silent lint
 step "AppHost tsc"           node_modules/.bin/tsc -p tsconfig.apphost.json --noEmit
 step "Markdown lint"         markdownlint-cli2
 step "Workflow lint"         actionlint
+step "Web astro check"    pnpm --dir web check
 step "Web build"             pnpm --dir web build
 
 smoke() {

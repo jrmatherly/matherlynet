@@ -21,7 +21,7 @@ pushes it to `ghcr.io/jrmatherly/matherlynet`.
 | Inspect / logs / stop | `aspire describe`, `aspire logs web`, `aspire wait web`, `aspire stop` |
 | Lint and type-check the AppHost | `npm run lint` and `npx tsc -p tsconfig.apphost.json --noEmit` |
 | Lint Markdown | `markdownlint-cli2` (or `pre-commit run --all-files`) |
-| Build the web app | `cd web && pnpm build` |
+| Type-check / build the web app | `cd web && pnpm check` (astro check) / `pnpm build` |
 | Smoke test (stack running) | `curl -s http://localhost:4321/api/auth/ok` returns `{"ok":true}` |
 | New auth schema / migration | `cd web && APPDB_URI=postgresql://unused pnpm db:generate` |
 | Deployment artifacts | `aspire publish -o out/compose`; `DEPLOY_TARGET=k8s aspire publish -o out/k8s` |
@@ -46,6 +46,7 @@ web/
   src/pages/api/auth/[...all].ts  better-auth request handler
   public/              favicons, web manifest, logo
 .github/workflows/     publish-images.yml: build + push web image on main (path-filtered)
+                       web-checks.yml: astro check + build on PRs and main (web/** only)
 out/                   aspire publish output (gitignored)
 ```
 
