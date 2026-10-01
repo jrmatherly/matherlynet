@@ -54,6 +54,8 @@ web/
   src/db/              Drizzle client (`APPDB_URI`), generated auth-schema.ts, app tables in schema.ts
   src/middleware.ts    session, siteSettings and theme into Astro.locals; Sentry error capture; security headers
   src/theme/palettes.ts  palette keys, cookie names, resolveTheme() (cookies -> theme, mode, palette)
+  src/theme/colors.ts  paletteColors() for Vite server code (reads palettes.css via `?raw`); palette-css.ts is the
+                       pure colorsFromCss() parser, so plain Node scripts can parse palettes.css too
   src/styles/           global.css (Tailwind tokens, dark variant, Prism token colors)
                         + palettes.css (one light-dark() block per palette)
   src/layouts/Base.astro  <html data-palette data-mode>, Seo, favicons, fonts, header/footer (chrome full|minimal)
