@@ -26,6 +26,9 @@ pushes it to `ghcr.io/jrmatherly/matherlynet`.
 | E2E (stack running) | `cd web && pnpm e2e` (Playwright, Chromium; finds Mailpit via `aspire describe`) |
 | New auth schema / migration | `cd web && APPDB_URI=postgresql://unused pnpm db:generate` |
 | Deployment artifacts | `aspire publish -o out/compose`; `DEPLOY_TARGET=k8s aspire publish -o out/k8s` |
+| Compose web host port | `Web__HostPort=none` (default, cloudflared on the compose network) / `loopback` / `public` |
+| Enable Umami | `Umami__Enabled=true aspire start` (add `Umami__Public=true` for a host port) |
+| Change Umami's admin password | `UMAMI_URL=<url> UMAMI_NEW_PASSWORD=<8+ chars> node scripts/umami-set-password.mjs` |
 | Push images (CI does this) | `aspire do push` after `docker login ghcr.io` |
 
 <!-- END AUTO-MANAGED -->
@@ -34,7 +37,7 @@ pushes it to `ghcr.io/jrmatherly/matherlynet`.
 ## Architecture
 
 ```text
-apphost.mts            Aspire AppHost: Postgres (pg/appdb), Umami, Mailpit (run mode only), web, parameters, GHCR
+apphost.mts            Aspire AppHost: Postgres (pg/appdb), Umami (opt-in), Mailpit (run mode only), web, parameters, GHCR
 .aspire/modules/       generated AppHost TypeScript SDK (gitignored; `aspire restore`)
 web/
   astro.config.mjs     output: 'server', @astrojs/node standalone, Tailwind 4 (Vite plugin), Geist, CSP directives
@@ -50,6 +53,7 @@ web/
   src/lib/site-settings.ts  site_settings row (theme, Sentry, Umami), 30 s per-process cache; reconfigures Sentry
   src/lib/settings-form.ts  SiteSettings type + /admin form validation (pure, unit-tested)
   src/lib/sentry.ts    server Sentry (@sentry/node): errors only, one client; DSN changes retarget its transport
+  src/lib/scrub-url.ts stripQuery(): path-only URLs for browser Sentry events/breadcrumbs (reset tokens)
   src/lib/auth-client.ts  better-auth browser client
   src/lib/site.ts      public origin (from BETTER_AUTH_URL at run time), person details, public routes list
   src/data/profile.ts  all résumé-derived copy (metrics, perspectives, work, career, skills); edit facts here
@@ -208,6 +212,11 @@ out/                   aspire publish output (gitignored)
   with `--no-rewrite`. The release is `SENTRY_RELEASE` = `IMAGE_TAG`, so set `IMAGE_TAG` when publishing.
 - Umami uses appdb's `umami` schema (`?schema=umami`), not its own database: published output only creates
   `POSTGRES_DB`. Don't use the toolkit's `withPostgreSQL()`; it inlines the Postgres password when published.
+- Umami is opt-in (`Umami:Enabled`; config keys are read with `getConfiguration()`, since parameters resolve too
+  late to gate a resource). Off, it isn't in local runs or published output. Its default `admin/umami` login can
+  only be changed through its API: `scripts/umami-set-password.mjs`.
+- Compose-only settings (`publishAsDockerComposeService`) are guarded by `!k8s`: under `DEPLOY_TARGET=k8s` there is
+  no Compose environment and the publish fails validation.
 - GitHub Actions: pin actions to full commit SHAs with a `# vX.Y.Z` comment, keep the concurrency
   group, emoji step names, and run `actionlint`.
 - Markdown follows `.markdownlint-cli2.jsonc` (120 columns); the pre-commit hook enforces it.
