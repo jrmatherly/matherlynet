@@ -46,7 +46,7 @@ describe("parseSettingsForm", () => {
   it.each([
     ["a plain-http script URL", { umamiScriptUrl: "http://stats.example.com/script.js" }],
     ["a plain-http DSN", { sentryDsn: "http://k@o1.ingest.sentry.io/1" }],
-    ...["10.0.0.5", "127.0.0.1", "169.254.169.254", "172.16.0.1", "192.168.1.1", "0.0.0.0", "localhost", "2130706433"].map(
+    ...["10.0.0.5", "127.0.0.1", "169.254.169.254", "172.16.0.1", "192.168.1.1", "0.0.0.0", "localhost", "localhost.", "LOCALHOST", "sentry.localhost", "2130706433"].map(
       (host) => [`a DSN on ${host}`, { sentryDsn: `https://k@${host}/1` }] as [string, Record<string, string>],
     ),
     ...["[::1]", "[::]", "[::ffff:127.0.0.1]", "[fd00::1]", "[fe80::1]"].map(

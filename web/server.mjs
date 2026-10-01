@@ -6,9 +6,18 @@ const { startServer } = await import("./dist/server/entry.mjs");
 const Sentry = await import("@sentry/node");
 const { server } = startServer();
 
-// Waits for `promise` at most `ms`; a rejection counts as done (shutdown must still exit).
-const within = (ms, promise) =>
-  Promise.race([Promise.resolve(promise).catch(() => {}), new Promise((resolve) => setTimeout(resolve, ms))]);
+// Waits for `promise` at most `ms`, logging a timeout, a rejection or a `false` result (Sentry.close's "not
+// flushed"); shutdown goes on either way, since it must finish inside the stop timeout.
+async function step(name, ms, promise) {
+  let timer;
+  const result = await Promise.race([
+    Promise.resolve(promise).catch((error) => (console.error(`shutdown: ${name} failed`, error), true)),
+    new Promise((resolve) => (timer = setTimeout(resolve, ms, "timeout"))),
+  ]);
+  clearTimeout(timer);
+  if (result === "timeout") console.error(`shutdown: ${name} still running after ${ms} ms`);
+  else if (result === false) console.error(`shutdown: ${name} did not finish`);
+}
 
 let stopping = false;
 async function shutdown() {
@@ -16,10 +25,14 @@ async function shutdown() {
   stopping = true;
   // Docker sends SIGKILL 10 s after SIGTERM: drain 7 s, then flush Sentry (1 s) and OpenTelemetry (1.5 s).
   const drained = new Promise((resolve) => server.server.close(resolve));
+  // close() only ends connections idle right now; a keep-alive socket whose response finishes later would stay
+  // open until keepAliveTimeout and hold the drain to its 7 s cap. Keep closing idle ones while draining.
   server.server.closeIdleConnections();
-  await within(7_000, drained);
-  await within(1_000, Sentry.close(1_000));
-  await within(1_500, globalThis.__otelShutdown?.());
+  setInterval(() => server.server.closeIdleConnections(), 100).unref();
+  await step("HTTP drain", 7_000, drained);
+  // Sentry.close resolves false without a client too (reporting off): only flush one that exists.
+  await step("Sentry flush", 1_000, Sentry.getClient() ? Sentry.close(1_000) : true);
+  await step("OpenTelemetry flush", 1_500, globalThis.__otelShutdown?.());
   process.exit(0);
 }
 process.once("SIGTERM", shutdown);
