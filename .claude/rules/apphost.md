@@ -21,5 +21,8 @@ paths:
     `withDockerfileBaseImage`. Changing `packageManager` requires `pnpm install` to refresh the lockfile.
   - `aspire deploy` to Kubernetes requires a container registry; `Aspire.Hosting.Kubernetes` is preview.
   - Kubernetes output has no Job support; migrations therefore run inside `web` on start.
+  - `withHttpProbe` also registers a health check keyed by path, so readiness and liveness use different paths
+    (`/api/auth/ok` and `/api/auth/ok?probe=liveness`) and there is no separate `withHttpHealthCheck`.
+  - A stopped resource's local port stays open (DCP proxy) and never answers: clients need connect timeouts.
 - Root `package.json` is the AppHost's npm project: keep `vscode-jsonrpc` on 8.x and TypeScript on
   6.0.x (see AGENTS.md); `tsconfig.apphost.json` must keep `"types": ["node"]` for TypeScript 6.
