@@ -18,7 +18,20 @@
       "Bash(pre-commit run *)",
       "Bash(pnpm build *)",
       "Bash(pnpm --dir web build *)",
-      "Bash(.claude/hooks/lint-edited.sh *)"
+      "Bash(.claude/hooks/lint-edited.sh *)",
+      "mcp__aspire__list_resources",
+      "mcp__aspire__list_console_logs",
+      "mcp__aspire__list_structured_logs",
+      "mcp__aspire__list_traces",
+      "mcp__aspire__list_trace_structured_logs",
+      "mcp__aspire__list_apphosts",
+      "mcp__aspire__select_apphost",
+      "mcp__aspire__list_integrations",
+      "mcp__aspire__doctor",
+      "mcp__aspire__refresh_tools",
+      "mcp__aspire__list_docs",
+      "mcp__aspire__search_docs",
+      "mcp__aspire__get_doc"
     ],
     "ask": [
       "Bash(git push *)",
@@ -32,7 +45,8 @@
       "Bash(helm upgrade *)",
       "Bash(helm uninstall *)",
       "Bash(kubectl delete *)",
-      "Bash(docker compose down *)"
+      "Bash(docker compose down *)",
+      "mcp__aspire__execute_resource_command"
     ],
     "deny": [
       "Edit(/.aspire/**)",
@@ -58,5 +72,8 @@
         ]
       }
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "aspire"
+  ]
 }
