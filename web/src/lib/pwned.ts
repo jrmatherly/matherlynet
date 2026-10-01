@@ -11,26 +11,31 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () =>
 }
 
 // Have I Been Pwned, bounded: the upstream plugin (better-auth 1.7.7) has no timeout, so a slow or unreachable
-// api.pwnedpasswords.com hangs sign-up and password changes. Its init wraps ctx.password.hash for its paths
-// (dist/plugins/haveibeenpwned/index.mjs); this wraps that again with a time limit. Still fails closed.
-// Re-check the init shape on better-auth upgrades.
+// api.pwnedpasswords.com hangs sign-up and password changes. Its init wraps ctx.password.hash as "check, then hash"
+// for its paths (dist/plugins/haveibeenpwned/index.mjs). Given a no-op hash it leaves only the check, which is
+// bounded here; the real hash runs after, outside the limit. Still fails closed; a timed-out lookup isn't aborted.
+// tests/pwned-real.test.ts pins this against the real plugin: re-run it on better-auth upgrades.
 export function boundedPwned(timeoutMs = 5_000): BetterAuthPlugin {
   const upstream = haveIBeenPwned();
   return {
     ...upstream,
     init(ctx) {
-      const { context } = upstream.init(ctx);
-      const hash = context.password.hash;
+      // Captured now: better-auth merges the returned password into this same context, so reading
+      // ctx.password.hash at call time would call this wrapper again.
+      const hash = ctx.password.hash;
+      const check = upstream.init({ ...ctx, password: { ...ctx.password, hash: async () => "" } }).context.password.hash;
       return {
         context: {
           password: {
-            ...context.password,
-            hash: (password: string) =>
-              withTimeout(
-                hash(password),
-                timeoutMs,
-                () => new APIError("SERVICE_UNAVAILABLE", { message: "Couldn't check the password right now. Please try again." }),
-              ),
+            ...ctx.password,
+            hash: async (password: string) => {
+              await withTimeout(check(password), timeoutMs, () => {
+                // Logged here: better-auth doesn't log a 503 it returns, and Sentry may be off.
+                console.error(`pwned: api.pwnedpasswords.com didn't answer within ${timeoutMs} ms; password refused`);
+                return new APIError("SERVICE_UNAVAILABLE", { message: "Couldn't check the password right now. Please try again." });
+              });
+              return hash(password);
+            },
           },
         },
       };

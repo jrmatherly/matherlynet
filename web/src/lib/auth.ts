@@ -1,11 +1,13 @@
 import { betterAuth, type User } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware, isAPIError } from "better-auth/api";
 import { admin } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { user as userTable } from "../db/auth-schema";
 import { sendMail } from "./mail";
 import { boundedPwned } from "./pwned";
+import { captureError } from "./sentry";
 
 // A provider is enabled only when both its client id and secret are set.
 const socialProviders = Object.fromEntries(
@@ -19,19 +21,30 @@ const socialProviders = Object.fromEntries(
 // Lets pages offer only the sign-in buttons that will work.
 export const enabledProviders = Object.keys(socialProviders) as ("github" | "google")[];
 
-// The account matching the admin-email parameter becomes admin when its email becomes verified, and only then:
-// at creation when an OAuth provider vouches for it, or by an update that sets emailVerified (the emailed link,
-// an email change, or OAuth sign-in linking to an unverified account). Without verification anyone could claim
-// it. Other updates don't promote, so a demotion through the admin plugin sticks; an account verified before
-// admin-email was set is therefore never promoted.
+// The account matching the admin-email parameter becomes admin when its email is proven, and only then: at
+// creation when an OAuth provider vouches for it, or when one of verifyingPaths writes emailVerified: true (the
+// emailed link, or OAuth sign-in linking to an unverified account). Without verification anyone could claim it.
+// Nothing else promotes, so a demotion through the admin plugin sticks (even an admin re-setting emailVerified);
+// an account verified before admin-email was set is therefore never promoted.
 const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-async function promoteAdmin(u: User & Record<string, unknown>) {
-  if (adminEmail && u.emailVerified && u.email.toLowerCase() === adminEmail && u.role !== "admin") {
+async function promoteAdmin(u: (User & Record<string, unknown>) | null) {
+  // null: better-auth passes the update's result, which is null when no row matched.
+  if (!u || !adminEmail || !u.emailVerified || u.email.toLowerCase() !== adminEmail || u.role === "admin") return;
+  try {
     await db.update(userTable).set({ role: "admin" }).where(eq(userTable.id, u.id));
+  } catch (error) {
+    // The verification is already committed and won't run again (the link short-circuits once verified), so
+    // rethrowing would only turn the sign-in into a 500. Say how to finish the promotion by hand instead.
+    console.error(`auth: admin promotion failed; run: UPDATE "user" SET role = 'admin' WHERE id = '${u.id}'`, error);
+    captureError(error, { step: "admin-promotion", userId: u.id });
   }
 }
 
-// update.before sees only the changed fields and update.after only the resulting row; better-auth passes both the
+// Endpoints (better-auth route templates) where emailVerified becomes true because the address was proven: the
+// emailed link, an OAuth callback or ID-token sign-in. Not /admin/update-user: an admin setting the flag isn't a
+// verification. An unlisted path fails safe: no promotion, which can be done by hand.
+const verifyingPaths = new Set(["/verify-email", "/callback/:id", "/sign-in/social"]);
+// update.before sees only the update payload and update.after only the resulting row; better-auth passes both the
 // same endpoint context (db/with-hooks.mjs updateWithHooks), which links the two.
 const verifying = new WeakSet<object>();
 
@@ -74,13 +87,31 @@ export const auth = betterAuth({
       create: { after: promoteAdmin },
       update: {
         before: async (data, ctx) => {
-          if (data.emailVerified === true && ctx) verifying.add(ctx);
+          if (data.emailVerified === true && ctx && verifyingPaths.has(ctx.path)) verifying.add(ctx);
         },
         after: async (u, ctx) => {
           if (ctx && verifying.delete(ctx)) await promoteAdmin(u);
         },
       },
     },
+  },
+  // /api/auth/* errors never reach the Astro middleware's Sentry capture: better-auth turns them into responses.
+  // onAPIError sees what escapes an endpoint (crashes such as a database outage, middleware rejections); it
+  // replaces better-auth's default logging, so it logs too. 4xx are the client's problem and stay out.
+  onAPIError: {
+    onError: (error, ctx) => {
+      if (isAPIError(error) && error.statusCode < 500) return;
+      ctx.logger.error("auth request failed", error);
+      captureError(error);
+    },
+  },
+  // APIErrors thrown inside an endpoint become responses before onAPIError (api/dispatch.mjs): e.g. the 503 from a
+  // breached-password check timeout, or a 500 from a failed session insert.
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      const returned = ctx.context.returned;
+      if (isAPIError(returned) && returned.statusCode >= 500) captureError(returned, { path: ctx.path });
+    }),
   },
   plugins: [admin(), boundedPwned()],
 });
