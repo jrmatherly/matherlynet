@@ -15,15 +15,48 @@ if (umamiScript) {
 if (sentryDsn) Astro.csp?.insertDirective(`connect-src ${new URL(sentryDsn).origin}`);
 ---
 
-{umamiScript && <script is:inline defer src={umamiScript} data-website-id={umami.websiteId} />}
+{/* Path only: query strings and hashes can carry tokens (/reset-password?token=…). */}
+{
+  umamiScript && (
+    <script
+      is:inline
+      defer
+      src={umamiScript}
+      data-website-id={umami.websiteId}
+      data-exclude-search="true"
+      data-exclude-hash="true"
+    />
+  )
+}
 {sentryDsn && <meta name="sentry-dsn" content={sentryDsn} />}
 {sentryDsn && sentryRelease && <meta name="sentry-release" content={sentryRelease} />}
 
 <script>
+  import { stripQuery } from "../lib/scrub-url";
+
   // @sentry/browser is a separate chunk, fetched only when browser reporting is on.
   const dsn = document.querySelector<HTMLMetaElement>('meta[name="sentry-dsn"]')?.content;
   const release = document.querySelector<HTMLMetaElement>('meta[name="sentry-release"]')?.content;
   if (dsn) {
-    import("@sentry/browser").then((Sentry) => Sentry.init({ dsn, release }));
+    import("@sentry/browser").then((Sentry) =>
+      Sentry.init({
+        dsn,
+        release,
+        // The SDK reports location.href, the Referer and breadcrumb URLs unfiltered (HttpContext, Breadcrumbs
+        // integrations); keep only paths so reset tokens never leave the browser.
+        beforeSend(event) {
+          if (event.request) {
+            event.request.url = stripQuery(event.request.url) as string | undefined;
+            if (event.request.headers?.Referer) event.request.headers.Referer = stripQuery(event.request.headers.Referer) as string;
+            delete event.request.query_string;
+          }
+          return event;
+        },
+        beforeBreadcrumb(crumb) {
+          for (const key of ["url", "from", "to"]) if (crumb.data && key in crumb.data) crumb.data[key] = stripQuery(crumb.data[key]);
+          return crumb;
+        },
+      }),
+    );
   }
 </script>
