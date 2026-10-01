@@ -54,7 +54,8 @@ web/
   src/db/              Drizzle client (`APPDB_URI`), generated auth-schema.ts, app tables in schema.ts
   src/middleware.ts    session, siteSettings and theme into Astro.locals; Sentry error capture; security headers
   src/theme/palettes.ts  palette keys, cookie names, resolveTheme() (cookies -> theme, mode, palette)
-  src/styles/           global.css (Tailwind tokens, dark variant) + palettes.css (one light-dark() block per palette)
+  src/styles/           global.css (Tailwind tokens, dark variant, Prism token colors)
+                        + palettes.css (one light-dark() block per palette)
   src/layouts/Base.astro  <html data-palette data-mode>, Seo, favicons, fonts, header/footer (chrome full|minimal)
   src/components/       Seo (canonical, OG, Person JSON-LD, noindex), SiteHeader/SiteFooter, ThemeToggle, Logo,
                         StatusPanel, Perspectives (no-JS radio switcher), WorkCard, Telemetry (Umami tag +

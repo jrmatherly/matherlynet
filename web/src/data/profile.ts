@@ -23,7 +23,7 @@ export const perspectives: Perspective[] = [
     id: "leaders",
     label: "Engineering leaders",
     headline: "A platform leader who still writes the code.",
-    body: "I run infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime. I architected the AI Gateway and the MCP platform, they run on GitOps-managed Kubernetes, and I still write the code: Python, TypeScript and Go.",
+    body: "I run infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime. I architected the AI Gateway and the MCP platform. Both run on GitOps-managed Kubernetes, and I still write the code: Python, TypeScript and Go.",
     points: [
       "AI Gateway serving ~2 billion tokens a month across Azure AI Foundry and Anthropic",
       "On-prem Talos Kubernetes with Flux, Argo CD, Cilium and External Secrets",
@@ -44,12 +44,12 @@ export const perspectives: Perspective[] = [
   {
     id: "recruiters",
     label: "Recruiters",
-    headline: "16+ years, one company, three promotions.",
+    headline: "Nearly 17 years, one company, three promotions.",
     body: "From Network Analyst in 2009 to Manager, Infrastructure Services, now leading company-wide AI strategy and adoption at The Aaron's Company. B.S. in Computer Science from Kennesaw State. Based in Atlanta, remote since 2020.",
     points: [
       "AI platform engineering: gateways, MCP, agents, Copilot and Claude rollouts",
       "Infrastructure leadership: data centers, network, security, DR and identity",
-      "Cut projected AI licensing from $100K+ a year to near zero",
+      "Cut projected AI licensing costs to near zero",
     ],
   },
 ];
@@ -67,7 +67,7 @@ export const work: WorkItem[] = [
     area: "AI · FinOps",
     summary:
       "The company's single path to large language models. It evolved from LiteLLM to Azure APIM to a custom in-house platform, with SSO, per-user and per-team cost accounting, rate limiting, guardrails, model routing and audit logging.",
-    outcomes: ["~2 billion tokens a month across Azure AI Foundry and Anthropic", "Projected licensing from $100K+ a year to ~$38K to near zero"],
+    outcomes: ["~2 billion tokens a month across Azure AI Foundry and Anthropic", "Projected AI licensing costs cut to near zero"],
   },
   {
     title: "MCP Gateway, Registry & Portal",
@@ -89,17 +89,17 @@ export const work: WorkItem[] = [
     outcomes: [],
   },
   {
-    title: "SD-WAN for 2,300+ stores",
+    title: "SD-WAN for every store",
     area: "Networking",
     summary: "Led the SD-WAN rollout to every store on CloudGenix, then migrated the store network to Meraki.",
-    outcomes: ["2,300+ stores", "Earlier: re-IP'd every store to one standard addressing plan"],
+    outcomes: ["2,300+ stores at the time", "Earlier: re-IP'd every store to one standard addressing plan"],
   },
   {
     title: "Data centers & disaster recovery",
     area: "Infrastructure",
     summary:
       "Directed the new primary data center build-out and migration, then the disaster recovery data center and the storage move from HPE Nimble to Pure Storage.",
-    outcomes: ["Zero unplanned downtime", "Azure tenant and ExpressRoute hybrid connectivity"],
+    outcomes: ["Zero unplanned downtime", "Built hybrid connectivity: Azure tenant + ExpressRoute"],
   },
 ];
 
@@ -121,7 +121,7 @@ export const career: Role[] = [
       "Rolled out Microsoft Copilot and Copilot Studio, and packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune",
       "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime; leads a team of 4",
       "Led BrandsMart USA's 4-person infrastructure team after the acquisition (Mar 2023 – Mar 2026), for 8 direct reports",
-      "Delivered $2M+ in infrastructure projects and replaced paid tools with in-house platforms",
+      "Delivered multi-million-dollar infrastructure projects and replaced paid tools with in-house platforms",
     ],
   },
   {
@@ -131,7 +131,7 @@ export const career: Role[] = [
     highlights: [
       "Directed the new primary data center build-out and migration with zero unplanned downtime",
       "Established the Azure tenant, subscriptions and ExpressRoute hybrid connectivity",
-      "Led SD-WAN to 2,300+ stores; had Always-On VPN ready the day the company went remote (~1,200 users)",
+      "Led SD-WAN to every store (2,300+ at the time); had Always-On VPN ready the day the company went remote (~1,200 users)",
     ],
   },
   {
@@ -139,7 +139,7 @@ export const career: Role[] = [
     start: "Aug 2012",
     end: "Apr 2015",
     highlights: [
-      "Designed a standard IP plan and re-IP'd all 2,300+ store networks",
+      "Designed a standard IP plan and re-IP'd every store network (2,300+ at the time)",
       "Led firewall migrations to Palo Alto and Meraki, and the Secret Server PAM rollout",
     ],
   },

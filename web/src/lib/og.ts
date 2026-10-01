@@ -7,7 +7,7 @@ export const ogCards: Record<string, { title: string; subtitle: string }> = {
     subtitle: "AI platform & infrastructure leader · Atlanta, GA",
   },
   work: { title: "Platforms that run in production, not in slides.", subtitle: "AI gateways, MCP, Kubernetes and enterprise infrastructure" },
-  about: { title: "16+ years, one company, three promotions.", subtitle: "From store networks to company-wide AI strategy" },
+  about: { title: "Nearly 17 years, one company, three promotions.", subtitle: "From store networks to company-wide AI strategy" },
   writing: { title: "Writing", subtitle: "Notes on AI platforms, governance and infrastructure" },
 };
 
