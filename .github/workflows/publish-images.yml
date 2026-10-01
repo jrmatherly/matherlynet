@@ -27,8 +27,22 @@ concurrency:
 permissions: {}
 
 jobs:
+  # Gate the push on the same checks PRs run; a failing commit on main publishes nothing.
+  checks:
+    name: ✅ Web checks
+    permissions:
+      contents: read
+    uses: ./.github/workflows/web-checks.yml
+
+  e2e:
+    name: 🎭 E2E
+    permissions:
+      contents: read
+    uses: ./.github/workflows/e2e.yml
+
   push:
     name: 🚀 Build & push to GHCR
+    needs: [checks, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -36,6 +50,8 @@ jobs:
       packages: write
       id-token: write # Sigstore signing certificate for the attestation
       attestations: write
+    outputs:
+      image: ghcr.io/${{ github.repository }}/web@${{ steps.digest.outputs.digest }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,9 +68,16 @@ jobs:
         with:
           node-version: '24'
 
+      # Pinned and checksum-verified (the hash is from the v13.6.0 release's .sha512 asset); bump both together.
+      # install.sh does the same download + extract into ~/.aspire/bin, without the pinned hash.
       - name: 🧰 Install Aspire CLI
+        env:
+          ASPIRE_VERSION: '13.6.0'
+          ASPIRE_SHA512: 3e93ddeae51993d687cb9240c99fc944a91ae273c99e99e3199a424a6feb5209aa076290b55fcc84731f37cb470da3c7b37da64b3370584af2ddd6b51128072a
         run: |
-          curl -sSL https://aspire.dev/install.sh | bash -s -- --version 13.6.0
+          curl -fsSLo "$RUNNER_TEMP/aspire.tgz" "https://github.com/microsoft/aspire/releases/download/v${ASPIRE_VERSION}/aspire-cli-linux-x64-${ASPIRE_VERSION}.tar.gz"
+          echo "${ASPIRE_SHA512}  $RUNNER_TEMP/aspire.tgz" | sha512sum -c -
+          mkdir -p "$HOME/.aspire/bin" && tar -xzf "$RUNNER_TEMP/aspire.tgz" -C "$HOME/.aspire/bin"
           echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
 
       - name: 🔐 Log in to GHCR
@@ -70,28 +93,11 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: aspire 'do' push --non-interactive # quoted: shellcheck SC1010 reads 'do' as a keyword
 
-      # Uploads the maps from the pushed image itself, so the debug IDs match the code that runs. --no-rewrite:
-      # the CLI would otherwise add debug IDs to the few chunks without one, and those copies wouldn't match.
-      # Skipped until the SENTRY_AUTH_TOKEN secret (a Sentry organization auth token) exists.
-      - name: 🗺️ Upload source maps to Sentry
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: matherlynet
-          SENTRY_PROJECT: javascript-astro
-        run: |
-          if [ -z "$SENTRY_AUTH_TOKEN" ]; then echo "::notice::SENTRY_AUTH_TOKEN not set; skipping source map upload"; exit 0; fi
-          image="ghcr.io/${GITHUB_REPOSITORY}/web:${GITHUB_SHA}"
-          docker pull --quiet "$image"
-          container=$(docker create "$image")
-          docker cp "$container:/app/dist" "$RUNNER_TEMP/dist"
-          docker rm "$container"
-          npx --yes sentry@0.45.0 release create "$SENTRY_ORG/$GITHUB_SHA" --project "$SENTRY_PROJECT" --finalize
-          npx --yes sentry@0.45.0 sourcemap upload "$RUNNER_TEMP/dist" --release "$GITHUB_SHA" --no-rewrite
-
       - name: 🔎 Resolve image digest
         id: digest
         run: echo "digest=$(docker buildx imagetools inspect "ghcr.io/${GITHUB_REPOSITORY}/web:${GITHUB_SHA}" --format '{{.Manifest.Digest}}')" >> "$GITHUB_OUTPUT"
 
+      # Straight after the push, so nothing that runs later can leave a pushed image unattested.
       # Verify with: gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha> -R jrmatherly/matherlynet
       # No storage record: those need an organization-owned repository.
       - name: 🔏 Attest build provenance
@@ -101,3 +107,36 @@ jobs:
           subject-digest: ${{ steps.digest.outputs.digest }}
           push-to-registry: true
           create-storage-record: false
+
+  # Separate job: the third-party CLI and SENTRY_AUTH_TOKEN never share a runner with packages: write or
+  # id-token: write. No token scopes at all: the GHCR package is public, so the pull is anonymous.
+  sourcemaps:
+    name: 🗺️ Upload source maps to Sentry
+    needs: push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: 🟢 Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      # Uploads the maps from the pushed image itself (pulled by digest, so exactly the attested bytes) and the
+      # debug IDs match the code that runs. --no-rewrite: the CLI would otherwise add debug IDs to the few chunks
+      # without one, and those copies wouldn't match.
+      # Skipped until the SENTRY_AUTH_TOKEN secret (a Sentry organization auth token) exists.
+      - name: 🗺️ Upload source maps to Sentry
+        env:
+          IMAGE: ${{ needs.push.outputs.image }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: matherlynet
+          SENTRY_PROJECT: javascript-astro
+        run: |
+          if [ -z "$SENTRY_AUTH_TOKEN" ]; then echo "::notice::SENTRY_AUTH_TOKEN not set; skipping source map upload"; exit 0; fi
+          docker pull --quiet "$IMAGE"
+          container=$(docker create "$IMAGE")
+          docker cp "$container:/app/dist" "$RUNNER_TEMP/dist"
+          docker rm "$container"
+          npx --yes sentry@0.45.0 release create "$SENTRY_ORG/$GITHUB_SHA" --project "$SENTRY_PROJECT" --finalize
+          npx --yes sentry@0.45.0 sourcemap upload "$RUNNER_TEMP/dist" --release "$GITHUB_SHA" --no-rewrite
