@@ -130,6 +130,8 @@ out/                   aspire publish output (gitignored)
 - Astro sessions are disabled (`session: false` in `web/astro.config.mjs`, Astro 7.2+): the Node adapter's default
   filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
+- `web/src/db/index.ts` builds the `pg.Pool` itself and keeps its `pool.on("error")` listener: without it, a Postgres
+  restart or failover drops idle connections and the unhandled `error` event kills the web process.
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
   Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
   -R jrmatherly/matherlynet`.
