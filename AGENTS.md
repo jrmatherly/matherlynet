@@ -139,7 +139,9 @@ out/                   aspire publish output (gitignored)
   filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
 - `web/src/db/index.ts` builds the `pg.Pool` itself and keeps its `pool.on("error")` listener: without it, a Postgres
-  restart or failover drops idle connections and the unhandled `error` event kills the web process.
+  restart or failover drops idle connections and the unhandled `error` event kills the web process. It also sets
+  connect (5 s), statement (10 s) and query (15 s) timeouts: node-postgres has none, and a stopped Postgres behind a
+  proxy that accepts TCP (Aspire's, locally) hung every request.
 - `security.allowedDomains` (`matherly.net`, https) in `web/astro.config.mjs` makes Astro trust `X-Forwarded-Proto`
   behind Cloudflare; without it form POSTs fail the origin check with 403. Don't use `Astro.clientAddress`: a client
   can spoof it through `X-Forwarded-Host`/`X-Forwarded-For`.
