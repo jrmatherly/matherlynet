@@ -4,7 +4,7 @@
 //                DEPLOY_TARGET=k8s aspire publish -o out/k8s
 // Push images:   aspire do push        (after `docker login ghcr.io`; CI does this)
 
-import { createBuilder } from './.aspire/modules/aspire.mjs';
+import { createBuilder, refExpr } from './.aspire/modules/aspire.mjs';
 
 const builder = await createBuilder();
 
@@ -55,6 +55,18 @@ const pg = await builder.addPostgres('pg')
   // addDatabase() only creates the database under `aspire run`; published Compose/K8s rely on this.
   .withEnvironment('POSTGRES_DB', 'appdb');
 const appdb = await pg.addDatabase('appdb');
+
+// Self-hosted analytics. Create the website in Umami's UI, then enter its script URL and website id on /admin.
+// Umami lives in appdb's `umami` schema (its `user`/`session` tables would collide with better-auth's in
+// `public`); a separate database wouldn't exist in published output (see POSTGRES_DB above).
+// Not withPostgreSQL(): it publishes DATABASE_URL with the Postgres password inlined as a literal.
+const umamiSecret = await builder.addParameterWithGeneratedValue('umami-secret', { minLength: 32 }, { secret: true, persist: true });
+await builder.addUmami('umami', { secret: umamiSecret })
+  .withEnvironment('DATABASE_URL', refExpr`${await appdb.uriExpression()}?schema=umami`)
+  .waitFor(appdb)
+  // Umami exits if Postgres isn't accepting connections yet, and Compose's depends_on doesn't wait for that.
+  .publishAsDockerComposeService(async (_resource, service) => { await service.restart.set('unless-stopped'); })
+  .withExternalHttpEndpoints();
 
 await builder
   .addViteApp('web', './web')

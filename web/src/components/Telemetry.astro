@@ -1,0 +1,16 @@
+---
+// Browser-side analytics and error reporting, both switched on /admin (site settings).
+const { sentry, umami } = Astro.locals.siteSettings;
+const sentryDsn = sentry.browser && sentry.dsn ? sentry.dsn : null;
+---
+
+{umami.enabled && umami.scriptUrl && <script is:inline defer src={umami.scriptUrl} data-website-id={umami.websiteId} />}
+{sentryDsn && <meta name="sentry-dsn" content={sentryDsn} />}
+
+<script>
+  // @sentry/browser is a separate chunk, fetched only when browser reporting is on.
+  const dsn = document.querySelector<HTMLMetaElement>('meta[name="sentry-dsn"]')?.content;
+  if (dsn) {
+    import("@sentry/browser").then((Sentry) => Sentry.init({ dsn }));
+  }
+</script>

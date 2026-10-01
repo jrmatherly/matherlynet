@@ -15,6 +15,13 @@
       "when": 1790833005949,
       "tag": "0001_flippant_violations",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790834873635,
+      "tag": "0002_talented_stephen_strange",
+      "breakpoints": true
     }
   ]
 }

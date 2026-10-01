@@ -1,5 +1,7 @@
 allowBuilds:
   esbuild: true
+  # Its postinstall only prints a version-scheme warning; nothing to build.
+  protobufjs: false
 minimumReleaseAgeExclude:
   - '@better-auth/core@1.7.7'
   - '@better-auth/drizzle-adapter@1.7.7'
