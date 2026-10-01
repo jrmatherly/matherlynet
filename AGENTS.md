@@ -207,7 +207,8 @@ out/                   aspire publish output (gitignored)
 - Optional AppHost parameters go through `optionalParameter()`: `addParameter`'s `value` overrides user
   secrets and `Parameters__*` env vars, so a plain `{ value: '' }` default can never be set.
 - Admins: the verified account whose email matches the `admin-email` parameter is promoted on verify.
-  Keep `requireEmailVerification` on; without it anyone could register that email.
+  Keep `requireEmailVerification` on; without it anyone could register that email. Promotion happens only when
+  the email becomes verified (not on every update, so demotions stick): set `admin-email` before that sign-up.
 - Observability: OpenTelemetry is infrastructure (Aspire injects OTEL_*; local and published dashboards).
   Sentry DSN/switches and Umami script/website id are runtime settings on /admin, not Aspire parameters.
   Sentry is errors-only (`enableOpenTelemetrySetup` stays false); never add a second tracer provider.
