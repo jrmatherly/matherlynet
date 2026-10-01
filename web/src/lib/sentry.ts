@@ -39,7 +39,12 @@ export function configureSentry(dsn: string | null): void {
   });
 }
 
+// Reports an error while server reporting is on. `extra` must not carry secrets (tokens, passwords).
+export function captureError(error: unknown, extra?: Record<string, unknown>): void {
+  if (activeDsn) Sentry.captureException(error, { extra });
+}
+
 // Path only: query strings can carry tokens (e.g. /reset-password?token=…).
 export function captureServerError(error: unknown, request: Request): void {
-  if (activeDsn) Sentry.captureException(error, { extra: { method: request.method, path: new URL(request.url).pathname } });
+  captureError(error, { method: request.method, path: new URL(request.url).pathname });
 }

@@ -34,7 +34,8 @@ describe("boundedPwned", () => {
   it("fails closed with SERVICE_UNAVAILABLE when the check hangs", async () => {
     vi.useFakeTimers();
     const plugin = boundedPwned(50);
-    const { context } = plugin.init!({} as never) as { context: { password: { hash: (p: string) => Promise<string> } } };
+    const ctx = { password: { hash: async () => "hashed" } };
+    const { context } = plugin.init!(ctx as never) as { context: { password: { hash: (p: string) => Promise<string> } } };
     const assertion = expect(context.password.hash("correct horse")).rejects.toMatchObject({ status: "SERVICE_UNAVAILABLE" });
     await vi.advanceTimersByTimeAsync(50);
     await assertion;
