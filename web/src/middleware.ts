@@ -17,19 +17,21 @@ const securityHeaders: Record<string, string> = {
 };
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const [result, siteSettings] = await Promise.all([
-    auth.api.getSession({ headers: context.request.headers }),
-    getSiteSettings(),
-  ]);
-  context.locals.user = result?.user ?? null;
-  context.locals.session = result?.session ?? null;
-  context.locals.siteSettings = siteSettings;
-  context.locals.theme = resolveTheme(
-    { theme: context.cookies.get(THEME_COOKIE)?.value, mode: context.cookies.get(MODE_COOKIE)?.value },
-    siteSettings,
-  );
   let response: Response;
+  // The session and settings lookups sit inside the try too, so a database outage is reported (once a DSN
+  // has loaded; Sentry keeps it while the database is down).
   try {
+    const [result, siteSettings] = await Promise.all([
+      auth.api.getSession({ headers: context.request.headers }),
+      getSiteSettings(),
+    ]);
+    context.locals.user = result?.user ?? null;
+    context.locals.session = result?.session ?? null;
+    context.locals.siteSettings = siteSettings;
+    context.locals.theme = resolveTheme(
+      { theme: context.cookies.get(THEME_COOKIE)?.value, mode: context.cookies.get(MODE_COOKIE)?.value },
+      siteSettings,
+    );
     response = await next();
   } catch (error) {
     captureServerError(error, context.request);
