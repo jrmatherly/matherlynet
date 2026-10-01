@@ -59,8 +59,9 @@ export const auth = betterAuth({
     afterEmailVerification: promoteAdmin,
   },
   socialProviders,
-  // Shared across replicas; better-auth enables limiting in production only.
-  rateLimit: { storage: "database" },
+  // Shared across replicas; better-auth enables limiting in production only. /ok is the K8s probe path: limiting
+  // it would read and write rate_limit on every probe and fail the probes whenever Postgres is down.
+  rateLimit: { storage: "database", customRules: { "/ok": false } },
   // Production sits behind Cloudflare, which sets this header. The origin must be reachable only through
   // Cloudflare, or a client could send the header itself.
   advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
