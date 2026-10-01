@@ -34,6 +34,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write # Sigstore signing certificate for the attestation
+      attestations: write
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -67,3 +69,17 @@ jobs:
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: aspire 'do' push --non-interactive # quoted: shellcheck SC1010 reads 'do' as a keyword
+
+      - name: 🔎 Resolve image digest
+        id: digest
+        run: echo "digest=$(docker buildx imagetools inspect "ghcr.io/${GITHUB_REPOSITORY}/web:${GITHUB_SHA}" --format '{{.Manifest.Digest}}')" >> "$GITHUB_OUTPUT"
+
+      # Verify with: gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha> -R jrmatherly/matherlynet
+      # No storage record: those need an organization-owned repository.
+      - name: 🔏 Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/web
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false

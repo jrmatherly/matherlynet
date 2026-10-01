@@ -72,8 +72,9 @@ web/
                        -> sign-out -> password reset; each run creates an e2e-*@example.test user
   src/pages/api/auth/[...all].ts  better-auth request handler
   public/              brand favicons, web manifest, mask logo; public/pro/ = Pro monogram set
-.github/workflows/     publish-images.yml: build + push web image on main (path-filtered)
+.github/workflows/     publish-images.yml: build + push web image on main (path-filtered), signed provenance
                        web-checks.yml: astro check, lint, test, build on PRs and main (web/** only)
+                       e2e.yml: Playwright against `aspire start` on PRs and main (web/** + AppHost)
 .github/dependabot.yml weekly npm (/, /web) + actions updates, 7-day cooldown, exact pins
                        (security updates, CodeQL default setup and private reporting are repo settings)
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported
@@ -129,6 +130,8 @@ out/                   aspire publish output (gitignored)
   filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
+  Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
+  -R jrmatherly/matherlynet`.
 - The image workflow runs only when the image can change (`web/**` minus docs, AppHost files, root `package*.json`,
   the workflow itself); `workflow_dispatch` bypasses the filter. `paths-ignore` can't take `!` exceptions, so it is
   an include list.
