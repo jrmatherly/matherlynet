@@ -12,6 +12,27 @@ export default defineConfig({
   // better-auth keeps sessions in Postgres; the adapter's default filesystem driver
   // would also break across replicas.
   session: false,
+  // Shiki highlights with inline styles, which the CSP blocks. Prism (class-based) is the CSP-safe option.
+  markdown: { syntaxHighlight: false },
+  // Content Security Policy, sent as a response header for on-demand pages. `astro dev` doesn't apply it:
+  // check against a build. Astro hashes its own scripts and styles; Telemetry.astro adds the Umami/Sentry
+  // origins configured on /admin per request.
+  security: {
+    csp: {
+      directives: [
+        "default-src 'self'",
+        "connect-src 'self'",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+      ],
+      // Explicit, because an inserted resource (the Umami origin) replaces Astro's default 'self'.
+      scriptDirective: { resources: ["'self'"] },
+    },
+  },
   fonts: [
     {
       provider: npmFonts,

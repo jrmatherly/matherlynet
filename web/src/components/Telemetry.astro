@@ -1,10 +1,19 @@
 ---
 // Browser-side analytics and error reporting, both switched on /admin (site settings).
+// Their origins are added to this page's CSP; anything not switched on stays blocked.
 const { sentry, umami } = Astro.locals.siteSettings;
 const sentryDsn = sentry.browser && sentry.dsn ? sentry.dsn : null;
+const umamiScript = umami.enabled && umami.scriptUrl ? umami.scriptUrl : null;
+
+if (umamiScript) {
+  const origin = new URL(umamiScript).origin;
+  Astro.csp?.insertScriptResource(origin);
+  Astro.csp?.insertDirective(`connect-src ${origin}`);
+}
+if (sentryDsn) Astro.csp?.insertDirective(`connect-src ${new URL(sentryDsn).origin}`);
 ---
 
-{umami.enabled && umami.scriptUrl && <script is:inline defer src={umami.scriptUrl} data-website-id={umami.websiteId} />}
+{umamiScript && <script is:inline defer src={umamiScript} data-website-id={umami.websiteId} />}
 {sentryDsn && <meta name="sentry-dsn" content={sentryDsn} />}
 
 <script>
