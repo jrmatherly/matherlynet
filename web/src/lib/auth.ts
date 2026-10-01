@@ -18,8 +18,10 @@ const socialProviders = Object.fromEntries(
 // Lets pages offer only the sign-in buttons that will work.
 export const enabledProviders = Object.keys(socialProviders) as ("github" | "google")[];
 
-// The account matching the admin-email parameter becomes admin once its email is verified
-// (by link, or by an OAuth provider that vouches for it). Without verification anyone could claim it.
+// The account matching the admin-email parameter becomes admin when its email becomes verified: by link
+// (afterEmailVerification), or at creation when an OAuth provider vouches for it (user.create.after). Without
+// verification anyone could claim it. Not on every user update, so a demotion through the admin plugin sticks;
+// an account verified before admin-email was set is therefore never promoted.
 const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
 async function promoteAdmin(u: User & Record<string, unknown>) {
   if (adminEmail && u.emailVerified && u.email.toLowerCase() === adminEmail && u.role !== "admin") {
@@ -52,6 +54,8 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) =>
       sendMail(user.email, "Verify your email", `Confirm your email to finish signing up for matherlynet:\n\n${url}`),
+    // Receives the updated user (emailVerified: true), so promoteAdmin's check passes.
+    afterEmailVerification: promoteAdmin,
   },
   socialProviders,
   // Shared across replicas; better-auth enables limiting in production only.
@@ -59,11 +63,7 @@ export const auth = betterAuth({
   // Production sits behind Cloudflare, which sets this header. The origin must be reachable only through
   // Cloudflare, or a client could send the header itself.
   advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
-  databaseHooks: {
-    user: {
-      create: { after: promoteAdmin },
-      update: { after: promoteAdmin },
-    },
-  },
+  // Created already verified = an OAuth provider vouched for the email.
+  databaseHooks: { user: { create: { after: promoteAdmin } } },
   plugins: [admin(), haveIBeenPwned()],
 });
