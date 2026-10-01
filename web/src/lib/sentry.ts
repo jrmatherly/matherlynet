@@ -1,5 +1,10 @@
+import dns from "node:dns";
+import http from "node:http";
+import https from "node:https";
+import type { LookupFunction } from "node:net";
 import { makeMultiplexedTransport, type Transport } from "@sentry/core";
 import * as Sentry from "@sentry/node";
+import { isPrivateAddress } from "./settings-form";
 
 // Server error reporting, configured on /admin. OpenTelemetry (otel.mjs) owns tracing, so Sentry only
 // receives errors, tagged with the active trace id.
@@ -13,6 +18,38 @@ export const gateTransport = (inner: Transport, isOn: () => boolean): Transport 
   send: (envelope) => (isOn() ? inner.send(envelope) : Promise.resolve({})),
   flush: (timeout) => inner.flush(timeout),
 });
+
+// /admin refuses private IP literals in the DSN; a DNS name is checked here, on every new connection, against every
+// address it resolves to, so a name that points into the local network (now or after a DNS change) is refused (SSRF).
+export const publicOnlyLookup =
+  (lookup: typeof dns.lookup = dns.lookup): LookupFunction =>
+  (hostname, options, callback) =>
+    lookup(hostname, { ...options, all: true as const }, (err, addresses) => {
+      if (err) return callback(err, "");
+      const blocked = addresses.find((a) => isPrivateAddress(a.address));
+      if (blocked) {
+        console.error(`sentry: ${hostname} resolves to private address ${blocked.address}; event not sent`);
+        return callback(Object.assign(new Error(`${hostname} resolves to a private address`), { code: "EPRIVATEADDR" }), "");
+      }
+      if (options.all) return callback(null, addresses);
+      callback(null, addresses[0].address, addresses[0].family);
+    });
+
+// Sentry's Node transport with publicOnlyLookup on every request (its httpModule option). Our own agents (Sentry's
+// defaults: keep-alive, 30 sockets, 2 s idle timeout) replace the one it passes, which is a CONNECT proxy agent when
+// http(s)_proxy is set: the proxy would resolve the DSN name itself and the lookup would never run. So server Sentry
+// always connects directly.
+const lookup = publicOnlyLookup();
+const agents = {
+  http: new http.Agent({ keepAlive: true, maxSockets: 30, timeout: 2_000 }),
+  https: new https.Agent({ keepAlive: true, maxSockets: 30, timeout: 2_000 }),
+};
+const publicOnlyHttp = {
+  request: (options: http.RequestOptions, callback?: (res: http.IncomingMessage) => void) =>
+    options.protocol === "http:"
+      ? http.request({ ...options, agent: agents.http, lookup }, callback)
+      : https.request({ ...options, agent: agents.https, lookup }, callback),
+};
 
 // Called whenever site settings are (re)loaded. Sentry's options are fixed when the client is created, and a
 // second Sentry.init (inside a request) binds only to that request's scope and adds another set of process
@@ -30,7 +67,7 @@ export function configureSentry(dsn: string | null): void {
     integrations: [Sentry.openTelemetryIntegration()],
     transport: (options) =>
       gateTransport(
-        makeMultiplexedTransport(Sentry.makeNodeTransport, () => (activeDsn ? [activeDsn] : []))(options),
+        makeMultiplexedTransport((o) => Sentry.makeNodeTransport({ ...o, httpModule: publicOnlyHttp }), () => (activeDsn ? [activeDsn] : []))(options),
         () => activeDsn !== null,
       ),
     // Request bodies stay out of events (sign-up bodies carry emails); query strings and headers keep the SDK's

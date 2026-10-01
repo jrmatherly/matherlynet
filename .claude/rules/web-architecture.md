@@ -25,9 +25,10 @@ web/
   src/lib/mail.ts      nodemailer over SMTP_URL (Mailpit locally); fire-and-forget
   src/lib/site-settings.ts  site_settings row (theme, Sentry, Umami), 30 s per-process cache; reconfigures Sentry;
                        expired entries refresh in the background; database down: last known (or default) settings
-  src/lib/settings-form.ts  SiteSettings type + /admin form validation (pure, unit-tested)
+  src/lib/settings-form.ts  SiteSettings type + /admin form validation (pure, unit-tested); isPrivateAddress()
   src/lib/sentry.ts    server Sentry (@sentry/node): errors only, one client; DSN changes retarget its transport;
-                       gateTransport() sends nothing while off (sessions too); request bodies not collected
+                       gateTransport() sends nothing while off (sessions too); request bodies not collected;
+                       connects only to public addresses (publicOnlyLookup), directly (never via http(s)_proxy)
   src/lib/scrub-url.ts stripQuery(): path-only URLs for browser Sentry events/breadcrumbs (reset tokens)
   src/lib/auth-client.ts  better-auth browser client
   src/lib/site.ts      public origin (from BETTER_AUTH_URL at run time), person details, public routes list
