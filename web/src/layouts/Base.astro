@@ -1,0 +1,33 @@
+---
+import { Font } from "astro:assets";
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Jason Matherly: AI platform and infrastructure leader." } = Astro.props;
+const { theme, mode, palette } = Astro.locals.theme;
+const icons = theme === "pro" ? "/pro/" : "/";
+---
+
+<!doctype html>
+<html lang="en" data-palette={palette} data-mode={mode}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={`${icons}favicon.ico`} sizes="48x48" data-icon="favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href={`${icons}favicon-32x32.png`} data-icon="favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href={`${icons}favicon-16x16.png`} data-icon="favicon-16x16.png" />
+    <link rel="apple-touch-icon" href={`${icons}apple-touch-icon.png`} data-icon="apple-touch-icon.png" />
+    <link rel="manifest" href={`${icons}site.webmanifest`} data-icon="site.webmanifest" />
+    <Font cssVariable="--font-geist" preload />
+    <Font cssVariable="--font-geist-mono" />
+  </head>
+  <body class="min-h-dvh bg-background text-foreground">
+    <slot />
+  </body>
+</html>

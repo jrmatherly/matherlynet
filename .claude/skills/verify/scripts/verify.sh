@@ -21,12 +21,14 @@ step() {
   fi
 }
 
-step "AppHost eslint"        npm run --silent lint
-step "AppHost tsc"           node_modules/.bin/tsc -p tsconfig.apphost.json --noEmit
-step "Markdown lint"         markdownlint-cli2
-step "Workflow lint"         actionlint
-step "Web astro check"    pnpm --dir web check
-step "Web build"             pnpm --dir web build
+step "AppHost eslint"       npm run --silent lint
+step "AppHost tsc"          node_modules/.bin/tsc -p tsconfig.apphost.json --noEmit
+step "Markdown lint"        markdownlint-cli2
+step "Workflow lint"        actionlint
+step "Web astro check"      pnpm --dir web check
+step "Web lint"             pnpm --dir web lint
+step "Web tests"            pnpm --dir web test
+step "Web build"            pnpm --dir web build
 
 smoke() {
   local started=0
@@ -41,7 +43,7 @@ smoke() {
   return $rc
 }
 if [ "${1:-}" != "--no-stack" ]; then
-  step "Aspire smoke test"   smoke
+  step "Aspire smoke test"  smoke
 fi
 
 printf '\n'

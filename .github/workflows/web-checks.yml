@@ -20,7 +20,7 @@ permissions: {}
 
 jobs:
   check:
-    name: 🔎 Type-check & build web
+    name: 🔎 Check, lint, test & build web
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -50,6 +50,12 @@ jobs:
 
       - name: 🔎 Astro check
         run: pnpm check
+
+      - name: 🧹 Lint
+        run: pnpm lint
+
+      - name: 🧪 Test
+        run: pnpm test
 
       # The build needs no database; migrations run only at container start.
       - name: 🏗️ Build

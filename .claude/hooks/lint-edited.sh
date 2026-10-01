@@ -8,7 +8,7 @@
 #
 #   *.md                      markdownlint-cli2 (repo config, this file only)
 #   apphost.mts               eslint + tsc -p tsconfig.apphost.json
-#   web/src/*.{astro,ts,tsx}  astro check (whole web project, warnings fail)
+#   web/{src,tests}/**, web/*.{mjs,ts}  eslint (this file) + astro check (whole web project)
 #   .github/workflows/*.y*ml  actionlint
 
 set -uo pipefail
@@ -49,7 +49,8 @@ case $rel in
     [ -x node_modules/.bin/eslint ] && run node_modules/.bin/eslint "$rel"
     [ -x node_modules/.bin/tsc ] && run node_modules/.bin/tsc -p tsconfig.apphost.json --noEmit
     ;;
-  web/src/*.astro | web/src/*.ts | web/src/*.tsx)
+  web/src/*.astro | web/src/*.ts | web/src/*.tsx | web/tests/*.ts | web/*.mjs | web/*.ts)
+    [ -x web/node_modules/.bin/eslint ] && run pnpm --dir web exec eslint "${rel#web/}"
     [ -x web/node_modules/.bin/astro ] && run pnpm --dir web exec astro check --minimumSeverity warning
     ;;
   .github/workflows/*.yml | .github/workflows/*.yaml)

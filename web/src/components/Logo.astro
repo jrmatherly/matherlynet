@@ -1,0 +1,17 @@
+---
+import proMark from "../../public/pro/logo-mark.svg?raw";
+
+interface Props {
+  // Tailwind size utility for both marks, e.g. "size-8" or "size-24".
+  size?: string;
+}
+
+const { size = "size-8" } = Astro.props;
+---
+
+<!-- Both marks render; global.css shows the brand mask under Signal and the monogram otherwise,
+     so the theme toggle swaps logos without JavaScript. -->
+<span class="inline-flex" role="img" aria-label="Matherly">
+  <img src="/m-logo.png" alt="" width="140" height="140" class:list={["logo-brand", size]} />
+  <span class:list={["logo-pro text-foreground [&>svg]:size-full", size]} set:html={proMark} />
+</span>

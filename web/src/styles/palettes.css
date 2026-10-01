@@ -1,0 +1,195 @@
+/* One block per palette. Each token is light-dark(<light>, <dark>); the color-scheme set by
+   [data-mode] on <html> picks the side, so light, dark and "follow system" need no JavaScript.
+   Keys must match src/theme/palettes.ts (enforced by tests/theme.test.ts). */
+
+:root[data-palette="signal"] { /* Signal */
+  --bg: light-dark(#faf8f7, #0f0d0d);
+  --surface: light-dark(#ffffff, #171414);
+  --surface-2: light-dark(#f2eeed, #201b1b);
+  --border: light-dark(#e4dddc, #2e2727);
+  --text: light-dark(#151111, #f4efee);
+  --muted: light-dark(#6b6262, #a39a99);
+  --accent: light-dark(#c8231b, #dc3229);
+  --accent-ink: light-dark(#ffffff, #ffffff);
+  --accent-soft: light-dark(#fbe7e5, #2a1413);
+  --danger: light-dark(#b4233f, #ff6b81);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #6aa8e8);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="amber"] { /* Carbon & Amber */
+  --bg: light-dark(#faf9f6, #0c0c0b);
+  --surface: light-dark(#ffffff, #151513);
+  --surface-2: light-dark(#f2f0ea, #1d1d1a);
+  --border: light-dark(#e3e0d6, #2c2b27);
+  --text: light-dark(#171511, #f3f1ea);
+  --muted: light-dark(#625e54, #a8a49a);
+  --accent: light-dark(#9a5b00, #f5a524);
+  --accent-ink: light-dark(#ffffff, #1a1200);
+  --accent-soft: light-dark(#fbf0d9, #2a2210);
+  --danger: light-dark(#c22d2d, #ff7070);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #7cc4ff);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="indigo"] { /* Indigo Circuit */
+  --bg: light-dark(#f7f7fb, #0d0e14);
+  --surface: light-dark(#ffffff, #14161f);
+  --surface-2: light-dark(#eeeff7, #1b1e2a);
+  --border: light-dark(#dcdeec, #2a2e40);
+  --text: light-dark(#12142a, #eef0f8);
+  --muted: light-dark(#575b78, #9ca1b8);
+  --accent: light-dark(#4b44d6, #8b8cff);
+  --accent-ink: light-dark(#ffffff, #0d0e14);
+  --accent-soft: light-dark(#ebeafd, #1f2040);
+  --danger: light-dark(#c22d2d, #ff7070);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #7cc4ff);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="cobalt"] { /* Cobalt */
+  --bg: light-dark(#f7f9fc, #0c0f14);
+  --surface: light-dark(#ffffff, #131821);
+  --surface-2: light-dark(#eef2f7, #1a212c);
+  --border: light-dark(#dbe2ec, #273142);
+  --text: light-dark(#0f1726, #eef2f7);
+  --muted: light-dark(#586579, #98a3b3);
+  --accent: light-dark(#1f5fd6, #6ea0ff);
+  --accent-ink: light-dark(#ffffff, #0b1220);
+  --accent-soft: light-dark(#e6eefc, #16233a);
+  --danger: light-dark(#c22d2d, #ff7070);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#0e6ba8, #7cc4ff);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="mono"] { /* Monochrome */
+  --bg: light-dark(#fafafa, #0e0e0f);
+  --surface: light-dark(#ffffff, #161618);
+  --surface-2: light-dark(#f1f1f2, #1e1e21);
+  --border: light-dark(#e2e2e5, #2c2c30);
+  --text: light-dark(#111113, #f2f2f3);
+  --muted: light-dark(#5f5f66, #a0a0a7);
+  --accent: light-dark(#111113, #f2f2f3);
+  --accent-ink: light-dark(#ffffff, #0e0e0f);
+  --accent-soft: light-dark(#ececee, #26262a);
+  --danger: light-dark(#c22d2d, #ff7070);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #6aa8e8);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="flare"] { /* Titanium & Flare */
+  --bg: light-dark(#f8f8f9, #0f1012);
+  --surface: light-dark(#ffffff, #17181b);
+  --surface-2: light-dark(#efeff1, #1f2024);
+  --border: light-dark(#dfe0e3, #2e3035);
+  --text: light-dark(#131417, #f1f2f4);
+  --muted: light-dark(#5d6068, #a1a4ab);
+  --accent: light-dark(#c2410c, #ff7a2f);
+  --accent-ink: light-dark(#ffffff, #160a02);
+  --accent-soft: light-dark(#fdeadf, #2c1a0f);
+  --danger: light-dark(#b4233f, #ff6b81);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #7cc4ff);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="merlot"] { /* Merlot */
+  --bg: light-dark(#fbf8f9, #110c0e);
+  --surface: light-dark(#ffffff, #1a1316);
+  --surface-2: light-dark(#f4eef0, #231a1e);
+  --border: light-dark(#e6dade, #35272d);
+  --text: light-dark(#1d1216, #f5eef1);
+  --muted: light-dark(#6b5a61, #ad9ca3);
+  --accent: light-dark(#9d1f47, #e0668a);
+  --accent-ink: light-dark(#ffffff, #1a0710);
+  --accent-soft: light-dark(#f8e3ea, #33161f);
+  --danger: light-dark(#b8321a, #ff8a5c);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #7cc4ff);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="ember"] { /* Ember Slate */
+  --bg: light-dark(#f6f8fa, #0e1217);
+  --surface: light-dark(#ffffff, #151b22);
+  --surface-2: light-dark(#edf1f4, #1c242d);
+  --border: light-dark(#d9e0e6, #2a3540);
+  --text: light-dark(#111a22, #edf1f5);
+  --muted: light-dark(#55626e, #98a4b0);
+  --accent: light-dark(#c2462a, #ff8a65);
+  --accent-ink: light-dark(#ffffff, #1a0b05);
+  --accent-soft: light-dark(#fbe6df, #2e1d18);
+  --danger: light-dark(#b4233f, #ff6b81);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #7cc4ff);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="champagne"] { /* Champagne */
+  --bg: light-dark(#faf9f7, #0b0b0c);
+  --surface: light-dark(#ffffff, #141415);
+  --surface-2: light-dark(#f2f0eb, #1c1c1e);
+  --border: light-dark(#e4e0d6, #2b2a28);
+  --text: light-dark(#16140f, #f4f1ea);
+  --muted: light-dark(#615c50, #a7a296);
+  --accent: light-dark(#7a5a12, #e3c27a);
+  --accent-ink: light-dark(#ffffff, #17120a);
+  --accent-soft: light-dark(#f6eedb, #2a2416);
+  --danger: light-dark(#c22d2d, #ff7070);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #7cc4ff);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="evergreen"] { /* Evergreen */
+  --bg: light-dark(#f6f9f8, #0c100f);
+  --surface: light-dark(#ffffff, #131917);
+  --surface-2: light-dark(#ebf1ef, #1a221f);
+  --border: light-dark(#d6e1dd, #26322e);
+  --text: light-dark(#0e1a17, #edf3f1);
+  --muted: light-dark(#52635e, #96a5a0);
+  --accent: light-dark(#0f7a63, #3fbf9b);
+  --accent-ink: light-dark(#ffffff, #07130f);
+  --accent-soft: light-dark(#e1f2ec, #12302a);
+  --danger: light-dark(#c22d2d, #ff7070);
+  --success: light-dark(#1d7f4b, #7fd6a2);
+  --info: light-dark(#1f6fb8, #6aa8e8);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="navy"] { /* Navy & Brass */
+  --bg: light-dark(#f7f8fb, #0b1020);
+  --surface: light-dark(#ffffff, #121931);
+  --surface-2: light-dark(#eef0f6, #18213d);
+  --border: light-dark(#d9deea, #26315a);
+  --text: light-dark(#101a3a, #eef1f8);
+  --muted: light-dark(#56607e, #9aa3c0);
+  --accent: light-dark(#1d2e6b, #d6b25e);
+  --accent-ink: light-dark(#ffffff, #1a1406);
+  --accent-soft: light-dark(#f6efdc, #2b2616);
+  --danger: light-dark(#c22d2d, #ff7070);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #7cc4ff);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="oxide"] { /* Oxide */
+  --bg: light-dark(#faf8f6, #100e0d);
+  --surface: light-dark(#ffffff, #181514);
+  --surface-2: light-dark(#f2eeeb, #211d1b);
+  --border: light-dark(#e5ddd8, #312b28);
+  --text: light-dark(#1a1411, #f3efec);
+  --muted: light-dark(#6b605a, #a59d98);
+  --accent: light-dark(#a3442e, #d0715a);
+  --accent-ink: light-dark(#ffffff, #140c09);
+  --accent-soft: light-dark(#f6e5df, #2e1d18);
+  --danger: light-dark(#b4233f, #ff6b81);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #6aa8e8);
+  --warning: light-dark(#8a6100, #e5b545);
+}

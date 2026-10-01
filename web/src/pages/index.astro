@@ -1,72 +1,95 @@
 ---
-const { user } = Astro.locals;
+import Base from "../layouts/Base.astro";
+import Logo from "../components/Logo.astro";
+import ThemeToggle from "../components/ThemeToggle.astro";
+import { SITE_DEFAULTS } from "../theme/palettes";
+
+const { user, theme } = Astro.locals;
+const field = "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted focus:border-accent";
+const primary = "rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground";
+const secondary = "rounded-full border border-border bg-surface-2 px-4 py-2.5 text-sm font-semibold";
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>MatherlyNet</title>
-    <link rel="icon" href="/favicon.ico" sizes="48x48" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#000000" />
-  </head>
-  <body>
-    <img src="/m-logo.png" alt="MatherlyNet" width="140" height="140" />
-    {user ? (
-      <>
-        <p id="who">Signed in as {user.email}</p>
-        <button id="sign-out">Sign out</button>
-      </>
-    ) : (
-      <>
-        <p id="who">Not signed in</p>
-        <form id="email-form">
-          <input name="name" placeholder="Name (sign-up only)" autocomplete="name" />
-          <input name="email" type="email" placeholder="Email" required autocomplete="email" />
-          <input name="password" type="password" placeholder="Password" required minlength="8" autocomplete="current-password" />
-          <button name="action" value="sign-in">Sign in</button>
-          <button name="action" value="sign-up">Sign up</button>
-        </form>
-        <button data-provider="github">Sign in with GitHub</button>
-        <button data-provider="google">Sign in with Google</button>
-        <p id="error" role="alert"></p>
-      </>
-    )}
-    <script>
-      import { authClient } from "../lib/auth-client";
+<Base title="Jason Matherly">
+  <header class="border-b border-border">
+    <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <span class="inline-flex items-center gap-2.5 font-extrabold tracking-tight"><Logo />Jason Matherly</span>
+      <ThemeToggle theme={theme.theme} mode={theme.mode} proPalette={SITE_DEFAULTS.proPalette} />
+    </div>
+  </header>
 
-      const showError = (message?: string) => {
-        document.querySelector("#error")!.textContent = message ?? "Something went wrong";
-      };
+  <main class="mx-auto grid max-w-md gap-6 px-4 py-16 sm:px-6">
+    <div class="mx-auto"><Logo size="size-24" /></div>
+    <section class="grid gap-4 rounded-2xl border border-border bg-surface p-6">
+      {
+        user ? (
+          <>
+            <p id="who" class="text-sm">Signed in as <span class="font-semibold">{user.email}</span></p>
+            <button id="sign-out" class={secondary}>Sign out</button>
+          </>
+        ) : (
+          <>
+            <h1 class="text-2xl font-extrabold tracking-tight">Sign in</h1>
+            <p id="who" class="sr-only">Not signed in</p>
+            <form id="email-form" class="grid gap-3">
+              <label class="grid gap-1.5 text-sm font-semibold">
+                <span>Name <span class="font-normal text-muted">(sign-up only)</span></span>
+                <input name="name" autocomplete="name" class={field} />
+              </label>
+              <label class="grid gap-1.5 text-sm font-semibold">
+                Email
+                <input name="email" type="email" required autocomplete="email" class={field} />
+              </label>
+              <label class="grid gap-1.5 text-sm font-semibold">
+                Password
+                <input name="password" type="password" required minlength="8" autocomplete="current-password" class={field} />
+              </label>
+              <div class="grid grid-cols-2 gap-2">
+                <button name="action" value="sign-in" class={primary}>Sign in</button>
+                <button name="action" value="sign-up" class={secondary}>Sign up</button>
+              </div>
+            </form>
+            <div class="grid grid-cols-2 gap-2">
+              <button data-provider="github" class={secondary}>GitHub</button>
+              <button data-provider="google" class={secondary}>Google</button>
+            </div>
+            <p id="error" role="alert" class="text-sm text-danger empty:hidden"></p>
+          </>
+        )
+      }
+    </section>
+  </main>
+</Base>
 
-      document.querySelector("#sign-out")?.addEventListener("click", async () => {
-        await authClient.signOut();
-        location.reload();
-      });
+<script>
+  import { authClient } from "../lib/auth-client";
 
-      document.querySelector<HTMLFormElement>("#email-form")?.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const form = new FormData(e.currentTarget as HTMLFormElement);
-        const email = String(form.get("email"));
-        const password = String(form.get("password"));
-        const { error } =
-          (e.submitter as HTMLButtonElement).value === "sign-up"
-            ? await authClient.signUp.email({ email, password, name: String(form.get("name") || email) })
-            : await authClient.signIn.email({ email, password });
-        if (error) return showError(error.message);
-        location.reload();
-      });
+  const showError = (message?: string) => {
+    document.querySelector("#error")!.textContent = message ?? "Something went wrong";
+  };
 
-      document.querySelectorAll<HTMLButtonElement>("[data-provider]").forEach((button) =>
-        button.addEventListener("click", async () => {
-          const { error } = await authClient.signIn.social({ provider: button.dataset.provider!, callbackURL: "/" });
-          if (error) showError(error.message);
-        }),
-      );
-    </script>
-  </body>
-</html>
+  document.querySelector("#sign-out")?.addEventListener("click", async () => {
+    await authClient.signOut();
+    location.reload();
+  });
+
+  document.querySelector<HTMLFormElement>("#email-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget as HTMLFormElement);
+    const email = String(form.get("email"));
+    const password = String(form.get("password"));
+    const { error } =
+      (e.submitter as HTMLButtonElement).value === "sign-up"
+        ? await authClient.signUp.email({ email, password, name: String(form.get("name") || email) })
+        : await authClient.signIn.email({ email, password });
+    if (error) return showError(error.message);
+    location.reload();
+  });
+
+  document.querySelectorAll<HTMLButtonElement>("[data-provider]").forEach((button) =>
+    button.addEventListener("click", async () => {
+      const { error } = await authClient.signIn.social({ provider: button.dataset.provider!, callbackURL: "/" });
+      if (error) showError(error.message);
+    }),
+  );
+</script>
