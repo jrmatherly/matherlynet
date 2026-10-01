@@ -22,6 +22,9 @@ updates:
       # typescript-eslint's peer range caps TypeScript at 6.0.x.
       - dependency-name: typescript
         versions: [">=6.1"]
+      # Types track the Node 24 runtime (CI, the Docker images); newer majors type APIs Node 24 lacks.
+      - dependency-name: "@types/node"
+        versions: [">=25"]
 
   # Web app (pnpm).
   - package-ecosystem: npm

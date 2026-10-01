@@ -166,7 +166,8 @@ out/                   aspire publish output (gitignored)
 - Dependencies: exact versions, latest stable. npm (`~/.npmrc`) and pnpm both enforce a minimum release
   age: pin a newer version explicitly (pnpm records `minimumReleaseAgeExclude`; npm needs
   `--min-release-age-exclude=<package-name>`). Known caps: `vscode-jsonrpc` 8.x (Aspire's generated
-  transport imports `vscode-jsonrpc/node.js`), TypeScript 6.0.x (typescript-eslint and `@astrojs/check` peer ranges).
+  transport imports `vscode-jsonrpc/node.js`), TypeScript 6.0.x (typescript-eslint and `@astrojs/check` peer ranges),
+  `@types/node` 24.x (matches the Node 24 runtime). Keep `.github/dependabot.yml` ignores in sync with these caps.
 - pnpm 12 blocks dependency build scripts: approve with `pnpm approve-builds <pkg>`.
 - The generated Dockerfile installs on glibc (node:24-slim) and runs on Alpine (musl). `web/pnpm-workspace.yaml`
   sets `supportedArchitectures.libc: [current, musl]` so native packages (`@takumi-rs/core`) ship musl builds;
