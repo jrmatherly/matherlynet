@@ -26,4 +26,17 @@ describe("getSiteSettings", () => {
     vi.advanceTimersByTime(31_000);
     await expect(getSiteSettings()).resolves.toMatchObject({ theme: "pro", proPalette: "merlot" });
   });
+
+  it("answers from the cache while a refresh is still waiting on the database", async () => {
+    vi.useFakeTimers();
+    // First load succeeds; every later query hangs, like a connect stuck until its timeout.
+    select.mockResolvedValueOnce([{ theme: "pro", proPalette: "merlot" }]).mockReturnValue(new Promise(() => {}));
+    const { getSiteSettings } = await import("../src/lib/site-settings");
+    await getSiteSettings();
+    vi.advanceTimersByTime(31_000);
+    const settled = vi.fn();
+    getSiteSettings().then(settled);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toHaveBeenCalledWith(expect.objectContaining({ theme: "pro" }));
+  });
 });
