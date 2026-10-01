@@ -70,6 +70,7 @@ $RECYCLE.BIN/
 .codegraph/
 .serena/cache/
 .claude/settings.local.json
+CLAUDE.local.md
 
 # --- Local scratch ---
 private/

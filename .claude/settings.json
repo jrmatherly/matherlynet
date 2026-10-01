@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(aspire describe *)",
+      "Bash(aspire ps *)",
+      "Bash(aspire logs *)",
+      "Bash(aspire wait *)",
+      "Bash(aspire doctor *)",
+      "Bash(aspire docs *)",
+      "Bash(aspire start *)",
+      "Bash(aspire stop *)",
+      "Bash(aspire publish *)",
+      "Bash(npm run lint *)",
+      "Bash(npx tsc -p tsconfig.apphost.json *)",
+      "Bash(markdownlint-cli2 *)",
+      "Bash(actionlint *)",
+      "Bash(pre-commit run *)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm --dir web build *)",
+      "Bash(.claude/hooks/lint-edited.sh *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(aspire deploy *)",
+      "Bash(aspire destroy *)",
+      "Bash(aspire do *)",
+      "Bash(aspire certs *)",
+      "Bash(aspire secret *)",
+      "Bash(gh workflow run *)",
+      "Bash(helm install *)",
+      "Bash(helm upgrade *)",
+      "Bash(helm uninstall *)",
+      "Bash(kubectl delete *)",
+      "Bash(docker compose down *)"
+    ],
+    "deny": [
+      "Edit(/.aspire/**)",
+      "Edit(/out/**)",
+      "Edit(/web/drizzle/meta/**)",
+      "Edit(/web/src/db/auth-schema.ts)",
+      "Edit(/web/pnpm-lock.yaml)",
+      "Edit(/package-lock.json)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|mcp__serena__(replace_content|replace_in_files|replace_symbol_body|insert_after_symbol|insert_before_symbol|rename_symbol|safe_delete_symbol)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/lint-edited.sh",
+            "args": [],
+            "timeout": 60,
+            "statusMessage": "Linting the edited file"
+          }
+        ]
+      }
+    ]
+  }
+}
