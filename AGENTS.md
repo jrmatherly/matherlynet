@@ -84,6 +84,8 @@ out/                   aspire publish output (gitignored)
 
 - Migrations run inside the web container on start: Aspire's Kubernetes publisher can't emit Jobs, and a separate
   run-once resource broke publishing.
+- Astro sessions are disabled (`session: false` in `web/astro.config.mjs`, Astro 7.2+): the Node adapter's default
+  filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
 - The image workflow runs only when the image can change (`web/**` minus docs, AppHost files, root `package*.json`,
@@ -121,7 +123,7 @@ out/                   aspire publish output (gitignored)
 - Dependencies: exact versions, latest stable. npm (`~/.npmrc`) and pnpm both enforce a minimum release
   age: pin a newer version explicitly (pnpm records `minimumReleaseAgeExclude`; npm needs
   `--min-release-age-exclude=<package-name>`). Known caps: `vscode-jsonrpc` 8.x (Aspire's generated
-  transport imports `vscode-jsonrpc/node.js`), TypeScript 6.0.x (typescript-eslint peer range).
+  transport imports `vscode-jsonrpc/node.js`), TypeScript 6.0.x (typescript-eslint and `@astrojs/check` peer ranges).
 - pnpm 12 blocks dependency build scripts: approve with `pnpm approve-builds <pkg>`.
 - Secrets come from Aspire parameters (`aspire secret set Parameters:<name> <value>`), never from
   committed files. OAuth providers stay disabled until both their id and secret are set.
