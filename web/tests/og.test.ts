@@ -12,6 +12,8 @@ describe("paletteColors", () => {
 
   it("rejects unknown palettes", () => {
     expect(() => paletteColors("nope", "dark")).toThrow("Unknown palette");
+    // Regex metacharacters are matched literally, not compiled (CodeQL js/regex-injection).
+    expect(() => paletteColors("(a+)+$", "dark")).toThrow("Unknown palette");
   });
 });
 
