@@ -19,6 +19,7 @@
     "Aspire.Hosting.JavaScript": "13.6.0",
     "Aspire.Hosting.PostgreSQL": "13.6.0",
     "Aspire.Hosting.Docker": "13.6.0",
-    "Aspire.Hosting.Kubernetes": "13.6.0-preview.1.26479.8"
+    "Aspire.Hosting.Kubernetes": "13.6.0-preview.1.26479.8",
+    "CommunityToolkit.Aspire.Hosting.MailPit": "13.6.0"
   }
 }

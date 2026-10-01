@@ -22,12 +22,33 @@ await target.withContainerRegistry(ghcr);
 const appUrl = await builder.addParameter('app-url', { value: 'http://localhost:4321', publishValueAsDefault: false });
 const authSecret = await builder.addParameterWithGeneratedValue('better-auth-secret', { minLength: 32 }, { secret: true, persist: true });
 
+// An optional parameter (empty when unset; the app supplies any default). `addParameter`'s `value` beats
+// user secrets and Parameters__* env vars, so pass the configured value through; publishValueAsDefault: false
+// keeps local values out of the published artifacts.
+const config = await builder.getConfiguration();
+const optionalParameter = async (name: string, secret = false) =>
+  builder.addParameter(name, {
+    value: (await config.getConfigValue(`Parameters:${name}`)) || '',
+    secret,
+    publishValueAsDefault: false,
+  });
+
 // OAuth apps: a provider is enabled only when both values are non-empty (see web/src/lib/auth.ts).
 // Set with e.g. `aspire secret set Parameters:github-client-id <id>`.
 const oauth = Object.fromEntries(await Promise.all(
   ['github-client-id', 'github-client-secret', 'google-client-id', 'google-client-secret'].map(async (name) =>
-    [name, await builder.addParameter(name, { value: '', secret: name.endsWith('secret') })]),
+    [name, await optionalParameter(name, name.endsWith('secret'))]),
 ));
+
+// A verified account with this email gets the admin role (see web/src/lib/auth.ts).
+const adminEmail = await optionalParameter('admin-email');
+
+// Mail: Mailpit catches everything under `aspire run`; deployments send through `smtp-url`
+// (e.g. smtps://user:pass@smtp.example.com:465), set with `aspire secret set Parameters:smtp-url <url>`.
+const mailFrom = await optionalParameter('mail-from');
+const smtpUrl = await builder.executionContext().isRunMode()
+  ? await (await builder.addMailPit('mailpit')).uriExpression()
+  : await optionalParameter('smtp-url', true);
 
 const pg = await builder.addPostgres('pg')
   .withDataVolume()
@@ -49,6 +70,9 @@ await builder
   .withEnvironment('GITHUB_CLIENT_SECRET', oauth['github-client-secret'])
   .withEnvironment('GOOGLE_CLIENT_ID', oauth['google-client-id'])
   .withEnvironment('GOOGLE_CLIENT_SECRET', oauth['google-client-secret'])
+  .withEnvironment('ADMIN_EMAIL', adminEmail)
+  .withEnvironment('MAIL_FROM', mailFrom)
+  .withEnvironment('SMTP_URL', smtpUrl)
   .withDockerfileBaseImage({ buildImage: 'node:24-slim', runtimeImage: 'node:24-alpine' })
   .publishAsPackageScript({ scriptName: 'start' })
   // CI sets IMAGE_TAG to the commit SHA; Aspire's default push tag is `latest`.

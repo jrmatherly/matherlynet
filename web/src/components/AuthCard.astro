@@ -1,0 +1,24 @@
+---
+// Shell for the account pages (sign-in, sign-up, password reset, account, admin): minimal chrome, noindex.
+import Base from "../layouts/Base.astro";
+import Logo from "./Logo.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  wide?: boolean;
+}
+
+const { title, description, wide = false } = Astro.props;
+---
+
+<Base title={title} description={description} chrome="minimal" noindex>
+  <div class:list={["mx-auto grid gap-6 px-4 py-16 sm:px-6", wide ? "max-w-2xl" : "max-w-md"]}>
+    <div class="mx-auto"><Logo size="size-20" /></div>
+    <section class="grid gap-4 rounded-2xl border border-border bg-surface p-6">
+      <h1 class="text-2xl font-extrabold tracking-tight">{title}</h1>
+      <slot />
+    </section>
+    <a href="/" class="text-center text-sm text-muted hover:text-foreground">← Back to the site</a>
+  </div>
+</Base>

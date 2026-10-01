@@ -8,6 +8,13 @@
       "when": 1790818898020,
       "tag": "0000_stale_harpoon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790833005949,
+      "tag": "0001_flippant_violations",
+      "breakpoints": true
     }
   ]
 }

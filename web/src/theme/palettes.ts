@@ -26,7 +26,7 @@ export interface SiteThemeDefaults {
   proPalette: ProPalette;
 }
 
-// ponytail: constants until the admin settings table lands (step 5); then read from Postgres.
+// Built-in fallback; the live defaults are set on /admin (src/lib/site-settings.ts).
 export const SITE_DEFAULTS: SiteThemeDefaults = { theme: "brand", proPalette: "amber" };
 
 export const THEME_COOKIE = "mn-theme";

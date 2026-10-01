@@ -1,0 +1,80 @@
+---
+import AuthCard from "../components/AuthCard.astro";
+import { auth } from "../lib/auth";
+import { primary, secondary, textLink } from "../lib/form";
+
+const { user, session } = Astro.locals;
+if (!user || !session) return Astro.redirect("/sign-in");
+
+const headers = Astro.request.headers;
+const sessions = await auth.api.listSessions({ headers });
+
+// Revocation runs here by session id, so other devices' tokens never reach the page.
+// Astro's origin check (security.checkOrigin) rejects cross-site POSTs.
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  if (form.get("action") === "revoke-others") {
+    await auth.api.revokeOtherSessions({ headers });
+  } else {
+    const target = sessions.find((s) => s.id === form.get("id") && s.id !== session.id);
+    if (target) await auth.api.revokeSession({ body: { token: target.token }, headers });
+  }
+  return Astro.redirect("/account", 303);
+}
+
+const when = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
+const others = sessions.filter((s) => s.id !== session.id);
+---
+
+<AuthCard title="Your account" description="Your account and active sessions." wide>
+  <p class="text-sm">
+    Signed in as <span class="font-semibold">{user.email}</span>
+    {user.role === "admin" && <> · <a href="/admin" class={textLink}>Site settings</a></>}
+  </p>
+
+  <h2 class="mt-2 text-lg font-bold">Sessions</h2>
+  <ul class="grid gap-2">
+    {
+      [session, ...others].map((s) => (
+        <li class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-3 text-sm">
+          <div class="grid gap-0.5">
+            <span class="font-semibold">
+              {s.userAgent ?? "Unknown device"}
+              {s.id === session.id && <span class="ml-1 font-normal text-success">(this device)</span>}
+            </span>
+            <span class="text-muted">
+              {s.ipAddress ?? "Unknown IP"} · signed in {when.format(new Date(s.createdAt))}
+            </span>
+          </div>
+          {s.id !== session.id && (
+            <form method="post">
+              <input type="hidden" name="id" value={s.id} />
+              <button class={secondary}>Revoke</button>
+            </form>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+
+  <div class="flex flex-wrap gap-2">
+    {
+      others.length > 0 && (
+        <form method="post">
+          <input type="hidden" name="action" value="revoke-others" />
+          <button class={secondary}>Sign out other devices</button>
+        </form>
+      )
+    }
+    <button id="sign-out" type="button" class={primary}>Sign out</button>
+  </div>
+</AuthCard>
+
+<script>
+  import { authClient } from "../lib/auth-client";
+
+  document.querySelector("#sign-out")!.addEventListener("click", async () => {
+    await authClient.signOut();
+    location.assign("/");
+  });
+</script>

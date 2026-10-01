@@ -1,0 +1,60 @@
+---
+import AuthCard from "../components/AuthCard.astro";
+import { saveSiteDefaults } from "../lib/site-settings";
+import { field, label, primary, textLink } from "../lib/form";
+import { PRO_PALETTES, isProPalette } from "../theme/palettes";
+
+// Non-admins see the 404 page: the route doesn't advertise itself.
+if (Astro.locals.user?.role !== "admin") return Astro.rewrite("/404");
+
+const saved = Astro.url.searchParams.has("saved");
+let error = "";
+// Astro's origin check (security.checkOrigin) rejects cross-site POSTs.
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const theme = form.get("theme");
+  const proPalette = form.get("proPalette");
+  if ((theme === "brand" || theme === "pro") && isProPalette(proPalette)) {
+    await saveSiteDefaults({ theme, proPalette });
+    // Redirect so the page (and its theme) renders from the new defaults.
+    return Astro.redirect("/admin?saved", 303);
+  }
+  error = "Pick a theme and a Pro palette.";
+}
+
+const current = Astro.locals.siteDefaults;
+---
+
+<AuthCard title="Site settings" description="Site-wide defaults." wide>
+  <p class="text-sm text-muted">
+    Defaults for visitors who haven't picked a theme. A visitor's own choice (cookie) still wins. Other server
+    replicas pick up a change within 30 seconds.
+  </p>
+  <form method="post" class="grid gap-4">
+    <fieldset class="grid gap-2">
+      <legend class="mb-1 text-sm font-semibold">Default theme</legend>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="radio" name="theme" value="brand" checked={current.theme === "brand"} /> Brand (Signal)
+      </label>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="radio" name="theme" value="pro" checked={current.theme === "pro"} /> Pro
+      </label>
+    </fieldset>
+    <label class={label}>
+      Pro palette
+      <select name="proPalette" class={field}>
+        {
+          Object.entries(PRO_PALETTES).map(([key, name]) => (
+            <option value={key} selected={current.proPalette === key}>
+              {name}
+            </option>
+          ))
+        }
+      </select>
+    </label>
+    <button class={primary}>Save</button>
+  </form>
+  {saved && <p role="status" class="text-sm text-success">Saved.</p>}
+  {error && <p role="alert" class="text-sm text-danger">{error}</p>}
+  <p class="text-sm"><a href="/account" class={textLink}>← Account</a></p>
+</AuthCard>
