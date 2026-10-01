@@ -15,11 +15,10 @@ async function remember(value: SiteSettings): Promise<SiteSettings> {
   return value;
 }
 
-export async function getSiteSettings(): Promise<SiteSettings> {
-  if (cached && cached.expires > Date.now()) return cached.value;
-  const [row] = await db.select().from(siteSettings).limit(1);
-  // Stored values are re-validated: a palette removed from the code falls back to the built-in default.
-  return remember({
+// Stored values are re-validated: a palette removed from the code falls back to the built-in default.
+// With no row (or no database), this is the built-in default settings.
+function fromRow(row: typeof siteSettings.$inferSelect | undefined): SiteSettings {
+  return {
     theme: row?.theme === "pro" ? "pro" : row?.theme === "brand" ? "brand" : SITE_DEFAULTS.theme,
     proPalette: isProPalette(row?.proPalette) ? row.proPalette : SITE_DEFAULTS.proPalette,
     sentry: { dsn: row?.sentryDsn ?? null, server: row?.sentryServer ?? false, browser: row?.sentryBrowser ?? false },
@@ -28,7 +27,23 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       scriptUrl: row?.umamiScriptUrl ?? null,
       websiteId: row?.umamiWebsiteId ?? null,
     },
-  });
+  };
+}
+
+export async function getSiteSettings(): Promise<SiteSettings> {
+  if (cached && cached.expires > Date.now()) return cached.value;
+  let row: typeof siteSettings.$inferSelect | undefined;
+  try {
+    [row] = await db.select().from(siteSettings).limit(1);
+  } catch (error) {
+    // Database unreachable: keep pages up with the last settings (or built-in defaults) and retry in 5 s
+    // instead of on every request. The failure itself still surfaces through queries that need the database.
+    console.error("site-settings: database unavailable, serving last known settings", error);
+    const fallback = cached?.value ?? fromRow(undefined);
+    cached = { value: fallback, expires: Date.now() + 5_000 };
+    return fallback;
+  }
+  return remember(fromRow(row));
 }
 
 export async function saveSiteSettings(value: SiteSettings): Promise<void> {
