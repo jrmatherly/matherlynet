@@ -4,7 +4,7 @@
 //                DEPLOY_TARGET=k8s aspire publish -o out/k8s
 // Push images:   aspire do push        (after `docker login ghcr.io`; CI does this)
 
-import { createBuilder, refExpr } from './.aspire/modules/aspire.mjs';
+import { createBuilder, refExpr, ProbeType } from './.aspire/modules/aspire.mjs';
 
 const builder = await createBuilder();
 
@@ -98,6 +98,11 @@ const web = await builder
   // so the deployment pulls that image and Sentry files its events under that release.
   .withRemoteImageTag(process.env.IMAGE_TAG ?? 'latest')
   .withEnvironment('SENTRY_RELEASE', process.env.IMAGE_TAG ?? '')
+  // K8s: the pod is Ready only once migrations ran and Astro answers; distinct paths because each probe also
+  // registers a health check keyed by path. /api/auth/ok stays up while Postgres is down (site settings fall back),
+  // so a database outage doesn't restart pods into migrate.mjs's 60 s wait.
+  .withHttpProbe(ProbeType.Readiness, { path: '/api/auth/ok' })
+  .withHttpProbe(ProbeType.Liveness, { path: '/api/auth/ok?probe=liveness', periodSeconds: 30, timeoutSeconds: 3 })
   .withExternalHttpEndpoints();
 
 // Compose: who can reach the web port on the host. The origin must be reachable only through Cloudflare
