@@ -3,7 +3,21 @@ name: 📦 Publish images
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+    # Build only when the image can change: the web app, the AppHost that generates the
+    # Dockerfile, its dependencies/config, or this workflow. Docs and agent config don't.
+    # (paths-ignore can't take `!` exceptions, so this is an include list.)
+    paths:
+      - 'web/**'
+      - '!web/README.md'
+      - '!web/AGENTS.md'
+      - '!web/CLAUDE.md'
+      - 'apphost.mts'
+      - 'aspire.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.apphost.json'
+      - '.github/workflows/publish-images.yml'
+  workflow_dispatch: # manual runs ignore the path filter
 
 # A newer push to the same ref supersedes an in-flight build; cancel it to save minutes.
 concurrency:
