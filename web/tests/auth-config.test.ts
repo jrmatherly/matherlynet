@@ -12,3 +12,9 @@ describe("admin promotion", () => {
     expect(options.emailVerification?.afterEmailVerification).toBeTypeOf("function");
   });
 });
+
+describe("rate limiting", () => {
+  it("skips /ok, the K8s probe path, so probes never touch the database", () => {
+    expect(options.rateLimit?.customRules?.["/ok"]).toBe(false);
+  });
+});

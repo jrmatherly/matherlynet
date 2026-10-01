@@ -99,8 +99,8 @@ const web = await builder
   .withRemoteImageTag(process.env.IMAGE_TAG ?? 'latest')
   .withEnvironment('SENTRY_RELEASE', process.env.IMAGE_TAG ?? '')
   // K8s: the pod is Ready only once migrations ran and Astro answers; distinct paths because each probe also
-  // registers a health check keyed by path. /api/auth/ok stays up while Postgres is down (site settings fall back),
-  // so a database outage doesn't restart pods into migrate.mjs's 60 s wait.
+  // registers a health check keyed by path. /api/auth/ok stays up while Postgres is down (site settings fall back;
+  // better-auth's database rate limiter skips /ok), so a database outage doesn't restart pods into migrate.mjs.
   .withHttpProbe(ProbeType.Readiness, { path: '/api/auth/ok' })
   .withHttpProbe(ProbeType.Liveness, { path: '/api/auth/ok?probe=liveness', periodSeconds: 30, timeoutSeconds: 3 })
   .withExternalHttpEndpoints();
