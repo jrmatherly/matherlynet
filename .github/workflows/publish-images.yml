@@ -1,37 +1,55 @@
-name: Publish images
+name: 📦 Publish images
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+# A newer push to the same ref supersedes an in-flight build; cancel it to save minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
 jobs:
   push:
+    name: 🚀 Build & push to GHCR
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v7.0.1
+      - name: 📥 Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-dotnet@v6.0.0
+      - name: 🟣 Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.x'
 
-      - uses: actions/setup-node@v7.0.0
+      - name: 🟢 Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
 
-      - name: Install Aspire CLI
+      - name: 🧰 Install Aspire CLI
         run: |
           curl -sSL https://aspire.dev/install.sh | bash -s -- --version 13.6.0
           echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
 
-      - uses: docker/login-action@v4.6.0
+      - name: 🔐 Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Builds web's image and pushes it to ghcr.io/jrmatherly/matherlynet (see apphost.mts).
-      - run: aspire 'do' push --non-interactive   # quoted: shellcheck SC1010 reads 'do' as a keyword
+      # Images go to ghcr.io/jrmatherly/matherlynet/<resource>:<commit sha> (see apphost.mts).
+      - name: 🐳 Build & push images
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: aspire 'do' push --non-interactive # quoted: shellcheck SC1010 reads 'do' as a keyword

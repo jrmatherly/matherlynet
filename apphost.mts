@@ -51,6 +51,8 @@ await builder
   .withEnvironment('GOOGLE_CLIENT_SECRET', oauth['google-client-secret'])
   .withDockerfileBaseImage({ buildImage: 'node:24-slim', runtimeImage: 'node:24-alpine' })
   .publishAsPackageScript({ scriptName: 'start' })
+  // CI sets IMAGE_TAG to the commit SHA; Aspire's default push tag is `latest`.
+  .withRemoteImageTag(process.env.IMAGE_TAG ?? 'latest')
   .withExternalHttpEndpoints();
 
 await builder.build().run();
