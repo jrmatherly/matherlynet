@@ -45,6 +45,7 @@ web/                   Astro SSR app (server.mjs entry, otel.mjs, migrate.mjs, s
                        attests the web image; a separate no-permission job uploads Sentry source maps from it
                        web-checks.yml: astro check, lint, test, build on PRs (web/** only) and when called
                        e2e.yml: Playwright against `aspire start` on PRs (web/** + AppHost) and when called
+.github/pull_request_template.md  PR body: summary, verification evidence, deployment impact, docs
 .github/dependabot.yml weekly npm (/, /web) + actions updates, 7-day cooldown, exact pins
                        (security updates, CodeQL default setup and private reporting are repo settings)
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported
