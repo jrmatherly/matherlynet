@@ -26,6 +26,7 @@
     "@opentelemetry/instrumentation": "0.222.0",
     "@opentelemetry/sdk-node": "0.222.0",
     "@sentry/browser": "11.1.0",
+    "@sentry/core": "11.1.0",
     "@sentry/node": "11.1.0",
     "@tailwindcss/vite": "4.3.3",
     "@takumi-rs/core": "2.14.0",

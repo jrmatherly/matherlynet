@@ -10,8 +10,8 @@ let cached: { value: SiteSettings; expires: number } | null = null;
 
 async function remember(value: SiteSettings): Promise<SiteSettings> {
   cached = { value, expires: Date.now() + TTL_MS };
-  // Server-side Sentry follows the settings live (re-initialised only when the DSN or switch changes).
-  await configureSentry(value.sentry.server ? value.sentry.dsn : null);
+  // Server-side Sentry follows the settings live: the DSN and on/off switch apply to the next event.
+  configureSentry(value.sentry.server ? value.sentry.dsn : null);
   return value;
 }
 

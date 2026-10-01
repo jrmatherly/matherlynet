@@ -46,7 +46,7 @@ web/
   src/lib/mail.ts      nodemailer over SMTP_URL (Mailpit locally); fire-and-forget
   src/lib/site-settings.ts  site_settings row (theme, Sentry, Umami), 30 s per-process cache; reconfigures Sentry
   src/lib/settings-form.ts  SiteSettings type + /admin form validation (pure, unit-tested)
-  src/lib/sentry.ts    server Sentry (@sentry/node): errors only, re-initialised live when the DSN changes
+  src/lib/sentry.ts    server Sentry (@sentry/node): errors only, one client; DSN changes retarget its transport
   src/lib/auth-client.ts  better-auth browser client
   src/lib/site.ts      public origin (from BETTER_AUTH_URL at run time), person details, public routes list
   src/data/profile.ts  all résumé-derived copy (metrics, perspectives, work, career, skills); edit facts here
@@ -132,6 +132,9 @@ out/                   aspire publish output (gitignored)
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
 - `web/src/db/index.ts` builds the `pg.Pool` itself and keeps its `pool.on("error")` listener: without it, a Postgres
   restart or failover drops idle connections and the unhandled `error` event kills the web process.
+- Server Sentry is initialised once (`web/src/lib/sentry.ts`); a /admin DSN change only retargets
+  `makeMultiplexedTransport` (`@sentry/core`). A second `Sentry.init` inside a request binds to that request's scope
+  only and stacks process handlers, so later requests kept the old client.
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
   Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
   -R jrmatherly/matherlynet`.
@@ -156,6 +159,9 @@ out/                   aspire publish output (gitignored)
 <!-- MANUAL -->
 ## Rules
 
+- NEVER guess. NEVER assume. ALWAYS research. ALWAYS validate. ALWAYS confirm. ASK questions when something is
+  unclear or ambiguous. For a third-party library or service, read its official documentation before changing how
+  the project uses it, and validate the change empirically before calling it done.
 - Run the app only through Aspire. Never run `astro dev` or `pnpm dev` directly: they start without
   the database, secrets, or the fixed port 4321 that auth callbacks depend on.
 - After editing `web/astro.config.mjs` or web dependencies, run `aspire resource web restart`: the in-process
