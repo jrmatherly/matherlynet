@@ -86,6 +86,8 @@ out/                   aspire publish output (gitignored)
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
 - Markdown is linted by markdownlint-cli2 via a pre-commit hook (staged files only).
+- `.gitignore` excludes local tooling state: `.codegraph/`, `.remember/`, `.serena/cache/`, `private/`,
+  `.claude/settings.local.json`, `CLAUDE.local.md` and `.claude/auto-memory/dirty-files*`.
 
 <!-- END AUTO-MANAGED -->
 
