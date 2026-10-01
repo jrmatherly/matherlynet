@@ -12,5 +12,11 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   process.env.OTEL_NODE_DISABLED_INSTRUMENTATIONS ??= "fs,dns,net";
   // The default ("all") probes cloud metadata servers; `env` keeps Aspire's service.instance.id.
   process.env.OTEL_NODE_RESOURCE_DETECTORS ??= "env,host,os,process,container";
-  await import("@opentelemetry/auto-instrumentations-node/register");
+  // Same setup as auto-instrumentations-node/register, minus its SIGTERM listener (which never exits the
+  // process); server.mjs calls this from its own shutdown so the last spans are exported first.
+  const { NodeSDK } = await import("@opentelemetry/sdk-node");
+  const { getNodeAutoInstrumentations, getResourceDetectors } = await import("@opentelemetry/auto-instrumentations-node");
+  const sdk = new NodeSDK({ instrumentations: getNodeAutoInstrumentations(), resourceDetectors: getResourceDetectors() });
+  sdk.start();
+  globalThis.__otelShutdown = () => sdk.shutdown();
 }
