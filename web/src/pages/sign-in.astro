@@ -9,7 +9,7 @@ const providerLabel = { github: "GitHub", google: "Google" } as const;
 ---
 
 <AuthCard title="Sign in" description="Sign in to your account.">
-  <form id="sign-in-form" class="grid gap-3">
+  <form id="sign-in-form" method="post" class="grid gap-3">
     <label class={label}>
       Email
       <input name="email" type="email" required autocomplete="email" class={field} />
@@ -49,6 +49,8 @@ const providerLabel = { github: "GitHub", google: "Google" } as const;
     const { error } = await authClient.signIn.email({
       email: String(form.get("email")),
       password: String(form.get("password")),
+      // Also where the re-sent verification link lands for an unverified account.
+      callbackURL: "/account",
     });
     if (!error) return location.assign("/account");
     // 403: the email isn't verified yet; better-auth has just sent a fresh link.

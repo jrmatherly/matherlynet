@@ -6,7 +6,7 @@ if (Astro.locals.user) return Astro.redirect("/account");
 ---
 
 <AuthCard title="Create an account" description="Create an account.">
-  <form id="sign-up-form" class="grid gap-3">
+  <form id="sign-up-form" method="post" class="grid gap-3">
     <label class={label}>
       Name
       <input name="name" required autocomplete="name" class={field} />

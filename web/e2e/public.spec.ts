@@ -1,0 +1,40 @@
+import { expect, test } from "@playwright/test";
+
+test("public pages render and the nav links work", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveTitle(/Jason Matherly/);
+  for (const label of ["Work", "Writing", "About"]) {
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
+  }
+});
+
+test("the theme choice survives a reload", async ({ page }) => {
+  await page.goto("/");
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-palette", "signal");
+  await page.getByRole("button", { name: "Pro" }).click();
+  await page.getByRole("button", { name: "Dark" }).click();
+  await page.reload();
+  await expect(html).not.toHaveAttribute("data-palette", "signal");
+  await expect(html).toHaveAttribute("data-mode", "dark");
+});
+
+test("unknown pages return 404", async ({ page }) => {
+  const response = await page.goto("/no-such-page");
+  expect(response?.status()).toBe(404);
+});
+
+test("signed-out visitors can't reach account pages", async ({ page }) => {
+  await page.goto("/account");
+  await expect(page).toHaveURL(/\/sign-in$/);
+  expect((await page.goto("/admin"))?.status()).toBe(404);
+});
+
+test("responses carry the security headers", async ({ request }) => {
+  const headers = (await request.get("/")).headers();
+  expect(headers["x-frame-options"]).toBe("DENY");
+  expect(headers["x-content-type-options"]).toBe("nosniff");
+  expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+});

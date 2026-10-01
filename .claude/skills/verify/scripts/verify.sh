@@ -2,7 +2,7 @@
 #
 # Full local verification for matherlynet. Prints PASS/FAIL per step and exits
 # non-zero if any step failed. Usage: verify.sh [--no-stack]
-#   --no-stack  skip the Aspire smoke test (static checks only)
+#   --no-stack  skip the Aspire smoke test and Playwright E2E (static checks only)
 
 set -uo pipefail
 cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}" || exit 1
@@ -31,19 +31,18 @@ step "Web tests"            pnpm --dir web test
 step "Web build"            pnpm --dir web build
 
 smoke() {
-  local started=0
-  if ! aspire ps --non-interactive --nologo 2>/dev/null | grep -q apphost.mts; then
-    aspire start --non-interactive --nologo >/dev/null || return 1
-    started=1
-  fi
-  local rc=0
   aspire wait web --non-interactive --nologo >/dev/null &&
-    curl -fsS --max-time 10 http://localhost:4321/api/auth/ok | grep -q '"ok":true' || rc=1
-  [ "$started" = 1 ] && aspire stop --non-interactive --nologo >/dev/null
-  return $rc
+    curl -fsS --max-time 10 http://localhost:4321/api/auth/ok | grep -q '"ok":true'
 }
 if [ "${1:-}" != "--no-stack" ]; then
+  # Reuse a running AppHost; otherwise start one for these steps and stop it after.
+  started=0
+  if ! aspire ps --non-interactive --nologo 2>/dev/null | grep -q apphost.mts; then
+    aspire start --non-interactive --nologo >/dev/null && started=1
+  fi
   step "Aspire smoke test"  smoke
+  step "Web E2E"            pnpm --dir web e2e
+  [ "$started" = 1 ] && aspire stop --non-interactive --nologo >/dev/null
 fi
 
 printf '\n'

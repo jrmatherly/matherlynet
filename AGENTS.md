@@ -23,6 +23,7 @@ pushes it to `ghcr.io/jrmatherly/matherlynet`.
 | Lint Markdown | `markdownlint-cli2` (or `pre-commit run --all-files`) |
 | Check / lint / test / build the web app | `cd web && pnpm check` (astro check), `pnpm lint`, `pnpm test`, `pnpm build` |
 | Smoke test (stack running) | `curl -s http://localhost:4321/api/auth/ok` returns `{"ok":true}` |
+| E2E (stack running) | `cd web && pnpm e2e` (Playwright, Chromium; finds Mailpit via `aspire describe`) |
 | New auth schema / migration | `cd web && APPDB_URI=postgresql://unused pnpm db:generate` |
 | Deployment artifacts | `aspire publish -o out/compose`; `DEPLOY_TARGET=k8s aspire publish -o out/k8s` |
 | Push images (CI does this) | `aspire do push` after `docker login ghcr.io` |
@@ -51,7 +52,7 @@ web/
   src/data/profile.ts  all résumé-derived copy (metrics, perspectives, work, career, skills); edit facts here
   src/content/writing/  Markdown posts (schema in src/content.config.ts; `draft: true` hides a post everywhere)
   src/db/              Drizzle client (`APPDB_URI`), generated auth-schema.ts, app tables in schema.ts
-  src/middleware.ts    session -> Astro.locals.user / .session, siteSettings, theme; reports render errors to Sentry
+  src/middleware.ts    session, siteSettings and theme into Astro.locals; Sentry error capture; security headers
   src/theme/palettes.ts  palette keys, cookie names, resolveTheme() (cookies -> theme, mode, palette)
   src/styles/           global.css (Tailwind tokens, dark variant) + palettes.css (one light-dark() block per palette)
   src/layouts/Base.astro  <html data-palette data-mode>, Seo, favicons, fonts, header/footer (chrome full|minimal)
@@ -63,6 +64,8 @@ web/
                        otherwise); all noindex, AuthCard shell, form classes in src/lib/form.ts
   src/pages/og/[slug].png.ts  share cards rendered on demand by Takumi (cards in src/lib/og.ts, colors from palettes.css)
   tests/               Vitest (node env) + Astro Container API
+  e2e/                 Playwright against the Aspire stack: public pages, headers, sign-up -> verify (Mailpit)
+                       -> sign-out -> password reset; each run creates an e2e-*@example.test user
   src/pages/api/auth/[...all].ts  better-auth request handler
   public/              brand favicons, web manifest, mask logo; public/pro/ = Pro monogram set
 .github/workflows/     publish-images.yml: build + push web image on main (path-filtered)
