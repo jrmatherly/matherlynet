@@ -70,6 +70,24 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: aspire 'do' push --non-interactive # quoted: shellcheck SC1010 reads 'do' as a keyword
 
+      # Uploads the maps from the pushed image itself, so the debug IDs match the code that runs. --no-rewrite:
+      # the CLI would otherwise add debug IDs to the few chunks without one, and those copies wouldn't match.
+      # Skipped until the SENTRY_AUTH_TOKEN secret (a Sentry organization auth token) exists.
+      - name: 🗺️ Upload source maps to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: matherlynet
+          SENTRY_PROJECT: javascript-astro
+        run: |
+          if [ -z "$SENTRY_AUTH_TOKEN" ]; then echo "::notice::SENTRY_AUTH_TOKEN not set; skipping source map upload"; exit 0; fi
+          image="ghcr.io/${GITHUB_REPOSITORY}/web:${GITHUB_SHA}"
+          docker pull --quiet "$image"
+          container=$(docker create "$image")
+          docker cp "$container:/app/dist" "$RUNNER_TEMP/dist"
+          docker rm "$container"
+          npx --yes sentry@0.45.0 release create "$SENTRY_ORG/$GITHUB_SHA" --project "$SENTRY_PROJECT" --finalize
+          npx --yes sentry@0.45.0 sourcemap upload "$RUNNER_TEMP/dist" --release "$GITHUB_SHA" --no-rewrite
+
       - name: 🔎 Resolve image digest
         id: digest
         run: echo "digest=$(docker buildx imagetools inspect "ghcr.io/${GITHUB_REPOSITORY}/web:${GITHUB_SHA}" --format '{{.Manifest.Digest}}')" >> "$GITHUB_OUTPUT"

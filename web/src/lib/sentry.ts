@@ -12,6 +12,8 @@ export async function configureSentry(dsn: string | null): Promise<void> {
   if (!dsn) return;
   Sentry.init({
     dsn,
+    // The image's commit SHA (set by the AppHost); stack traces resolve through debug IDs either way.
+    release: process.env.SENTRY_RELEASE || undefined,
     // No tracesSampleRate: errors only. OpenTelemetry already hooks the module loader.
     enableRuntimeChannelInjection: false,
     integrations: [Sentry.openTelemetryIntegration()],

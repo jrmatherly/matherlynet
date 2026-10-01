@@ -3,6 +3,8 @@
 // Their origins are added to this page's CSP; anything not switched on stays blocked.
 const { sentry, umami } = Astro.locals.siteSettings;
 const sentryDsn = sentry.browser && sentry.dsn ? sentry.dsn : null;
+// The image's commit SHA (set by the AppHost), so browser events land in the same release as the server's.
+const sentryRelease = process.env.SENTRY_RELEASE || null;
 const umamiScript = umami.enabled && umami.scriptUrl ? umami.scriptUrl : null;
 
 if (umamiScript) {
@@ -15,11 +17,13 @@ if (sentryDsn) Astro.csp?.insertDirective(`connect-src ${new URL(sentryDsn).orig
 
 {umamiScript && <script is:inline defer src={umamiScript} data-website-id={umami.websiteId} />}
 {sentryDsn && <meta name="sentry-dsn" content={sentryDsn} />}
+{sentryDsn && sentryRelease && <meta name="sentry-release" content={sentryRelease} />}
 
 <script>
   // @sentry/browser is a separate chunk, fetched only when browser reporting is on.
   const dsn = document.querySelector<HTMLMetaElement>('meta[name="sentry-dsn"]')?.content;
+  const release = document.querySelector<HTMLMetaElement>('meta[name="sentry-release"]')?.content;
   if (dsn) {
-    import("@sentry/browser").then((Sentry) => Sentry.init({ dsn }));
+    import("@sentry/browser").then((Sentry) => Sentry.init({ dsn, release }));
   }
 </script>

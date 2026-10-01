@@ -72,7 +72,8 @@ web/
                        -> sign-out -> password reset; each run creates an e2e-*@example.test user
   src/pages/api/auth/[...all].ts  better-auth request handler
   public/              brand favicons, web manifest, mask logo; public/pro/ = Pro monogram set
-.github/workflows/     publish-images.yml: build + push web image on main (path-filtered), signed provenance
+.github/workflows/     publish-images.yml: build + push web image on main (path-filtered), signed provenance,
+                       Sentry release + source maps copied out of the pushed image (needs SENTRY_AUTH_TOKEN)
                        web-checks.yml: astro check, lint, test, build on PRs and main (web/** only)
                        e2e.yml: Playwright against `aspire start` on PRs and main (web/** + AppHost)
 .github/dependabot.yml weekly npm (/, /web) + actions updates, 7-day cooldown, exact pins
@@ -184,6 +185,9 @@ out/                   aspire publish output (gitignored)
 - Observability: OpenTelemetry is infrastructure (Aspire injects OTEL_*; local and published dashboards).
   Sentry DSN/switches and Umami script/website id are runtime settings on /admin, not Aspire parameters.
   Sentry is errors-only (`enableOpenTelemetrySetup` stays false); never add a second tracer provider.
+- Sentry stack traces: the build emits hidden source maps with debug IDs (`@sentry/bundler-plugins/vite`,
+  upload disabled: the Aspire-generated Dockerfile takes no build secrets). CI uploads from the image's `/app/dist`
+  with `--no-rewrite`. The release is `SENTRY_RELEASE` = `IMAGE_TAG`, so set `IMAGE_TAG` when publishing.
 - Umami uses appdb's `umami` schema (`?schema=umami`), not its own database: published output only creates
   `POSTGRES_DB`. Don't use the toolkit's `withPostgreSQL()`; it inlines the Postgres password when published.
 - GitHub Actions: pin actions to full commit SHAs with a `# vX.Y.Z` comment, keep the concurrency

@@ -87,8 +87,10 @@ await builder
   .withEnvironment('SMTP_URL', smtpUrl)
   .withDockerfileBaseImage({ buildImage: 'node:24-slim', runtimeImage: 'node:24-alpine' })
   .publishAsPackageScript({ scriptName: 'start' })
-  // CI sets IMAGE_TAG to the commit SHA; Aspire's default push tag is `latest`.
+  // CI sets IMAGE_TAG to the commit SHA; Aspire's default push tag is `latest`. Set it when publishing too,
+  // so the deployment pulls that image and Sentry files its events under that release.
   .withRemoteImageTag(process.env.IMAGE_TAG ?? 'latest')
+  .withEnvironment('SENTRY_RELEASE', process.env.IMAGE_TAG ?? '')
   .withExternalHttpEndpoints();
 
 await builder.build().run();

@@ -10,6 +10,6 @@ export function sendMail(to: string, subject: string, text: string): void {
     return;
   }
   transport
-    .sendMail({ from: process.env.MAIL_FROM || "matherlynet <no-reply@matherly.net>", to, subject, text })
+    .sendMail({ from: process.env.MAIL_FROM || "MatherlyNet <no-reply@matherly.net>", to, subject, text })
     .catch((err: unknown) => console.error(`mail: failed to send "${subject}" to ${to}`, err));
 }

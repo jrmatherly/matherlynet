@@ -2,6 +2,7 @@
 import { defineConfig, fontProviders } from "astro/config";
 import node from "@astrojs/node";
 import tailwindcss from "@tailwindcss/vite";
+import { sentryVitePlugin } from "@sentry/bundler-plugins/vite";
 
 // Fonts come from the installed @fontsource-variable packages; builds never fetch them.
 const npmFonts = fontProviders.npm({ remote: false });
@@ -53,5 +54,14 @@ export default defineConfig({
       options: { package: "@fontsource-variable/geist-mono" },
     },
   ],
-  vite: { plugins: [tailwindcss()] },
+  vite: {
+    // Hidden source maps (no sourceMappingURL comment) with Sentry debug IDs injected into bundles and maps.
+    // The image build has no Sentry token, so nothing uploads here: CI copies dist/ out of the pushed image and
+    // uploads the maps (publish-images.yml). The release comes from SENTRY_RELEASE at run time, not the build.
+    build: { sourcemap: "hidden" },
+    plugins: [
+      tailwindcss(),
+      sentryVitePlugin({ telemetry: false, sourcemaps: { disable: "disable-upload" }, release: { inject: false, create: false } }),
+    ],
+  },
 });
