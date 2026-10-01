@@ -1,10 +1,11 @@
 import { betterAuth, type User } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, haveIBeenPwned } from "better-auth/plugins";
+import { admin } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { user as userTable } from "../db/auth-schema";
 import { sendMail } from "./mail";
+import { boundedPwned } from "./pwned";
 
 // A provider is enabled only when both its client id and secret are set.
 const socialProviders = Object.fromEntries(
@@ -65,5 +66,5 @@ export const auth = betterAuth({
   advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
   // Created already verified = an OAuth provider vouched for the email.
   databaseHooks: { user: { create: { after: promoteAdmin } } },
-  plugins: [admin(), haveIBeenPwned()],
+  plugins: [admin(), boundedPwned()],
 });
