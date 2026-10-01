@@ -1,0 +1,51 @@
+# Dependabot version updates. Security updates are separate (repository settings) and ignore cooldown.
+# Aspire hosting packages (aspire.config.json) aren't a Dependabot ecosystem: /bump-deps covers them.
+version: 2
+updates:
+  # AppHost (root npm project).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Matches the 7-day minimum release age in ~/.npmrc and pnpm.
+    cooldown:
+      default-days: 7
+    # Exact pins stay exact: a bump rewrites 1.2.3 to 1.2.4.
+    versioning-strategy: increase
+    groups:
+      apphost-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Aspire's generated transport imports vscode-jsonrpc/node.js, which 9.x removed.
+      - dependency-name: vscode-jsonrpc
+        versions: [">=9"]
+      # typescript-eslint's peer range caps TypeScript at 6.0.x.
+      - dependency-name: typescript
+        versions: [">=6.1"]
+
+  # Web app (pnpm).
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    versioning-strategy: increase
+    groups:
+      web-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # typescript-eslint and @astrojs/check peer ranges cap TypeScript at 6.0.x.
+      - dependency-name: typescript
+        versions: [">=6.1"]
+
+  # Workflow actions: updates the commit SHA pins and their "# vX.Y.Z" comments.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]

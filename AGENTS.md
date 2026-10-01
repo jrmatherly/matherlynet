@@ -74,6 +74,8 @@ web/
   public/              brand favicons, web manifest, mask logo; public/pro/ = Pro monogram set
 .github/workflows/     publish-images.yml: build + push web image on main (path-filtered)
                        web-checks.yml: astro check, lint, test, build on PRs and main (web/** only)
+                       dependabot.yml: weekly npm (/, /web) + actions updates, 7-day cooldown, exact pins
+                       (security updates, CodeQL default setup and private reporting are repo settings)
 out/                   aspire publish output (gitignored)
 ```
 
