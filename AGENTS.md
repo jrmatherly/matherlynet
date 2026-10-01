@@ -65,6 +65,7 @@ web/
                        otherwise); all noindex, AuthCard shell, form classes in src/lib/form.ts
   src/pages/og/[slug].png.ts  share cards rendered on demand by Takumi (cards in src/lib/og.ts, colors from palettes.css)
   tests/               Vitest (node env) + Astro Container API
+  scripts/social-preview.mts  renders .github/social-preview.png (GitHub social preview, 1280x640) with Takumi
   e2e/                 Playwright against the Aspire stack: public pages, headers, sign-up -> verify (Mailpit)
                        -> sign-out -> password reset; each run creates an e2e-*@example.test user
   src/pages/api/auth/[...all].ts  better-auth request handler
