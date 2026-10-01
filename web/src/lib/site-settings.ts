@@ -30,14 +30,19 @@ function fromRow(row: typeof siteSettings.$inferSelect | undefined): SiteSetting
   };
 }
 
+// Bumped by every save: a refresh whose SELECT started before a save must not overwrite what was saved.
+let generation = 0;
+
 async function load(): Promise<SiteSettings> {
+  const started = generation;
   try {
     const [row] = await db.select().from(siteSettings).limit(1);
+    if (generation !== started) return cached!.value;
     return await remember(fromRow(row));
   } catch (error) {
-    // Database unreachable: keep pages up with the last settings (or built-in defaults) and retry in 5 s
-    // instead of on every request. The failure itself still surfaces through queries that need the database.
-    console.error("site-settings: database unavailable, serving last known settings", error);
+    // Usually the database is unreachable (anything else lands here too, so the message says "load failed"):
+    // keep pages up with the last settings (or built-in defaults) and retry in 5 s instead of on every request.
+    console.error("site-settings: load failed, serving last known settings", error);
     const fallback = cached?.value ?? fromRow(undefined);
     cached = { value: fallback, expires: Date.now() + 5_000 };
     return fallback;
@@ -49,7 +54,7 @@ let refreshing: Promise<SiteSettings> | null = null;
 export async function getSiteSettings(): Promise<SiteSettings> {
   if (cached && cached.expires > Date.now()) return cached.value;
   // One refresh at a time. With a cached value, requests don't wait for it: a slow or unreachable database (up
-  // to the pool's 5 s connect timeout) would otherwise stall a request, or a health probe, on every refresh.
+  // to the pool's 5 s connect or 15 s query timeout) would otherwise stall a request, or a probe, on every refresh.
   refreshing ??= load().finally(() => {
     refreshing = null;
   });
@@ -69,5 +74,6 @@ export async function saveSiteSettings(value: SiteSettings): Promise<void> {
     updatedAt: new Date(),
   };
   await db.insert(siteSettings).values({ id: 1, ...row }).onConflictDoUpdate({ target: siteSettings.id, set: row });
+  generation++;
   await remember(value);
 }

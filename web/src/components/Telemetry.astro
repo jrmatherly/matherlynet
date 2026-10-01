@@ -32,31 +32,16 @@ if (sentryDsn) Astro.csp?.insertDirective(`connect-src ${new URL(sentryDsn).orig
 {sentryDsn && sentryRelease && <meta name="sentry-release" content={sentryRelease} />}
 
 <script>
-  import { stripQuery } from "../lib/scrub-url";
+  import { scrubBreadcrumb, scrubEvent } from "../lib/scrub-url";
 
   // @sentry/browser is a separate chunk, fetched only when browser reporting is on.
   const dsn = document.querySelector<HTMLMetaElement>('meta[name="sentry-dsn"]')?.content;
   const release = document.querySelector<HTMLMetaElement>('meta[name="sentry-release"]')?.content;
   if (dsn) {
-    import("@sentry/browser").then((Sentry) =>
-      Sentry.init({
-        dsn,
-        release,
-        // The SDK reports location.href, the Referer and breadcrumb URLs unfiltered (HttpContext, Breadcrumbs
-        // integrations); keep only paths so reset tokens never leave the browser.
-        beforeSend(event) {
-          if (event.request) {
-            event.request.url = stripQuery(event.request.url) as string | undefined;
-            if (event.request.headers?.Referer) event.request.headers.Referer = stripQuery(event.request.headers.Referer) as string;
-            delete event.request.query_string;
-          }
-          return event;
-        },
-        beforeBreadcrumb(crumb) {
-          for (const key of ["url", "from", "to"]) if (crumb.data && key in crumb.data) crumb.data[key] = stripQuery(crumb.data[key]);
-          return crumb;
-        },
-      }),
-    );
+    import("@sentry/browser")
+      // Event and breadcrumb URLs keep only their paths, so reset tokens never leave the browser.
+      .then((Sentry) => Sentry.init({ dsn, release, beforeSend: scrubEvent, beforeBreadcrumb: scrubBreadcrumb }))
+      // A blocked or failed chunk only costs error reporting; say so instead of an unhandled rejection.
+      .catch((error) => console.warn("Error reporting unavailable:", error));
   }
 </script>

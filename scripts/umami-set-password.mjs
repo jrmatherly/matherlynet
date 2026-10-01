@@ -12,7 +12,10 @@ const post = (path, body, token) =>
     body: JSON.stringify(body),
   });
 const login = await post("/api/auth/login", { username: process.env.UMAMI_USERNAME ?? "admin", password: current });
-if (!login.ok) throw new Error(`Login failed: ${login.status}`);
+if (!login.ok) {
+  const hint = login.status === 401 ? " (already changed? set UMAMI_CURRENT_PASSWORD to the current one)" : "";
+  throw new Error(`Login failed: ${login.status}${hint}`);
+}
 const { token } = await login.json();
 const res = await post("/api/me/password", { currentPassword: current, newPassword: next }, token);
 if (!res.ok) throw new Error(`Password change failed: ${res.status} ${await res.text()}`);

@@ -57,7 +57,8 @@ test("a password reset by email replaces the old password", async ({ page }) => 
   await expect(page.getByRole("status")).toHaveText(/reset link is on its way/);
 
   await page.goto(await linkFromEmail(email, "Reset your password", "reset-password"));
-  await expect(page).toHaveURL(/\/reset-password\?token=/);
+  // The page keeps the token in its form and drops it from the address bar (history, Referer, error reports).
+  await expect(page).toHaveURL(/\/reset-password$/);
   await page.getByLabel("New password").fill(newPassword);
   await page.getByRole("button", { name: "Set password" }).click();
   await expect(page.getByRole("status")).toHaveText(/Password updated/);

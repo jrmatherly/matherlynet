@@ -15,6 +15,7 @@ const pool = new pg.Pool({
 
 // When Postgres drops an idle pooled connection (restart, failover), the pool emits "error"; with no listener
 // Node exits the process. The pool discards that client and the next query connects afresh.
-pool.on("error", (err) => console.error("db: idle connection lost", err.message));
+// The code (e.g. 57P01 admin shutdown, ECONNRESET) tells a restart or failover from an auth or TLS problem.
+pool.on("error", (err: Error & { code?: string }) => console.error("db: idle connection lost", err.code ?? "", err.message));
 
 export const db = drizzle({ client: pool, schema: { ...authSchema, ...appSchema } });

@@ -29,7 +29,9 @@ const isPrivateIPv4 = ([a, b]: number[]) =>
 // resolve and re-check at send time if non-admins ever set it.
 // `hostname` is the URL-normalized form: numeric (2130706433) and IPv4-mapped IPv6 hosts arrive canonical.
 function isPrivateHost(hostname: string): boolean {
-  if (hostname === "localhost") return true;
+  // `localhost.` (a fully qualified name) and `*.localhost` (RFC 6761) resolve to loopback too.
+  const name = hostname.replace(/\.$/, "");
+  if (name === "localhost" || name.endsWith(".localhost")) return true;
   if (hostname.startsWith("[")) {
     const ip = hostname.slice(1, -1).toLowerCase();
     if (ip === "::1" || ip === "::" || /^f[cd]/.test(ip) || /^fe[89ab]/.test(ip)) return true; // fc00::/7, fe80::/10

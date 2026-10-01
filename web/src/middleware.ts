@@ -18,8 +18,8 @@ const securityHeaders: Record<string, string> = {
 
 export const onRequest = defineMiddleware(async (context, next) => {
   let response: Response;
-  // The session and settings lookups sit inside the try too, so a database outage is reported (once a DSN
-  // has loaded; Sentry keeps it while the database is down).
+  // The session lookup sits inside the try too, so a database outage on a signed-in request is reported (once a
+  // DSN has loaded; Sentry keeps it while the database is down). Site settings never throw: they fall back.
   try {
     const [result, siteSettings] = await Promise.all([
       auth.api.getSession({ headers: context.request.headers }),
