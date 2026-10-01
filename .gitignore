@@ -74,3 +74,6 @@ CLAUDE.local.md
 
 # --- Local scratch ---
 private/
+
+# Claude Code auto-memory
+.claude/auto-memory/dirty-files*
