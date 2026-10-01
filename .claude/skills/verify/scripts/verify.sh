@@ -37,6 +37,17 @@ smoke() {
   aspire wait web --non-interactive --nologo >/dev/null &&
     curl -fsS --max-time 10 http://localhost:4321/api/auth/ok | grep -q '"ok":true'
 }
+# A reused dev server that re-optimized dependencies serves stale chunks (504 Outdated Optimize Dep) until
+# restarted, so page scripts never run. On a reused stack, retry once after restarting web; a real failure fails
+# again.
+e2e() {
+  pnpm --dir web e2e && return
+  [ "$started" = 0 ] || return 1
+  echo "E2E failed on a reused stack: restarting web and retrying once"
+  aspire resource web restart --non-interactive --nologo >/dev/null &&
+    aspire wait web --non-interactive --nologo >/dev/null &&
+    pnpm --dir web e2e
+}
 if [ "${1:-}" != "--no-stack" ]; then
   # Reuse a running AppHost; otherwise start one for these steps and stop it after.
   started=0
@@ -44,7 +55,7 @@ if [ "${1:-}" != "--no-stack" ]; then
     aspire start --non-interactive --nologo >/dev/null && started=1
   fi
   step "Aspire smoke test"  smoke
-  step "Web E2E"            pnpm --dir web e2e
+  step "Web E2E"            e2e
   [ "$started" = 1 ] && aspire stop --non-interactive --nologo >/dev/null
 fi
 
