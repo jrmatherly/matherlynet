@@ -8,7 +8,10 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "./dist/apphost",
-    "rootDir": "."
+    "rootDir": ".",
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "apphost.mts",
@@ -16,5 +19,7 @@
     ".aspire/modules/base.mts",
     ".aspire/modules/transport.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }
