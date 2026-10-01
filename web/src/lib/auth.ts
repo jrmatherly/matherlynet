@@ -19,16 +19,21 @@ const socialProviders = Object.fromEntries(
 // Lets pages offer only the sign-in buttons that will work.
 export const enabledProviders = Object.keys(socialProviders) as ("github" | "google")[];
 
-// The account matching the admin-email parameter becomes admin when its email becomes verified: by link
-// (afterEmailVerification), or at creation when an OAuth provider vouches for it (user.create.after). Without
-// verification anyone could claim it. Not on every user update, so a demotion through the admin plugin sticks;
-// an account verified before admin-email was set is therefore never promoted.
+// The account matching the admin-email parameter becomes admin when its email becomes verified, and only then:
+// at creation when an OAuth provider vouches for it, or by an update that sets emailVerified (the emailed link,
+// an email change, or OAuth sign-in linking to an unverified account). Without verification anyone could claim
+// it. Other updates don't promote, so a demotion through the admin plugin sticks; an account verified before
+// admin-email was set is therefore never promoted.
 const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
 async function promoteAdmin(u: User & Record<string, unknown>) {
   if (adminEmail && u.emailVerified && u.email.toLowerCase() === adminEmail && u.role !== "admin") {
     await db.update(userTable).set({ role: "admin" }).where(eq(userTable.id, u.id));
   }
 }
+
+// update.before sees only the changed fields and update.after only the resulting row; better-auth passes both the
+// same endpoint context (db/with-hooks.mjs updateWithHooks), which links the two.
+const verifying = new WeakSet<object>();
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
@@ -55,8 +60,6 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) =>
       sendMail(user.email, "Verify your email", `Confirm your email to finish signing up for matherlynet:\n\n${url}`),
-    // Receives the updated user (emailVerified: true), so promoteAdmin's check passes.
-    afterEmailVerification: promoteAdmin,
   },
   socialProviders,
   // Shared across replicas; better-auth enables limiting in production only. /ok is the K8s probe path: limiting
@@ -65,7 +68,19 @@ export const auth = betterAuth({
   // Production sits behind Cloudflare, which sets this header. The origin must be reachable only through
   // Cloudflare, or a client could send the header itself.
   advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
-  // Created already verified = an OAuth provider vouched for the email.
-  databaseHooks: { user: { create: { after: promoteAdmin } } },
+  databaseHooks: {
+    user: {
+      // Created already verified = an OAuth provider vouched for the email.
+      create: { after: promoteAdmin },
+      update: {
+        before: async (data, ctx) => {
+          if (data.emailVerified === true && ctx) verifying.add(ctx);
+        },
+        after: async (u, ctx) => {
+          if (ctx && verifying.delete(ctx)) await promoteAdmin(u);
+        },
+      },
+    },
+  },
   plugins: [admin(), boundedPwned()],
 });
