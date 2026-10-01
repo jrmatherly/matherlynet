@@ -1,10 +1,11 @@
 ---
 import Base from "../layouts/Base.astro";
+import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 // ponytail: interim home page; step 4 replaces it with the hero, status panel, work and writing.
 ---
 
-<Base title={person.name} type="profile">
+<Base title={person.name} type="profile" image={ogImage("home")}>
   <section class="mx-auto grid max-w-6xl gap-6 px-4 py-20 sm:px-6 sm:py-28">
     <p class="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-accent-soft px-3 py-1.5 font-mono text-xs">
       <span class="size-1.5 rounded-full bg-accent" aria-hidden="true"></span>{person.locality} · AI platform &amp; infrastructure

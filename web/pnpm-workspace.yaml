@@ -17,3 +17,9 @@ minimumReleaseAgeExclude:
   - '@vitest/mocker@5.0.3'
   - '@vitest/spy@5.0.3'
   - vitest@5.0.3
+# Aspire's Dockerfile installs on node:24-slim (glibc) but runs on node:24-alpine (musl):
+# keep musl builds of native packages (e.g. @takumi-rs/core) in the installed tree.
+supportedArchitectures:
+  os: [current]
+  cpu: [current]
+  libc: [current, musl]

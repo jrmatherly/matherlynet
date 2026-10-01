@@ -49,6 +49,7 @@ web/
   src/layouts/Base.astro  <html data-palette data-mode>, Seo, favicons, fonts, header/footer (chrome full|minimal)
   src/components/       Seo (canonical, OG, Person JSON-LD, noindex), SiteHeader/SiteFooter, ThemeToggle, Logo
   src/pages/           index, sign-in (noindex), 404; robots.txt.ts + sitemap.xml.ts built at request time
+  src/pages/og/[slug].png.ts  share cards rendered on demand by Takumi (cards in src/lib/og.ts, colors from palettes.css)
   tests/               Vitest (node env) + Astro Container API
   src/pages/api/auth/[...all].ts  better-auth request handler
   public/              brand favicons, web manifest, mask logo; public/pro/ = Pro monogram set
@@ -135,6 +136,9 @@ out/                   aspire publish output (gitignored)
   `--min-release-age-exclude=<package-name>`). Known caps: `vscode-jsonrpc` 8.x (Aspire's generated
   transport imports `vscode-jsonrpc/node.js`), TypeScript 6.0.x (typescript-eslint and `@astrojs/check` peer ranges).
 - pnpm 12 blocks dependency build scripts: approve with `pnpm approve-builds <pkg>`.
+- The generated Dockerfile installs on glibc (node:24-slim) and runs on Alpine (musl). `web/pnpm-workspace.yaml`
+  sets `supportedArchitectures.libc: [current, musl]` so native packages (`@takumi-rs/core`) ship musl builds;
+  keep it when adding native dependencies.
 - Secrets come from Aspire parameters (`aspire secret set Parameters:<name> <value>`), never from
   committed files. OAuth providers stay disabled until both their id and secret are set.
 - GitHub Actions: pin actions to full commit SHAs with a `# vX.Y.Z` comment, keep the concurrency
