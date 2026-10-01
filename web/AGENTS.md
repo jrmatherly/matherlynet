@@ -1,16 +1,21 @@
+# Agent guide: web (Astro)
+
 ## Development
 
-When starting the dev server, use background mode:
+This app is orchestrated by Aspire from the repository root. Do not run `astro dev` directly:
+it would start without the database, secrets, or the fixed port (4321) that auth callbacks rely on.
 
-```
-astro dev --background
+```sh
+aspire start          # from the repo root; app at http://localhost:4321
+aspire logs web       # dev server output
+aspire stop
 ```
 
-Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
+The AppHost sets `ASTRO_DEV_BACKGROUND=0` so Astro 7 does not detach the dev server when it detects an AI agent.
 
 ## Documentation
 
-Full documentation: https://docs.astro.build
+Full documentation: <https://docs.astro.build>
 
 Consult these guides before working on related tasks:
 

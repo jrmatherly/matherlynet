@@ -6,6 +6,8 @@ Astro 7 (SSR, `@astrojs/node`) + better-auth + Drizzle/PostgreSQL, orchestrated 
 
 Aspire CLI 13.6, .NET 10 SDK, Node 24, pnpm 12, Docker (OrbStack).
 
+After cloning, enable the git hooks (Markdown lint via `.pre-commit-config.yaml`): `pre-commit install`.
+
 ## Run locally
 
 ```sh
@@ -38,7 +40,9 @@ Commit `web/drizzle/`. Migrations run on app start under a Postgres advisory loc
 
 ## Deploy
 
-Images are pushed to `ghcr.io/jrmatherly/matherlynet` by `.github/workflows/publish-images.yml` on every push to `main`. New GHCR packages start private: make them public under Package settings, Danger Zone (one-way for that package).
+Images are pushed to `ghcr.io/jrmatherly/matherlynet` by `.github/workflows/publish-images.yml` on every push
+to `main`. New GHCR packages start private: make them public under Package settings, Danger Zone (one-way for that
+package).
 
 ```sh
 aspire publish -o out/compose                  # Docker Compose: docker-compose.yaml + .env + Dockerfile
@@ -48,6 +52,8 @@ DEPLOY_TARGET=k8s aspire publish -o out/k8s    # Helm chart (Aspire.Hosting.Kube
 Set `APP_URL` (`Parameters:app-url`) to the public origin when deploying; better-auth builds callback URLs from it.
 
 Kubernetes notes (Aspire 13.6):
-- A manual `helm install` must supply secret-derived values the chart leaves empty (`secrets.web.APPDB_URI`, connection strings, passwords).
+
+- A manual `helm install` must supply secret-derived values the chart leaves empty
+  (`secrets.web.APPDB_URI`, connection strings, passwords).
 - Pods don't restart on ConfigMap changes; run `kubectl rollout restart` after changing config.
 - On OrbStack, a `LoadBalancer` service is reachable at `<service>.<namespace>.k8s.orb.local`.

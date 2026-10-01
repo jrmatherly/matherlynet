@@ -1,0 +1,16 @@
+// markdownlint-cli2 config; also read by the VS Code markdownlint extension.
+// Rules: https://github.com/DavidAnson/markdownlint/blob/v0.41.1/README.md#rules--aliases
+{
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/v0.23.3/schema/markdownlint-cli2-config-schema.json",
+  "config": {
+    "default": true,
+    "MD013": {
+      "line_length": 120,
+      "tables": false,
+      "code_blocks": false
+    }
+  },
+  "globs": ["**/*.md"],
+  // Skips everything git ignores (node_modules, .aspire, out, private, ...).
+  "gitignore": true
+}
