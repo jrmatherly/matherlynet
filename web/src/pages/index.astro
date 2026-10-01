@@ -1,0 +1,65 @@
+---
+const { user } = Astro.locals;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>matherlynet</title>
+  </head>
+  <body>
+    {user ? (
+      <>
+        <p id="who">Signed in as {user.email}</p>
+        <button id="sign-out">Sign out</button>
+      </>
+    ) : (
+      <>
+        <p id="who">Not signed in</p>
+        <form id="email-form">
+          <input name="name" placeholder="Name (sign-up only)" autocomplete="name" />
+          <input name="email" type="email" placeholder="Email" required autocomplete="email" />
+          <input name="password" type="password" placeholder="Password" required minlength="8" autocomplete="current-password" />
+          <button name="action" value="sign-in">Sign in</button>
+          <button name="action" value="sign-up">Sign up</button>
+        </form>
+        <button data-provider="github">Sign in with GitHub</button>
+        <button data-provider="google">Sign in with Google</button>
+        <p id="error" role="alert"></p>
+      </>
+    )}
+    <script>
+      import { authClient } from "../lib/auth-client";
+
+      const showError = (message?: string) => {
+        document.querySelector("#error")!.textContent = message ?? "Something went wrong";
+      };
+
+      document.querySelector("#sign-out")?.addEventListener("click", async () => {
+        await authClient.signOut();
+        location.reload();
+      });
+
+      document.querySelector<HTMLFormElement>("#email-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const form = new FormData(e.currentTarget as HTMLFormElement);
+        const email = String(form.get("email"));
+        const password = String(form.get("password"));
+        const { error } =
+          (e.submitter as HTMLButtonElement).value === "sign-up"
+            ? await authClient.signUp.email({ email, password, name: String(form.get("name") || email) })
+            : await authClient.signIn.email({ email, password });
+        if (error) return showError(error.message);
+        location.reload();
+      });
+
+      document.querySelectorAll<HTMLButtonElement>("[data-provider]").forEach((button) =>
+        button.addEventListener("click", async () => {
+          const { error } = await authClient.signIn.social({ provider: button.dataset.provider!, callbackURL: "/" });
+          if (error) showError(error.message);
+        }),
+      );
+    </script>
+  </body>
+</html>
