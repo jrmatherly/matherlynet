@@ -31,4 +31,8 @@ describe("/og/[slug].png", () => {
   it("returns 404 for unknown cards instead of rendering arbitrary text", async () => {
     expect((await call("<script>")).status).toBe(404);
   });
+
+  it("returns 404 for names inherited from Object.prototype", async () => {
+    for (const slug of ["constructor", "toString", "__proto__", "hasOwnProperty"]) expect((await call(slug)).status).toBe(404);
+  });
 });

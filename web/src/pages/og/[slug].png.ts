@@ -24,7 +24,9 @@ const ready = Promise.all([
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export const GET: APIRoute = async ({ params }) => {
-  const card = ogCards[params.slug ?? ""];
+  const slug = params.slug ?? "";
+  // Own keys only: "constructor", "__proto__" etc. are inherited and would crash the renderer.
+  const card = Object.hasOwn(ogCards, slug) ? ogCards[slug] : undefined;
   if (!card) return new Response("Not found", { status: 404 });
 
   // Colors come only from palettes.css, never from the request.
