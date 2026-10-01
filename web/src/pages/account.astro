@@ -22,7 +22,17 @@ if (Astro.request.method === "POST") {
   return Astro.redirect("/account", 303);
 }
 
-const when = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
+// Rendered on the server, whose zone isn't the visitor's: say which zone the time is in. (dateStyle/timeStyle
+// can't be combined with timeZoneName, so the components are spelled out: "Oct 1, 2026, 8:10 PM UTC".)
+const when = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "UTC",
+  timeZoneName: "short",
+});
 const others = sessions.filter((s) => s.id !== session.id);
 ---
 

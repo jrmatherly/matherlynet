@@ -34,6 +34,8 @@ test("the emailed link verifies the address and signs the visitor in", async ({ 
   await expect(page).toHaveURL(/\/account$/);
   await expect(page.getByText(email)).toBeVisible();
   await expect(page.getByText("(this device)")).toBeVisible();
+  // Session times name their zone: the server's zone isn't the visitor's.
+  await expect(page.getByText(/signed in .+ UTC/)).toBeVisible();
   // Not the admin-email account, so no admin link and no /admin.
   await expect(page.getByRole("link", { name: "Site settings" })).toHaveCount(0);
   expect((await page.goto("/admin"))?.status()).toBe(404);
