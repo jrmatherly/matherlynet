@@ -30,11 +30,10 @@ function fromRow(row: typeof siteSettings.$inferSelect | undefined): SiteSetting
   };
 }
 
-export async function getSiteSettings(): Promise<SiteSettings> {
-  if (cached && cached.expires > Date.now()) return cached.value;
-  let row: typeof siteSettings.$inferSelect | undefined;
+async function load(): Promise<SiteSettings> {
   try {
-    [row] = await db.select().from(siteSettings).limit(1);
+    const [row] = await db.select().from(siteSettings).limit(1);
+    return await remember(fromRow(row));
   } catch (error) {
     // Database unreachable: keep pages up with the last settings (or built-in defaults) and retry in 5 s
     // instead of on every request. The failure itself still surfaces through queries that need the database.
@@ -43,7 +42,18 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     cached = { value: fallback, expires: Date.now() + 5_000 };
     return fallback;
   }
-  return remember(fromRow(row));
+}
+
+let refreshing: Promise<SiteSettings> | null = null;
+
+export async function getSiteSettings(): Promise<SiteSettings> {
+  if (cached && cached.expires > Date.now()) return cached.value;
+  // One refresh at a time. With a cached value, requests don't wait for it: a slow or unreachable database (up
+  // to the pool's 5 s connect timeout) would otherwise stall a request, or a health probe, on every refresh.
+  refreshing ??= load().finally(() => {
+    refreshing = null;
+  });
+  return cached ? cached.value : refreshing;
 }
 
 export async function saveSiteSettings(value: SiteSettings): Promise<void> {
