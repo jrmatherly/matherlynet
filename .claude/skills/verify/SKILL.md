@@ -17,8 +17,10 @@ Run the project's checks and report the result.
 ## Gotchas
 
 - The stack steps reuse a running AppHost and leave it running; otherwise they start the stack and stop it after.
-- A FAIL on "Web E2E" where a page's form does nothing (native POST, `504 Outdated Optimize Dep` in the browser
-  console) is a stale Vite dev cache: `aspire resource web restart`, then rerun. Playwright needs Chromium once:
+- A page's form doing nothing in E2E (native POST, `504 Outdated Optimize Dep` on a `.vite/deps` chunk) is a stale
+  Vite dev cache. On a reused stack the script restarts `web` and retries E2E once by itself; a FAIL that survives
+  the retry is real. The script unsets `NODE_ENV` (Aspire's `npm install` would prune dev dependencies under
+  `NODE_ENV=production`); run other `aspire`/`npm` commands with `env -u NODE_ENV` too. Playwright needs Chromium once:
   `pnpm --dir web exec playwright install chromium`. Failure traces land in `web/test-results/`.
 - A FAIL on "Aspire smoke test" with certificate errors in `aspire logs` means the dev certificate isn't
   trusted: ask the user to run `aspire certs trust` (interactive).
