@@ -17,17 +17,25 @@ IMAGE_TAG=<commit sha> DEPLOY_TARGET=k8s aspire publish -o out/k8s   # Kubernete
 ```
 
 `IMAGE_TAG` also becomes `SENTRY_RELEASE`, so server and browser errors land in that commit's Sentry release.
+Images are tagged only with commit SHAs; there is no `latest`.
 
-Compose settings, as environment variables (or `appsettings.json` keys) at publish time:
+Compose settings, as environment variables (or `appsettings.json` keys) at publish time. The two Umami switches
+accept `true`/`false` in any case; any other value fails the publish.
 
 | Setting | Values | Effect |
 | :--- | :--- | :--- |
 | `Web__HostPort` | `none` (default), `loopback`, `public` | Host port for web: none, `127.0.0.1:4321`, or `4321` on all interfaces |
 | `Umami__Enabled` | `true` / unset | Adds Umami (appdb's `umami` schema) |
-| `Umami__Public` | `true` / unset | Publishes a host port for Umami (only for a cloudflared outside the network) |
+| `Umami__Public` | `true` / unset | Publishes container port 3000 on a random host port on all interfaces (`docker compose port umami 3000`): only for a cloudflared outside the network, and firewall it |
 
 The origin must be reachable only through Cloudflare: rate limiting trusts `cf-connecting-ip`, which any client
 could send to an exposed port. Use `public` only behind another firewall.
+
+The published stack includes the Aspire dashboard (`compose-dashboard`), which receives web's OpenTelemetry
+traces. Its UI is bound to `127.0.0.1:18888` on the host; reach it with an SSH tunnel
+(`ssh -L 18888:127.0.0.1:18888 <host>`, then <http://localhost:18888>, login token in
+`docker compose logs compose-dashboard`). Secrets in request URLs (reset and verify tokens, OAuth codes) are
+recorded as `REDACTED`.
 
 ## 2. Fill in `.env` and start
 
@@ -40,17 +48,22 @@ could send to an exposed port. Use `public` only behind another firewall.
 | `BETTER_AUTH_SECRET`, `PG_PASSWORD`, `UMAMI_SECRET` | `openssl rand -hex 32` each; keep them stable across deploys |
 | `SMTP_URL` | `smtp://<user>:<app password>@smtp.mail.me.com:587` (STARTTLS) |
 | `MAIL_FROM` | sender address, e.g. `MatherlyNet <…@matherly.net>` |
-| `ADMIN_EMAIL` | the admin's address, set **before** that account signs up (see below) |
+| `ADMIN_EMAIL` | the admin's address, set **before** that account's email is verified (see below) |
 | `GITHUB_*`, `GOOGLE_*` | optional; a provider is enabled only when both its id and secret are set |
 
 ```sh
 cd out/compose
 docker compose --env-file .env up -d
-docker compose ps        # web: healthy after migrations (migrate.mjs waits up to 60 s for Postgres)
+docker compose ps        # web: Up (published Compose has no healthcheck)
+docker compose exec web wget -qO- http://127.0.0.1:4321/api/auth/ok   # {"ok":true} once migrations ran
 ```
 
-The admin account is promoted when its email becomes verified, never later: an account verified before
-`ADMIN_EMAIL` was set stays a normal user.
+`migrate.mjs` waits up to 60 s for Postgres; `restart: unless-stopped` retries if it gives up. The 13.6 TypeScript
+SDK doesn't expose Compose's `healthcheck`, so readiness is checked by hand as above.
+
+The admin account is promoted when its email becomes verified (the emailed link, or a Google/GitHub sign-in that
+vouches for it), never later: an account verified before `ADMIN_EMAIL` was set stays a normal user. For an OAuth
+account, set it before that account's first sign-in.
 
 `docker compose down` / `docker stop` give each container 10 s before SIGKILL. web drains requests for up to
 7 s and flushes Sentry and OpenTelemetry inside that window; don't lower the stop timeout.
@@ -76,8 +89,18 @@ every form POST (sign-in, sign-up, account, admin) fails with `403 Cross-site PO
 forbidden`. Right after the first deploy, submit the sign-in form once; a 403 means the header is missing (confirm
 with `cloudflared --loglevel debug`).
 
-`www.matherly.net` works too (Astro builds the URL from the `Host` header). A Cloudflare redirect rule
-`www.matherly.net/*` → `https://matherly.net/${1}` (301) is optional, for one canonical host.
+### Redirect www to the apex (required)
+
+better-auth trusts only `APP_URL`'s origin: sign-in and sign-up from `https://www.matherly.net` fail with
+`403 INVALID_ORIGIN`, and sessions and OAuth state cookies are host-only. Serve the site on one host:
+
+- Cloudflare DNS: a proxied (orange-cloud) `www` record, so Cloudflare sees the traffic.
+- Rules → Redirect Rules, a Single Redirect: `www.matherly.net/*` → `https://matherly.net/${1}`, 301, preserving the
+  query string (Cloudflare's "Redirect from WWW to root" template).
+- Check: `curl -sI https://www.matherly.net/sign-in` answers `301` with `location: https://matherly.net/sign-in`.
+
+The same applies to any other host name: `allowedDomains` (`web/astro.config.mjs`) only controls which forwarded
+headers Astro trusts, but better-auth accepts requests from `APP_URL`'s origin alone.
 
 ## 4. Umami (when enabled)
 
@@ -108,6 +131,12 @@ server/browser switches are runtime settings on `/admin` (an https DSN on a publ
 
 ## 7. Kubernetes
 
-`out/k8s` is a Helm chart; supply the same values as the Compose `.env` through its `values.yaml` (`parameters` and
-`secrets`). web has readiness (`/api/auth/ok`) and liveness (`/api/auth/ok?probe=liveness`) probes; both stay up
-while Postgres is unreachable, so a database outage doesn't restart pods.
+`out/k8s` is a Helm chart. Supply the same values as the Compose `.env` through its `values.yaml`:
+`parameters.web.web_image`, non-secret settings under `config.web` (`app_url`, `admin_email`, `mail_from`,
+`github_client_id`, `google_client_id`), and passwords and keys under `secrets` (`pg.pg_password`,
+`web.better_auth_secret`, `web.smtp_url`, the OAuth client secrets).
+
+web has three probes on `/api/auth/ok` (distinct query strings, one health check each): a startup probe (every 5 s,
+up to 90 s, while `migrate.mjs` waits for Postgres), then readiness and liveness. All stay up while Postgres is
+unreachable (site settings fall back; better-auth's database rate limiter skips `/ok`), so a database outage doesn't
+restart pods.

@@ -16,7 +16,7 @@ Push, then watch CI until it finishes and report what happened.
 3. **Find the runs.** Wait about 10 s, then `gh run list --commit <sha> --json databaseId,name,status,conclusion`.
    Path filters mean not every workflow runs for every push; say which ones started.
 4. **Watch.** `gh run watch <id> --exit-status` for each run (they run in parallel; watch the longest, then check
-   the rest with `gh run view <id>`). `publish-images` runs web-checks → e2e → push → sourcemaps in that order.
+   the rest with `gh run view <id>`). `publish-images` runs web-checks and e2e in parallel, then push, then sourcemaps.
 5. **Report** a table: workflow, job, conclusion, duration. For `publish-images` also include:
    - From the `🗺️ Upload source maps to Sentry` job log (`gh run view <id> --log --job <job id>`): the
      `Release Created` and `Files uploaded` lines, or the "SENTRY_AUTH_TOKEN not set" notice.

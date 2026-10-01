@@ -20,7 +20,8 @@ web/
   src/lib/auth.ts      better-auth: email verification, reset, admin + breached-password plugins, DB rate limit
                        (`/ok` exempt so K8s probes stay 200 when Postgres is down; pinned in auth-config.test.ts),
                        admin-email promotion hook, social providers from env
-  src/lib/pwned.ts     boundedPwned(): upstream haveIBeenPwned with a 5 s limit (fails closed: 503-style error)
+  src/lib/pwned.ts     boundedPwned(): upstream haveIBeenPwned, its lookup limited to 5 s (fails closed with a 503,
+                       logged); tests/pwned-real.test.ts pins the upstream init shape
   src/lib/mail.ts      nodemailer over SMTP_URL (Mailpit locally); fire-and-forget
   src/lib/site-settings.ts  site_settings row (theme, Sentry, Umami), 30 s per-process cache; reconfigures Sentry;
                        expired entries refresh in the background; database down: last known (or default) settings

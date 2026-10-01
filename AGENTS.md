@@ -27,7 +27,7 @@ pushes it to `ghcr.io/jrmatherly/matherlynet`.
 | New auth schema / migration | `cd web && APPDB_URI=postgresql://unused pnpm db:generate` |
 | Deployment artifacts | `aspire publish -o out/compose`; `DEPLOY_TARGET=k8s aspire publish -o out/k8s` |
 | Compose web host port | `Web__HostPort=none` (default, cloudflared on the compose network) / `loopback` / `public` |
-| Enable Umami | `Umami__Enabled=true aspire start` (add `Umami__Public=true` for a host port) |
+| Enable Umami | `Umami__Enabled=true aspire start` (`Umami__Public=true` at publish time adds a Compose host port) |
 | Change Umami's admin password | `UMAMI_URL=<url> UMAMI_NEW_PASSWORD=<8+ chars> node scripts/umami-set-password.mjs` |
 | Push images (CI does this) | `aspire do push` after `docker login ghcr.io` |
 
@@ -170,7 +170,9 @@ out/                   aspire publish output (gitignored)
   secrets and `Parameters__*` env vars, so a plain `{ value: '' }` default can never be set.
 - Admins: the verified account whose email matches the `admin-email` parameter is promoted on verify.
   Keep `requireEmailVerification` on; without it anyone could register that email. Promotion happens only when
-  the email becomes verified (not on every update, so demotions stick): set `admin-email` before that sign-up.
+  the email becomes verified (not on every update, so demotions stick): set `admin-email` before that account's
+  email is verified. Promotion failures are logged with the SQL to finish them; `/api/auth/*` errors go to Sentry
+  through better-auth's `onAPIError` and an after-hook, not the Astro middleware.
 - Observability: OpenTelemetry is infrastructure (Aspire injects OTEL_*; local and published dashboards).
   Sentry DSN/switches and Umami script/website id are runtime settings on /admin, not Aspire parameters.
   Sentry is errors-only (`enableOpenTelemetrySetup` stays false); never add a second tracer provider.

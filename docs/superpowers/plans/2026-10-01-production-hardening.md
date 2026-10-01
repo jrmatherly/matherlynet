@@ -1,5 +1,11 @@
 # Production Hardening Implementation Plan
 
+> **Executed (PR #2). Historical record, superseded by the code:** don't follow its code blocks. Several of its
+> claims were corrected during execution and review: `www` isn't rejected by Astro (better-auth rejects it, so
+> `www` must redirect to the apex: `docs/deployment.md`); admin promotion uses verification-path update hooks, not
+> `afterEmailVerification`; site settings refresh in the background; the K8s probes also rely on better-auth
+> skipping `/ok` in its rate limiter. Current behavior: the code, `AGENTS.md`, `.claude/rules/`.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
