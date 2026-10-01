@@ -1,4 +1,4 @@
-import { makeMultiplexedTransport } from "@sentry/core";
+import { makeMultiplexedTransport, type Transport } from "@sentry/core";
 import * as Sentry from "@sentry/node";
 
 // Server error reporting, configured on /admin. OpenTelemetry (otel.mjs) owns tracing, so Sentry only
@@ -6,6 +6,13 @@ import * as Sentry from "@sentry/node";
 
 // Where server errors go: the DSN from /admin, or null while server reporting is switched off.
 let activeDsn: string | null = null;
+
+// Every envelope type (errors, sessions, client reports) passes through the transport, so "off" means nothing is
+// sent. beforeSend would only see error events, and with no DSN the multiplexer falls back to the init DSN.
+export const gateTransport = (inner: Transport, isOn: () => boolean): Transport => ({
+  send: (envelope) => (isOn() ? inner.send(envelope) : Promise.resolve({})),
+  flush: (timeout) => inner.flush(timeout),
+});
 
 // Called whenever site settings are (re)loaded. Sentry's options are fixed when the client is created, and a
 // second Sentry.init (inside a request) binds only to that request's scope and adds another set of process
@@ -21,9 +28,14 @@ export function configureSentry(dsn: string | null): void {
     // No tracesSampleRate: errors only. OpenTelemetry already hooks the module loader.
     enableRuntimeChannelInjection: false,
     integrations: [Sentry.openTelemetryIntegration()],
-    transport: makeMultiplexedTransport(Sentry.makeNodeTransport, () => (activeDsn ? [activeDsn] : [])),
-    // Switched off on /admin: drop every event, including the SDK's own uncaught-exception reports.
-    beforeSend: (event) => (activeDsn ? event : null),
+    transport: (options) =>
+      gateTransport(
+        makeMultiplexedTransport(Sentry.makeNodeTransport, () => (activeDsn ? [activeDsn] : []))(options),
+        () => activeDsn !== null,
+      ),
+    // Request bodies stay out of events (sign-up bodies carry emails); query strings and headers keep the SDK's
+    // default key filtering (token, password, cookie, … are redacted).
+    dataCollection: { httpBodies: [] },
   });
 }
 

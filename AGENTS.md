@@ -53,7 +53,8 @@ web/
   src/lib/site-settings.ts  site_settings row (theme, Sentry, Umami), 30 s per-process cache; reconfigures Sentry;
                        expired entries refresh in the background; database down: last known (or default) settings
   src/lib/settings-form.ts  SiteSettings type + /admin form validation (pure, unit-tested)
-  src/lib/sentry.ts    server Sentry (@sentry/node): errors only, one client; DSN changes retarget its transport
+  src/lib/sentry.ts    server Sentry (@sentry/node): errors only, one client; DSN changes retarget its transport;
+                       gateTransport() sends nothing while off (sessions too); request bodies not collected
   src/lib/scrub-url.ts stripQuery(): path-only URLs for browser Sentry events/breadcrumbs (reset tokens)
   src/lib/auth-client.ts  better-auth browser client
   src/lib/site.ts      public origin (from BETTER_AUTH_URL at run time), person details, public routes list
