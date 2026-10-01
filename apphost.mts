@@ -18,6 +18,17 @@ const target = k8s
 const ghcr = await builder.addContainerRegistry('ghcr', 'ghcr.io', { repository: 'jrmatherly/matherlynet' });
 await target.withContainerRegistry(ghcr);
 
+// Published Compose runs the Aspire dashboard (OTLP receiver + trace UI, traces include request paths). Its UI
+// port would be published on all host interfaces; bind it to loopback and reach it through an SSH tunnel.
+if (!k8s) {
+  await target.configureDashboard(async (dashboard) => {
+    await dashboard.publishAsDockerComposeService(async (_resource, service) => {
+      await service.ports.clear();
+      await service.ports.add('127.0.0.1:18888:18888');
+    });
+  });
+}
+
 // Public origin of the web app. Dev pins the web endpoint to 4321 so this default matches;
 // set it to the real public URL when deploying (OAuth callbacks are built from it).
 const appUrl = await builder.addParameter('app-url', { value: 'http://localhost:4321', publishValueAsDefault: false });
@@ -33,6 +44,15 @@ const optionalParameter = async (name: string, secret = false) =>
     secret,
     publishValueAsDefault: false,
   });
+
+// Boolean settings. appsettings.json `true` arrives as "True" (.NET's JSON provider stringifies booleans), so
+// compare case-insensitively; anything but true/false (or unset) fails the run instead of silently reading false.
+const flag = async (key: string) => {
+  const value = await config.getConfigValue(key);
+  if (!value || /^false$/i.test(value)) return false;
+  if (/^true$/i.test(value)) return true;
+  throw new Error(`${key} must be true or false, not "${value}"`);
+};
 
 // OAuth apps: a provider is enabled only when both values are non-empty (see web/src/lib/auth.ts).
 // Set with e.g. `aspire secret set Parameters:github-client-id <id>`.
@@ -59,18 +79,19 @@ const appdb = await pg.addDatabase('appdb');
 
 // Self-hosted analytics, opt-in: Umami__Enabled=true (env) or "Umami": { "Enabled": true } (appsettings.json).
 // Browsers load its tracker, so production routes a public hostname to it: cloudflared on the compose network
-// reaches http://umami:3000 with no host port. Umami__Public=true publishes one, for a cloudflared outside it.
+// reaches http://umami:3000 with no host port. Umami__Public=true publishes container port 3000 on a random host
+// port on all interfaces (`docker compose port umami 3000`), for a cloudflared outside it: firewall that port.
 // After the first start, change the default admin/umami login: `node scripts/umami-set-password.mjs`
 // (docs/deployment.md). Then create the website in Umami and enter its script URL and website id on /admin.
 // Umami lives in appdb's `umami` schema (its `user`/`session` tables would collide with better-auth's in
 // `public`); a separate database wouldn't exist in published output (see POSTGRES_DB above).
 // Not withPostgreSQL(): it publishes DATABASE_URL with the Postgres password inlined as a literal.
-if ((await config.getConfigValue('Umami:Enabled')) === 'true') {
+if (await flag('Umami:Enabled')) {
   const umamiSecret = await builder.addParameterWithGeneratedValue('umami-secret', { minLength: 32 }, { secret: true, persist: true });
   const umami = await builder.addUmami('umami', { secret: umamiSecret })
     .withEnvironment('DATABASE_URL', refExpr`${await appdb.uriExpression()}?schema=umami`)
     .waitFor(appdb);
-  if ((await config.getConfigValue('Umami:Public')) === 'true') await umami.withExternalHttpEndpoints();
+  if (await flag('Umami:Public')) await umami.withExternalHttpEndpoints();
   // Umami exits if Postgres isn't accepting connections yet, and Compose's depends_on doesn't wait for that.
   if (!k8s) await umami.publishAsDockerComposeService(async (_resource, service) => { await service.restart.set('unless-stopped'); });
 }
@@ -101,6 +122,8 @@ const web = await builder
   // K8s: the pod is Ready only once migrations ran and Astro answers; distinct paths because each probe also
   // registers a health check keyed by path. /api/auth/ok stays up while Postgres is down (site settings fall back;
   // better-auth's database rate limiter skips /ok), so a database outage doesn't restart pods into migrate.mjs.
+  // Startup: migrate.mjs may wait up to 60 s for Postgres; liveness and readiness only start once this passes.
+  .withHttpProbe(ProbeType.Startup, { path: '/api/auth/ok?probe=startup', periodSeconds: 5, failureThreshold: 18 })
   .withHttpProbe(ProbeType.Readiness, { path: '/api/auth/ok' })
   .withHttpProbe(ProbeType.Liveness, { path: '/api/auth/ok?probe=liveness', periodSeconds: 30, timeoutSeconds: 3 })
   .withExternalHttpEndpoints();
