@@ -5,6 +5,9 @@
 #   --no-stack  skip the Aspire smoke test and Playwright E2E (static checks only)
 
 set -uo pipefail
+# Aspire runs `npm install` before each AppHost run; with NODE_ENV=production (inherited from some editor
+# launches) that prunes typescript/tsx and every aspire command fails with "npx canceled ... tsc".
+unset NODE_ENV
 cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}" || exit 1
 
 results=()
