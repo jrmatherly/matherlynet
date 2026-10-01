@@ -9,7 +9,8 @@ import { createBuilder, refExpr } from './.aspire/modules/aspire.mjs';
 const builder = await createBuilder();
 
 // One AppHost publishes one resource to one environment; pick it per run.
-const target = process.env.DEPLOY_TARGET === 'k8s'
+const k8s = process.env.DEPLOY_TARGET === 'k8s';
+const target = k8s
   ? await builder.addKubernetesEnvironment('k8s')
       .withHelm({ configure: async (helm) => { await helm.withNamespace('matherlynet'); } })
   : await builder.addDockerComposeEnvironment('compose');
@@ -56,19 +57,25 @@ const pg = await builder.addPostgres('pg')
   .withEnvironment('POSTGRES_DB', 'appdb');
 const appdb = await pg.addDatabase('appdb');
 
-// Self-hosted analytics. Create the website in Umami's UI, then enter its script URL and website id on /admin.
+// Self-hosted analytics, opt-in: Umami__Enabled=true (env) or "Umami": { "Enabled": true } (appsettings.json).
+// Browsers load its tracker, so production routes a public hostname to it: cloudflared on the compose network
+// reaches http://umami:3000 with no host port. Umami__Public=true publishes one, for a cloudflared outside it.
+// After the first start, change the default admin/umami login: `node scripts/umami-set-password.mjs`
+// (docs/deployment.md). Then create the website in Umami and enter its script URL and website id on /admin.
 // Umami lives in appdb's `umami` schema (its `user`/`session` tables would collide with better-auth's in
 // `public`); a separate database wouldn't exist in published output (see POSTGRES_DB above).
 // Not withPostgreSQL(): it publishes DATABASE_URL with the Postgres password inlined as a literal.
-const umamiSecret = await builder.addParameterWithGeneratedValue('umami-secret', { minLength: 32 }, { secret: true, persist: true });
-await builder.addUmami('umami', { secret: umamiSecret })
-  .withEnvironment('DATABASE_URL', refExpr`${await appdb.uriExpression()}?schema=umami`)
-  .waitFor(appdb)
+if ((await config.getConfigValue('Umami:Enabled')) === 'true') {
+  const umamiSecret = await builder.addParameterWithGeneratedValue('umami-secret', { minLength: 32 }, { secret: true, persist: true });
+  const umami = await builder.addUmami('umami', { secret: umamiSecret })
+    .withEnvironment('DATABASE_URL', refExpr`${await appdb.uriExpression()}?schema=umami`)
+    .waitFor(appdb);
+  if ((await config.getConfigValue('Umami:Public')) === 'true') await umami.withExternalHttpEndpoints();
   // Umami exits if Postgres isn't accepting connections yet, and Compose's depends_on doesn't wait for that.
-  .publishAsDockerComposeService(async (_resource, service) => { await service.restart.set('unless-stopped'); })
-  .withExternalHttpEndpoints();
+  if (!k8s) await umami.publishAsDockerComposeService(async (_resource, service) => { await service.restart.set('unless-stopped'); });
+}
 
-await builder
+const web = await builder
   .addViteApp('web', './web')
   .withPnpm()
   .withEndpointCallback('http', async (endpoint) => { await endpoint.port.set(4321); })
@@ -92,5 +99,20 @@ await builder
   .withRemoteImageTag(process.env.IMAGE_TAG ?? 'latest')
   .withEnvironment('SENTRY_RELEASE', process.env.IMAGE_TAG ?? '')
   .withExternalHttpEndpoints();
+
+// Compose: who can reach the web port on the host. The origin must be reachable only through Cloudflare
+// (rate limiting trusts cf-connecting-ip). none: no host port, cloudflared joins the compose network and
+// uses http://web:4321. loopback: cloudflared on the host. public: only behind another firewall.
+const hostPort = (await config.getConfigValue('Web:HostPort')) ?? 'none';
+if (!['none', 'loopback', 'public'].includes(hostPort)) throw new Error(`Web:HostPort must be none, loopback or public, not "${hostPort}"`);
+if (!k8s) {
+  await web.publishAsDockerComposeService(async (_resource, service) => {
+    // migrate.mjs gives up after 60 s; restart instead of staying down.
+    await service.restart.set('unless-stopped');
+    await service.ports.clear();
+    if (hostPort === 'loopback') await service.ports.add('127.0.0.1:4321:4321');
+    if (hostPort === 'public') await service.ports.add('4321:4321');
+  });
+}
 
 await builder.build().run();
