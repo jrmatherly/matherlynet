@@ -17,6 +17,9 @@ on:
       - 'package-lock.json'
       - 'tsconfig.apphost.json'
       - '.github/workflows/publish-images.yml'
+      # Called from here before pushing; they no longer run on push to main by themselves.
+      - '.github/workflows/web-checks.yml'
+      - '.github/workflows/e2e.yml'
   workflow_dispatch: # manual runs ignore the path filter
 
 # A newer push to the same ref supersedes an in-flight build; cancel it to save minutes.
@@ -95,7 +98,11 @@ jobs:
 
       - name: 🔎 Resolve image digest
         id: digest
-        run: echo "digest=$(docker buildx imagetools inspect "ghcr.io/${GITHUB_REPOSITORY}/web:${GITHUB_SHA}" --format '{{.Manifest.Digest}}')" >> "$GITHUB_OUTPUT"
+        # Assigned first: inside echo, a failed inspect would still write an empty digest and the step would pass.
+        run: |
+          digest=$(docker buildx imagetools inspect "ghcr.io/${GITHUB_REPOSITORY}/web:${GITHUB_SHA}" --format '{{.Manifest.Digest}}')
+          [[ "$digest" == sha256:* ]] || { echo "::error::No digest for web:${GITHUB_SHA} (got '${digest}')"; exit 1; }
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
       # Straight after the push, so nothing that runs later can leave a pushed image unattested.
       # Verify with: gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha> -R jrmatherly/matherlynet
@@ -133,7 +140,7 @@ jobs:
           SENTRY_ORG: matherlynet
           SENTRY_PROJECT: javascript-astro
         run: |
-          if [ -z "$SENTRY_AUTH_TOKEN" ]; then echo "::notice::SENTRY_AUTH_TOKEN not set; skipping source map upload"; exit 0; fi
+          if [ -z "$SENTRY_AUTH_TOKEN" ]; then echo "::warning::SENTRY_AUTH_TOKEN not set; skipping source map upload (this release's stack traces stay minified)"; exit 0; fi
           docker pull --quiet "$IMAGE"
           container=$(docker create "$IMAGE")
           docker cp "$container:/app/dist" "$RUNNER_TEMP/dist"

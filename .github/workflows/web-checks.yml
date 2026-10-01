@@ -57,3 +57,41 @@ jobs:
       # The build needs no database; migrations run only at container start.
       - name: 🏗️ Build
         run: pnpm build
+
+      # E2E runs the dev server, so only this exercises the production entry (server.mjs). With the database
+      # unreachable and better-auth's production rate limiter on: probes still answer, Astro's origin check accepts
+      # a same-origin form POST forwarded as HTTPS (allowedDomains) and rejects a cross-site one, and SIGTERM drains
+      # and exits 0 inside Docker's 10 s stop timeout.
+      - name: 🚦 Smoke-test the production server
+        env:
+          NODE_ENV: production
+          HOST: 127.0.0.1
+          PORT: '4321'
+          BETTER_AUTH_URL: https://matherly.net
+          BETTER_AUTH_SECRET: ci-only-not-a-real-secret-0123456789
+          APPDB_URI: postgresql://ci:ci@127.0.0.1:1/appdb
+        run: |
+          set -euo pipefail
+          node --import ./otel.mjs server.mjs > "$RUNNER_TEMP/server.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; cat "$RUNNER_TEMP/server.log"' EXIT
+          for _ in $(seq 1 30); do curl -sf "http://127.0.0.1:$PORT/api/auth/ok" > /dev/null 2>&1 && break; sleep 1; done
+          expect() { # expect <status> <curl args...>
+            local want=$1; shift
+            local got; got=$(curl -s -o /dev/null -w '%{http_code}' "$@")
+            echo "$got $*"; [ "$got" = "$want" ] || { echo "::error::expected $want, got $got: $*"; exit 1; }
+          }
+          expect 200 "http://127.0.0.1:$PORT/api/auth/ok"
+          expect 200 "http://127.0.0.1:$PORT/api/auth/ok?probe=liveness"
+          post() { curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Host: matherly.net' -H 'X-Forwarded-Proto: https' \
+            -H "Origin: $1" -H 'Content-Type: application/x-www-form-urlencoded' --data 'action=revoke-others' \
+            "http://127.0.0.1:$PORT/account"; }
+          same=$(post https://matherly.net); echo "same-origin POST: $same"
+          [ "$same" != 403 ] || { echo "::error::same-origin POST rejected (origin check vs X-Forwarded-Proto)"; exit 1; }
+          cross=$(post https://evil.example); echo "cross-origin POST: $cross"
+          [ "$cross" = 403 ] || { echo "::error::cross-origin POST not rejected"; exit 1; }
+          kill -TERM "$pid"
+          start=$SECONDS; status=0; wait "$pid" || status=$?
+          trap - EXIT
+          echo "exit $status after $((SECONDS - start)) s"
+          [ "$status" = 0 ] && [ $((SECONDS - start)) -le 10 ]

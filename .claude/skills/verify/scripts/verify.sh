@@ -39,23 +39,28 @@ smoke() {
 }
 # A reused dev server that re-optimized dependencies serves stale chunks (504 Outdated Optimize Dep) until
 # restarted, so page scripts never run. On a reused stack, retry once after restarting web; a real failure fails
-# again.
+# again. Playwright's output doesn't show the browser's 504, so any failure qualifies: a pass after the retry is
+# reported as a NOTE with the first run's log, so a genuinely flaky test doesn't hide behind a plain PASS.
+e2e_first_log=$(mktemp -t verify-e2e)
 e2e() {
-  pnpm --dir web e2e && return
-  [ "$started" = 0 ] || return 1
-  echo "E2E failed on a reused stack: restarting web and retrying once"
+  pnpm --dir web e2e >"$e2e_first_log" 2>&1 && return
+  if [ "$started" != 0 ]; then cat "$e2e_first_log"; return 1; fi
   aspire resource web restart --non-interactive --nologo >/dev/null &&
     aspire wait web --non-interactive --nologo >/dev/null &&
-    pnpm --dir web e2e
+    pnpm --dir web e2e && touch "$e2e_first_log.retried"
 }
 if [ "${1:-}" != "--no-stack" ]; then
-  # Reuse a running AppHost; otherwise start one for these steps and stop it after.
+  # Reuse a running AppHost; otherwise start one for these steps and stop it after. started: 0 reused, 1 started
+  # here, failed (a failed start isn't a reused stack: no retry).
   started=0
   if ! aspire ps --non-interactive --nologo 2>/dev/null | grep -q apphost.mts; then
-    aspire start --non-interactive --nologo >/dev/null && started=1
+    if aspire start --non-interactive --nologo >/dev/null; then started=1; else started=failed; fi
   fi
   step "Aspire smoke test"  smoke
   step "Web E2E"            e2e
+  if [ -e "$e2e_first_log.retried" ]; then
+    results+=("NOTE  Web E2E passed only after restarting web (stale Vite deps?); first run: $e2e_first_log")
+  fi
   [ "$started" = 1 ] && aspire stop --non-interactive --nologo >/dev/null
 fi
 
