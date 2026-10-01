@@ -20,6 +20,12 @@ export default defineConfig({
   // check against a build. Astro hashes its own scripts and styles; Telemetry.astro adds the Umami/Sentry
   // origins configured on /admin per request.
   security: {
+    // Behind Cloudflare the container sees plain HTTP. With a protocol pattern here, Astro trusts
+    // X-Forwarded-Proto: https, so the origin check compares https://<Host>, which is what browsers send.
+    // Baked in at build time. Side effect: a request whose (X-Forwarded-)Host matches makes Astro.clientAddress
+    // the first X-Forwarded-For value, and clients can send both headers through Cloudflare. Don't use
+    // clientAddress; better-auth reads cf-connecting-ip.
+    allowedDomains: [{ hostname: "matherly.net", protocol: "https" }],
     csp: {
       directives: [
         "default-src 'self'",
