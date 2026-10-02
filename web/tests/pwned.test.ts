@@ -1,8 +1,11 @@
 // pwnedPasswordCheck inside a real betterAuth (memoryAdapter), with fetch standing in for api.pwnedpasswords.com.
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
+import { admin } from "better-auth/plugins";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { breachCount, passwordFrom, pwnedPasswordCheck } from "../src/lib/pwned";
+import { PASSWORD_FIELDS, breachCount, passwordFrom, pwnedPasswordCheck } from "../src/lib/pwned";
 
 const SAFE = "a-long-unpwned-test-password-91";
 // SHA-1("password") = 5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8; the range response lists suffixes after the prefix.
@@ -63,6 +66,12 @@ describe("breachCount", () => {
   });
   it("throws on a malformed count, so the check fails closed", () => {
     expect(() => breachCount("1E4C9B93F3F0682250B6CF8331B7EE68FD8:lots", "1E4C9B93F3F0682250B6CF8331B7EE68FD8")).toThrow(/malformed/);
+    // Number("") is 0: an empty count must not read as "not breached".
+    expect(() => breachCount("1E4C9B93F3F0682250B6CF8331B7EE68FD8:", "1E4C9B93F3F0682250B6CF8331B7EE68FD8")).toThrow(/malformed/);
+  });
+  it("throws on a body that isn't a range list (empty, or a proxy's HTML page)", () => {
+    expect(() => breachCount("", "1E4C9B93F3F0682250B6CF8331B7EE68FD8")).toThrow();
+    expect(() => breachCount("<html><body>Sign in to the network</body></html>", "1E4C9B93F3F0682250B6CF8331B7EE68FD8")).toThrow(/malformed/);
   });
 });
 
@@ -73,6 +82,17 @@ describe("passwordFrom", () => {
     expect(passwordFrom("/change-password", { newPassword: "c", currentPassword: "x" })).toBe("c");
     expect(passwordFrom("/reset-password", { newPassword: "d", token: "t" })).toBe("d");
     expect(passwordFrom("/admin/set-user-password", { newPassword: "e", userId: "u" })).toBe("e");
+  });
+  // A better-auth upgrade that renames a route or adds one that sets `newPassword` would otherwise make the check
+  // silently skip it. (Sign-up's body schema isn't enumerable and server-only setPassword has no route.)
+  it("matches better-auth's own routes: every listed path exists, every routed newPassword endpoint is listed", () => {
+    const auth = betterAuth({ baseURL: "http://localhost:4321", secret: "test-secret-test-secret-test-secret-123", database: memoryAdapter({}), emailAndPassword: { enabled: true }, plugins: [admin()] });
+    const endpoints = Object.values(auth.api) as { path?: string; options?: { body?: { shape?: Record<string, unknown> } } }[];
+    const paths = new Set(endpoints.map((e) => e.path));
+    for (const path of Object.keys(PASSWORD_FIELDS)) expect(paths.has(path), path).toBe(true);
+    for (const e of endpoints) {
+      if (e.path && e.options?.body?.shape && "newPassword" in e.options.body.shape) expect(passwordFrom(e.path, { newPassword: "x" }), e.path).toBe("x");
+    }
   });
   it("returns null for other paths and for missing, empty or non-string values", () => {
     expect(passwordFrom("/sign-in/email", { password: "a" })).toBeNull();
@@ -106,6 +126,38 @@ describe("pwnedPasswordCheck in better-auth", () => {
     expect(Date.now() - t0).toBeLessThan(1500);
     expect(signals[0].aborted).toBe(true);
     expect(log.mock.calls.flat().join(" ")).toMatch(/pwnedpasswords/);
+  });
+
+  it("fails closed when a 200 isn't a range list (a captive portal or proxy page)", async () => {
+    vi.stubGlobal("fetch", answer("<html>Please sign in</html>"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(signUp(makeAuth().auth, "h@example.test")).rejects.toMatchObject({ status: "SERVICE_UNAVAILABLE" });
+  });
+
+  it("logs the network cause and attaches it to the 503", async () => {
+    const cause = Object.assign(new Error("getaddrinfo ENOTFOUND api.pwnedpasswords.com"), { code: "ENOTFOUND" });
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("fetch failed", { cause }))));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(signUp(makeAuth().auth, "i@example.test")).rejects.toMatchObject({ status: "SERVICE_UNAVAILABLE", cause: { cause } });
+    expect(log.mock.calls.flat()).toContainEqual(expect.objectContaining({ cause: expect.objectContaining({ code: "ENOTFOUND" }) }));
+  });
+
+  // Real undici against a server that sends headers and then stalls: the bound must cover the body, not just fetch().
+  it("aborts a lookup that stalls after the headers", async () => {
+    const server = createServer((_req, res) => res.writeHead(200, { "content-type": "text/plain" }).write("0018A45C4D1DEF81644B54AB7F969B88D65:0\r\n"));
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const local = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", (_url: string, init?: RequestInit) => realFetch(local, init));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const t0 = Date.now();
+    try {
+      await expect(signUp(makeAuth(200).auth, "j@example.test")).rejects.toMatchObject({ status: "SERVICE_UNAVAILABLE" });
+      expect(Date.now() - t0).toBeLessThan(1500);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
   });
 
   it("fails closed when the service answers with an error status", async () => {
