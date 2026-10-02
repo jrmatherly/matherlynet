@@ -37,6 +37,16 @@ Page transitions are plain CSS (`@view-transition`), no client router.
   `/verify` for code changes (not for docs-only commits). Commit messages end with
   `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`. Never push without Jason's approval.
 
+## Execution order
+
+Tasks are numbered by theme. Run them in this order so every commit type-checks and no nav link 404s:
+0, 1, 4, 2, 3, 10, 5, 6, 7, 8, 9, 11, 12, 13.
+
+- Task 4 supplies the `typeface` field that `SiteSettings extends SiteThemeDefaults` demands as soon as Task 1 lands.
+- Task 10 changes `ogImage`'s signature; Tasks 7, 8 and 9 write pages that call the new form.
+- `/changelog` joins `publicRoutes` in Task 8, with the page, not in Task 5 (the header): otherwise the nav link,
+  the sitemap entry and the Playwright nav loop 404 for three commits.
+
 ## Audit traceability
 
 | # | Finding (report of 2026-10-01) | Closed by |
@@ -217,7 +227,7 @@ context.locals.theme = resolveTheme(
 
 Run: `cd web && env -u NODE_ENV pnpm vitest run tests/theme.test.ts && env -u NODE_ENV pnpm check`
 Expected: theme tests PASS. `astro check` will report `typeface` missing in `settings-form.ts`/`site-settings.ts`
-(`SiteSettings extends SiteThemeDefaults`): that is Task 4's job; note it and continue.
+(`SiteSettings extends SiteThemeDefaults`): Task 4 runs next and clears it.
 
 - [ ] **Step 6: Commit**
 
@@ -273,7 +283,9 @@ it("keeps accent, accent-ink and muted text at AA (4.5:1) in every palette and m
 - [ ] **Step 2: Run it to see which palettes fail**
 
 Run: `cd web && env -u NODE_ENV pnpm vitest run tests/theme.test.ts`
-Expected: FAIL at least for `signal/dark accent on bg` (4.18). Record every failing line.
+Expected: FAIL for exactly one pair, `signal/dark accent on bg` (4.18). Computed on 2026-10-02 against the current
+`palettes.css`: every other palette passes all four checks on both sides (lowest elsewhere: Ember light accent on bg,
+4.69), so nothing else needs touching.
 
 - [ ] **Step 3: Add the `paper` palette** (append to `palettes.css`; danger/success/info/warning copied from Flare)
 
@@ -305,9 +317,9 @@ dark ink: change the two lines to
   --accent-ink: light-dark(#ffffff, #1a0707);
 ```
 
-For any other failing pair reported in Step 2, nudge the failing token (lighten a dark-mode accent or darken a
-light-mode one; use a dark `accent-ink` wherever the dark-mode accent is light) until the test passes. Keep the
-hue; change lightness only. Note each change in the commit message.
+Verified: this fix gives 5.31 (accent on bg) and 5.34 (ink on accent). The Paper block above passes too
+(accent on bg 4.77 light, 8.21 dark; muted on bg 6.23 / 7.95). If a later palette edit ever fails, keep the hue and
+change lightness only.
 
 - [ ] **Step 5: Run the tests**
 
@@ -369,15 +381,24 @@ Run: `cd web && env -u NODE_ENV pnpm vitest run tests/theme.test.ts` — Expecte
 
 - [ ] **Step 3: Add the font family to `astro.config.mjs`** (after the Geist Mono entry)
 
+Not through `npmFonts`: the npm provider parses one CSS file per family (`index.css` by default), and fontsource's
+`index.css` declares only `font-style: normal`; the italic face is in `wght-italic.css`. With the npm provider,
+`styles: ["normal", "italic"]` resolves no italic and the changelog headline's `<em>` would be browser-slanted.
+The local provider takes both files from the installed package:
+
 ```js
     {
-      provider: npmFonts,
+      // Local provider on the fontsource files: the npm provider reads only index.css, which has no italic face.
+      provider: fontProviders.local(),
       name: "Newsreader Variable",
       cssVariable: "--font-newsreader",
-      weights: ["200 800"],
-      styles: ["normal", "italic"],
       fallbacks: ["Georgia", "serif"],
-      options: { package: "@fontsource-variable/newsreader" },
+      options: {
+        variants: [
+          { weight: "200 800", style: "normal", src: ["@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2"] },
+          { weight: "200 800", style: "italic", src: ["@fontsource-variable/newsreader/files/newsreader-latin-wght-italic.woff2"] },
+        ],
+      },
     },
 ```
 
@@ -411,15 +432,20 @@ const { theme, mode, palette, typeface } = Astro.locals.theme;
   …
     <Font cssVariable="--font-geist" preload />
     <Font cssVariable="--font-geist-mono" />
-    <Font cssVariable="--font-newsreader" />
+    <Font cssVariable="--font-newsreader" preload={typeface === "serif"} />
 ```
+
+The serif is preloaded only when it is the active display face, so serif visitors get no heading flash and sans
+visitors download nothing extra up front.
 
 - [ ] **Step 6: Run tests, type-check, restart the web resource and look**
 
 Run: `cd web && env -u NODE_ENV pnpm vitest run tests/theme.test.ts && env -u NODE_ENV pnpm check`
 Then: `env -u NODE_ENV aspire resource web restart` and
 `curl -s http://localhost:4321/ | grep -o 'data-type="[a-z]*"'` → `data-type="sans"`.
-`curl -s http://localhost:4321/ | grep -c newsreader` → at least 1 (a `@font-face` or preload for the serif).
+`curl -s http://localhost:4321/ | grep -c newsreader` → at least 1 (a `@font-face` or preload for the serif), and
+`curl -s http://localhost:4321/ | grep -Ec 'font-style: ?italic'` → at least 1 (the italic face is declared; only
+Newsreader has one).
 
 - [ ] **Step 7: Commit**
 
@@ -509,8 +535,8 @@ import { isProPalette, isTypeface, type SiteThemeDefaults } from "../theme/palet
 - [ ] **Step 6: `/admin` form** (inside the Theme fieldset, after the palette select)
 
 ```astro
-      <div class="grid gap-1.5">
-        <span class="text-sm font-semibold">Display typeface</span>
+      <fieldset class="grid gap-1.5">
+        <legend class="text-sm font-semibold">Display typeface</legend>
         <div class="flex flex-wrap gap-4">
           <label class={check}>
             <input type="radio" name="typeface" value="sans" checked={current.typeface === "sans"} /> Geist (sans)
@@ -519,8 +545,11 @@ import { isProPalette, isTypeface, type SiteThemeDefaults } from "../theme/palet
             <input type="radio" name="typeface" value="serif" checked={current.typeface === "serif"} /> Newsreader (serif)
           </label>
         </div>
-      </div>
+      </fieldset>
 ```
+
+A nested fieldset, not a `<span>`: two radio groups share the outer "Theme" fieldset, and only a legend names the
+second one for assistive tech.
 
 - [ ] **Step 7: Run the tests and the type-check**
 
@@ -540,7 +569,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ---
 
-### Task 5: Header and footer: mode control up top, theme controls below, Changelog in the nav
+### Task 5: Header and footer: mode control up top, theme controls below, Writing out of the nav
 
 **Files:**
 
@@ -552,7 +581,8 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Interfaces:**
 
 - Consumes: `ResolvedTheme`, `TYPE_COOKIE`, `TYPEFACES`, `BRAND_PALETTE`, `PRO_PALETTES`.
-- Produces: `person.linkedin` is `person.sameAs[0]` (already); `publicRoutes` with `/changelog`.
+- Produces: `person.linkedin` is `person.sameAs[0]` (already); `publicRoutes` with Writing out of the nav
+  (`/changelog` is added in Task 8).
 
 - [ ] **Step 1: Failing component test** `web/tests/ThemeControls.test.ts`
 
@@ -580,7 +610,8 @@ describe("ThemeControls", () => {
     expect(html).toMatch(/data-set-type="serif"[^>]*aria-pressed="true"/);
     expect(html).toMatch(/data-set-type="sans"[^>]*aria-pressed="false"/);
     expect(html).toContain('data-pro-palette="paper"');
-    expect(html).toContain('title="Paper & Evergreen"');
+    // Astro escapes attribute values: "&" renders as "&amp;" (verified against today's ThemeToggle with Carbon & Amber).
+    expect(html).toContain('title="Paper &amp; Evergreen"');
   });
 });
 ```
@@ -715,13 +746,13 @@ const option =
 </script>
 ```
 
-- [ ] **Step 4: Routes.** In `web/src/lib/site.ts`:
+- [ ] **Step 4: Routes.** In `web/src/lib/site.ts`, hide Writing from the nav (the page, feed and sitemap stay live).
+`/changelog` is added in Task 8 together with its page, so the link never 404s:
 
 ```ts
 export const publicRoutes: { path: string; label: string; nav: boolean }[] = [
   { path: "/", label: "Home", nav: false },
   { path: "/work", label: "Work", nav: true },
-  { path: "/changelog", label: "Changelog", nav: true },
   // Hidden from the nav until the first post is published (the page, feed and sitemap stay live).
   { path: "/writing", label: "Writing", nav: false },
   { path: "/about", label: "About", nav: true },
@@ -750,13 +781,13 @@ const link = "rounded-md px-2 py-1 text-sm text-muted transition-colors hover:te
 
 <!-- view-transition-name keeps the header still while the page body cross-fades (global.css). -->
 <header class="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur [view-transition-name:site-header]">
-  <div class="mx-auto flex max-w-6xl items-center gap-x-6 px-4 py-3 sm:px-6">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
     <a href="/" class="inline-flex items-center gap-2.5 font-extrabold tracking-tight">
       <Logo />{person.name}
     </a>
     {
       nav.length > 0 && (
-        <nav aria-label="Main" class="hidden flex-1 gap-1 sm:flex">
+        <nav aria-label="Main" class="order-last flex basis-full gap-1 sm:order-none sm:flex-1 sm:basis-auto">
           {nav.map((r) => (
             <a href={r.path} class={link} aria-current={path === r.path ? "page" : undefined}>
               {r.label}
@@ -776,22 +807,11 @@ const link = "rounded-md px-2 py-1 text-sm text-muted transition-colors hover:te
       }
     </div>
   </div>
-  {
-    nav.length > 0 && (
-      <nav aria-label="Main" class="mx-auto flex max-w-6xl gap-1 px-4 pb-2 sm:hidden">
-        {nav.map((r) => (
-          <a href={r.path} class={link} aria-current={path === r.path ? "page" : undefined}>
-            {r.label}
-          </a>
-        ))}
-      </nav>
-    )
-  }
 </header>
 ```
 
-Note: two `nav` elements with the same label would confuse assistive tech; give the phone one
-`aria-label="Main, compact"` and keep Playwright's selector on `{ name: "Main" }` with `exact: true`.
+One `nav`, as today: on phones it wraps to its own row under the name and actions (`order-last basis-full`), from
+`sm` up it sits inline. No duplicate links, no second landmark to label.
 
 - [ ] **Step 6: `SiteFooter.astro`** (replace the file)
 
@@ -835,7 +855,7 @@ git rm web/src/components/ThemeToggle.astro web/tests/ThemeToggle.test.ts
 
 In `web/e2e/public.spec.ts`:
 
-- nav loop labels → `["Work", "Changelog", "About"]`; the heading assertion stays.
+- nav loop labels → `["Work", "About"]` (Writing left the nav; Task 8 adds `"Changelog"`); the heading assertion stays.
 - "the theme choice survives a reload": keep the `Pro` and `Dark` clicks (buttons are found anywhere on the
   page), add `await page.getByRole("button", { name: "Serif" }).click();` before the reload and
   `await expect(html).toHaveAttribute("data-type", "serif");` after it.
@@ -845,14 +865,13 @@ In `web/e2e/public.spec.ts`:
 Run: `cd web && env -u NODE_ENV pnpm vitest run && env -u NODE_ENV pnpm check && env -u NODE_ENV pnpm lint`
 Expected: PASS/clean. Then `env -u NODE_ENV aspire resource web restart`;
 `curl -s http://localhost:4321/ | grep -c 'Let'"'"'s talk'` → 1;
-`curl -s http://localhost:4321/changelog -o /dev/null -w "%{http_code}"` → 404
-(the page arrives in Task 8; the nav link is allowed to 404 until then).
+`curl -s http://localhost:4321/ | grep -c '<nav aria-label="Main"'` → 1.
 
 - [ ] **Step 9: Commit**
 
 ```bash
 git add -A web/src/components web/src/lib/site.ts web/src/lib/theme-cookie.ts web/tests web/e2e/public.spec.ts
-git commit -m "Chrome: mode control + Let's talk in the header; theme and typeface controls in the footer; Changelog nav
+git commit -m "Chrome: mode control + Let's talk in the header; theme and typeface controls in the footer; Writing out of the nav
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -874,13 +893,16 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   - `Role` gains `heading: string` and `summary: string` (used by the changelog)
   - `work` items gain `period: string` ("2021 to now" | "2015 to 2021") and `result: string` (one short line)
   - `recruiterFacts: { term: string; detail: string }[]`
+  - `samePeriod: { term: string; detail: string }[]` (the changelog's "In the same period" list, five entries)
   - `bio: string`, `facts: { title: string; detail: string }[]`
+  - Removed later, once their last reader goes: `metrics` (Task 7, with StatusPanel) and `WorkItem.area`/`outcomes`
+    (Task 9, with the WorkCard rewrite; their content moves into `result`).
 
 - [ ] **Step 1: Failing test** `web/tests/profile.test.ts`
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { availability, career, gateway, headline, recruiterFacts, work } from "../src/data/profile";
+import { availability, career, gateway, headline, recruiterFacts, samePeriod, work } from "../src/data/profile";
 
 describe("profile data", () => {
   it("has a headline and no placeholder availability copy", () => {
@@ -909,6 +931,10 @@ describe("profile data", () => {
 
   it("lists the recruiter screening facts", () => {
     expect(recruiterFacts.map((f) => f.term)).toEqual(["Current title", "Team", "Location", "Education", "Languages"]);
+  });
+
+  it("lists the five same-period items the changelog shows beside the gateway", () => {
+    expect(samePeriod.map((s) => s.term)).toEqual(["MCP", "Agents", "Kubernetes", "Rollouts", "Team"]);
   });
 });
 ```
@@ -952,6 +978,15 @@ export const recruiterFacts = [
   { term: "Location", detail: "Atlanta, remote since 2020" },
   { term: "Education", detail: "B.S. Computer Science, Kennesaw State" },
   { term: "Languages", detail: "Python, TypeScript, Go" },
+];
+
+// The changelog's "In the same period" list beside the gateway (mockup B). Facts from the career highlights.
+export const samePeriod = [
+  { term: "MCP", detail: "Gateway, Registry and Portal: about 20 managed servers behind OAuth and approvals." },
+  { term: "Agents", detail: "Internal chat platform and about 30 agents, 400 users across 14 teams." },
+  { term: "Kubernetes", detail: "On-prem Talos clusters with Flux, Argo CD, Cilium and External Secrets." },
+  { term: "Rollouts", detail: "Microsoft Copilot and Copilot Studio; managed Claude Code and Claude Desktop packaged via Intune." },
+  { term: "Team", detail: "Led BrandsMart USA's infrastructure team after the acquisition, 2023 to 2026." },
 ];
 
 export const bio =
@@ -1002,8 +1037,9 @@ summary:
   "Store network connectivity and SonicWALL firewall deployments, while finishing a Computer Science degree at Kennesaw State (Southern Polytechnic), 2008 to 2012.",
 ```
 
-Reorder `perspectives` so `recruiters` is first, and change its `headline` to "Nearly 17 years, one company,
-three promotions." (unchanged text) — the recruiter panel on the pages renders `recruiterFacts` under it.
+Reorder `perspectives` so `recruiters` is first. The three headlines stay as they are (mockup A's copy; decided
+2026-10-02 that the changelog shares them rather than carrying mockup B's variants). The recruiter panel on both
+pages renders `recruiterFacts` under its headline.
 
 - [ ] **Step 3: Run the test and type-check**
 
@@ -1036,7 +1072,8 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 - Consumes: everything from Task 6; `.display` (Task 3); `contact`.
 - Produces: `Availability` renders nothing when `availability` is null; `GatewayPath` SVG scrolls inside its card
-  below 600 px.
+  below the `sm` breakpoint (640 px).
+- Removes: `metrics` from `profile.ts` (StatusPanel was its only reader).
 
 - [ ] **Step 1: Failing tests** `web/tests/home.test.ts`
 
@@ -1102,8 +1139,8 @@ const { text } = Astro.props;
 ```astro
 ---
 // How a request moves through the AI Gateway: drawn, not a screenshot, so it follows the palette.
-// Below 600px the SVG keeps its 520px drawing width and scrolls inside the card: shrinking it makes the labels
-// unreadable (audited at 4.6px).
+// Below the sm breakpoint (640px) the SVG keeps its 520px drawing width and scrolls inside the card: shrinking it
+// makes the labels unreadable (audited at 4.6px).
 const node = "fill-surface-2 stroke-border";
 const text = "fill-foreground text-[12px]";
 const small = "fill-muted text-[10.5px]";
@@ -1141,7 +1178,7 @@ const wire = "fill-none stroke-border stroke-[1.5]";
     <text class={text} x="77" y="210" text-anchor="middle">MCP Gateway</text>
     <text class={small} x="77" y="225" text-anchor="middle">~20 servers, approvals</text>
     <circle class="fill-accent motion-reduce:hidden" r="4">
-      <animateMotion dur="6s" repeatCount="indefinite" keyPoints="0;0.2;0.2;1" keyTimes="0;0.3;0.5;1" calcMode="linear" path="M92 70 H150 M370 70 H410 Q426 70 426 54 V35" />
+      <animateMotion dur="6s" repeatCount="indefinite" path="M92 70 H150 M370 70 H410 Q426 70 426 54 V35" />
     </circle>
     <text class={small} x="12" y="282">About 2 billion tokens a month take this path.</text>
   </svg>
@@ -1153,6 +1190,11 @@ const wire = "fill-none stroke-border stroke-[1.5]";
 
 Tailwind 4 generates `fill-*`/`stroke-*` from the theme colours; `text-[12px]` on SVG `<text>` sets `font-size`.
 If `astro check`/build complains about `stroke-[1.5]`, use `[stroke-width:1.5]`.
+
+The pulse runs linearly along the two wires (the `M` in the middle of the path is the jump across the gateway box).
+Mockup A also carried `keyPoints="0;0.2;0.2;1"` to pause the dot inside the gateway, but 0.2 of this path is about
+28 px along the first wire, not the gateway's edge, so the pause landed mid-wire; it is dropped here. A pause
+belongs in a later animation pass (spec: out of scope).
 
 - [ ] **Step 5: `Perspectives.astro`** (recruiters first, vertical tab list on desktop, definition list in the
 recruiter panel; keep the radio + `:has` mechanism)
@@ -1253,8 +1295,9 @@ import { gateway } from "../data/profile";
       {
         gateway.results.map((r) => (
           <div class="grid gap-0.5 border-t border-border px-7 py-4 first:border-t-0 md:border-t-0 md:border-l md:first:border-l-0">
-            <dd class="order-1 text-2xl font-extrabold tracking-tight tabular-nums">{r.value}</dd>
+            {/* dt before dd in source (valid HTML); the value shows first via grid order. */}
             <dt class="order-2 text-sm text-muted">{r.label}</dt>
+            <dd class="order-1 text-2xl font-extrabold tracking-tight tabular-nums">{r.value}</dd>
           </div>
         ))
       }
@@ -1305,6 +1348,8 @@ const btn = "rounded-full border border-border bg-surface px-4 py-2 text-sm font
     width="648"
     height="648"
     alt={`${person.name}, smiling, in a shirt and tie`}
+    loading="lazy"
+    decoding="async"
     class:list={["aspect-square h-auto rounded-xl border border-border object-cover", size === 160 ? "w-40" : "w-[132px]"]}
   />
   <div class="grid gap-4">
@@ -1330,7 +1375,8 @@ const btn = "rounded-full border border-border bg-surface px-4 py-2 text-sm font
 
 Do not use Astro's `style:width` shortcut for the size: it compiles to an inline `style` attribute, which the CSP
 forbids. The `class:list` above is the CSP-safe form; `height: auto` (`h-auto`) is what keeps the `height="648"`
-attribute from stretching the image (the bug found during the mockup review).
+attribute from stretching the image (the bug found during the mockup review). The About strip sits below the fold,
+so the portrait is lazy; the changelog hero's copy (Task 8) is above the fold and loads eagerly.
 
 `Cta.astro`:
 
@@ -1369,7 +1415,7 @@ import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 ---
 
-<Base title={person.name} type="profile" image={ogImage("home", Astro.locals.siteSettings.proPalette)}>
+<Base title={person.name} type="profile" image={ogImage("home", Astro.locals.siteSettings)}>
   <div class="mx-auto grid max-w-6xl gap-14 px-4 sm:px-6">
     <section class="grid items-center gap-12 pt-16 pb-6 lg:grid-cols-[1.05fr_1fr] lg:pt-20">
       <div class="grid gap-5">
@@ -1391,8 +1437,9 @@ import { person } from "../lib/site";
 </Base>
 ```
 
-`ogImage` gains a second parameter in Task 10; until then call it as `ogImage("home")` and update here in
-Task 10. Delete `StatusPanel.astro` (`git rm web/src/components/StatusPanel.astro`).
+`ogImage(slug, site)` is Task 10's form (already in place by now). Delete `StatusPanel.astro`
+(`git rm web/src/components/StatusPanel.astro`) and, with it, the `metrics` export in `profile.ts`: nothing else
+reads it (`grep -rn "metrics" web/src` → no hits afterwards).
 
 - [ ] **Step 8: Run tests, check, lint; restart; look**
 
@@ -1405,7 +1452,7 @@ Open `http://localhost:4321/` in Chrome DevTools at 1440 and 390; portrait measu
 - [ ] **Step 9: Commit**
 
 ```bash
-git add -A web/src/components web/src/pages/index.astro web/public/portrait.jpg web/tests/home.test.ts
+git add -A web/src/components web/src/pages/index.astro web/src/data/profile.ts web/public/portrait.jpg web/tests/home.test.ts
 git commit -m "Home: rebuild from mockup A (gateway path, perspectives, case study, about, contact)
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -1418,14 +1465,16 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Files:**
 
 - Create: `web/src/pages/changelog.astro`, `web/src/components/RailEntry.astro`
-- Modify: `web/src/lib/og.ts` (add the `changelog` card)
-- Test: `web/tests/changelog.test.ts` (new), `web/e2e/public.spec.ts` (nav loop already includes Changelog)
+- Modify: `web/src/lib/og.ts` (add the `changelog` card), `web/src/lib/site.ts` (the route), `web/e2e/public.spec.ts`
+  (nav loop)
+- Test: `web/tests/changelog.test.ts` (new)
 
 **Interfaces:**
 
-- Consumes: `career` (with `heading`, `summary`), `gateway`, `work`, `perspectives`, `recruiterFacts`, `facts`,
+- Consumes: `career` (with `heading`, `summary`), `gateway`, `samePeriod`, `perspectives`, `recruiterFacts`, `facts`,
   `headline`-independent copy below, `Availability`, `contact`, `resumeUrl`.
-- Produces: route `/changelog`; `RailEntry` props `{ year: string; now?: boolean; meta?: string; id?: string }`.
+- Produces: route `/changelog` (in `publicRoutes`, so the nav and sitemap pick it up);
+  `RailEntry` props `{ year: string; now?: boolean; meta?: string; id?: string }`.
 
 - [ ] **Step 1: Failing test** `web/tests/changelog.test.ts`
 
@@ -1486,18 +1535,17 @@ const { year, now = false, meta, id } = Astro.props;
 import Availability from "../components/Availability.astro";
 import Cta from "../components/Cta.astro";
 import RailEntry from "../components/RailEntry.astro";
-import { availability, career, contact, facts, gateway, perspectives, recruiterFacts, resumeUrl, work } from "../data/profile";
+import { availability, career, contact, facts, gateway, perspectives, recruiterFacts, resumeUrl, samePeriod } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 
 const [manager, senior, engineer, analyst] = career;
 const period = (role: (typeof career)[number]) => `${role.title}, ${role.start.slice(-4)} to ${role.end?.slice(-4) ?? "now"}`;
-const same = work.filter((w) => w.title !== "AI Gateway" && w.period === "2021 to now");
 const link = "font-semibold underline decoration-accent decoration-2 underline-offset-4";
 ---
 
-<Base title="Changelog" description="Seventeen years at The Aaron's Company, newest first: roles, platforms and what each one changed." image={ogImage("changelog", Astro.locals.siteSettings.proPalette)} type="profile">
+<Base title="Changelog" description="Seventeen years at The Aaron's Company, newest first: roles, platforms and what each one changed." image={ogImage("changelog", Astro.locals.siteSettings)} type="profile">
   <div class="mx-auto max-w-6xl px-4 sm:px-6">
     <div class="grid grid-cols-[4.2rem_1fr] pt-10 sm:grid-cols-[7rem_1fr]">
       <RailEntry year="2026" now>
@@ -1530,6 +1578,8 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
       </RailEntry>
 
       <RailEntry year="" id="for-you">
+        <!-- Keeps the heading outline h1 → h2 → h3 (Lighthouse heading-order); the visible label is the legend. -->
+        <h2 class="sr-only">Read this from your team's side</h2>
         <div class="persp grid max-w-2xl gap-3">
           <fieldset class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
             <legend class="float-left mr-1 text-muted">Read this as a</legend>
@@ -1579,10 +1629,10 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
         <h3 class="display mt-2 text-xl">In the same period</h3>
         <dl class="grid gap-1.5 text-sm">
           {
-            same.map((item) => (
+            samePeriod.map((item) => (
               <div class="grid gap-1 sm:grid-cols-[9rem_1fr] sm:gap-3">
-                <dt class="text-muted">{item.title}</dt>
-                <dd>{item.result}</dd>
+                <dt class="text-muted">{item.term}</dt>
+                <dd>{item.detail}</dd>
               </div>
             ))
           }
@@ -1627,6 +1677,13 @@ Add to `ogCards` in `og.ts`:
   changelog: { title: "Seventeen years, one company, newest first.", subtitle: "Roles, platforms and what each one changed" },
 ```
 
+Add the route to `publicRoutes` in `web/src/lib/site.ts` (after Work), and the nav label to the Playwright loop in
+`web/e2e/public.spec.ts` → `["Work", "Changelog", "About"]`:
+
+```ts
+  { path: "/changelog", label: "Changelog", nav: true },
+```
+
 - [ ] **Step 4: Run tests, check, lint; restart; look**
 
 Run: `cd web && env -u NODE_ENV pnpm vitest run && env -u NODE_ENV pnpm check && env -u NODE_ENV pnpm lint`
@@ -1640,8 +1697,8 @@ Click Home → Changelog in Chrome (not reduced-motion) and confirm the header s
 - [ ] **Step 5: Commit**
 
 ```bash
-git add web/src/pages/changelog.astro web/src/components/RailEntry.astro web/src/lib/og.ts web/tests/changelog.test.ts
-git commit -m "Changelog: new page from mockup B on a 2026-to-2009 rail
+git add web/src/pages/changelog.astro web/src/components/RailEntry.astro web/src/lib/og.ts web/src/lib/site.ts web/e2e/public.spec.ts web/tests/changelog.test.ts
+git commit -m "Changelog: new page from mockup B on a 2026-to-2009 rail, in the nav and sitemap
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -1653,9 +1710,11 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Files:**
 
 - Modify: `web/src/components/WorkCard.astro`, `web/src/pages/work.astro`, `web/src/pages/about.astro`,
-  `web/src/pages/writing/index.astro`, `web/src/pages/writing/[slug].astro`
+  `web/src/pages/writing/index.astro`, `web/src/pages/writing/[slug].astro`, `web/src/data/profile.ts`
 
-- [ ] **Step 1: `WorkCard.astro` becomes a row** (period, title, summary, result; no pills, no mono eyebrow)
+- [ ] **Step 1: `WorkCard.astro` becomes a row** (period, title, summary, result; no pills, no mono eyebrow).
+Then drop `area` and `outcomes` from `WorkItem` and every `work` entry in `profile.ts`: WorkCard was their last
+reader and their content now lives in `result` (`grep -rn "outcomes\|\.area" web/src` → no hits afterwards).
 
 ```astro
 ---
@@ -1678,9 +1737,8 @@ const { item } = Astro.props;
 ```
 
 - [ ] **Step 2: `work.astro`**: wrap the list in `<div class="grid border-b border-border">` (single column), change
-`<h1>` to `class="display text-4xl sm:text-5xl"`, remove `text-balance`/`tracking-tight` duplicates. Pass the live
-palette to `ogImage("work", Astro.locals.siteSettings.proPalette)` (Task 10 adds the parameter; use the
-one-argument form until then).
+`<h1>` to `class="display text-4xl sm:text-5xl"`, remove `text-balance`/`tracking-tight` duplicates. The page already
+calls `ogImage("work", Astro.locals.siteSettings)` from Task 10.
 
 - [ ] **Step 3: `about.astro`**: replace the three mono eyebrows (`Changelog`, `Education`, `Volunteer`) with
 sentence-case `<p class="text-sm text-muted">` lines; `<h1>`/`<h2>` get `class="display …"`; the date span gets
@@ -1698,7 +1756,7 @@ even; `/writing` heading in the display face; switch Serif in the footer and con
 - [ ] **Step 6: Commit**
 
 ```bash
-git add web/src/components/WorkCard.astro web/src/pages/work.astro web/src/pages/about.astro web/src/pages/writing
+git add web/src/components/WorkCard.astro web/src/pages/work.astro web/src/pages/about.astro web/src/pages/writing web/src/data/profile.ts
 git commit -m "Work, About, Writing: rows instead of cards, display headings, no eyebrows; fix About date wrap
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -1706,13 +1764,23 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ---
 
-### Task 10: Share cards follow the live palette; theme-color
+### Task 10: Share cards follow the live theme; theme-color
+
+Runs right after Task 3 (see Execution order): it changes `ogImage`'s signature, and Tasks 7 to 9 write pages that
+use the new form.
 
 **Files:**
 
 - Modify: `web/src/lib/og.ts`, `web/src/pages/og/[slug].png.ts`, `web/src/components/Seo.astro`,
-  `web/src/layouts/Base.astro`, the four pages calling `ogImage`
+  `web/src/layouts/Base.astro`, the pages calling `ogImage` at this point (`index.astro`, `work.astro`,
+  `about.astro`, `writing/index.astro`)
 - Test: `web/tests/og.test.ts`, `web/tests/seo.test.ts`
+
+**Interfaces:**
+
+- Produces: `cardPalette(site)`: Signal when the site's default theme is Brand, else its Pro palette (decided
+  2026-10-02: a Brand site must not ship Pro-coloured cards); `ogImage(slug, site)`;
+  `Seo` prop `themeColor?: string | { light: string; dark: string }`.
 
 - [ ] **Step 1: Failing tests.** In `og.test.ts` add:
 
@@ -1720,23 +1788,28 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 import { ogImage } from "../src/lib/og";
 
 it("versions the card URL by the palette it will render with", () => {
-  expect(ogImage("home", "paper")).toBe("/og/home.png?v=paper");
+  expect(ogImage("home", { theme: "pro", proPalette: "paper" })).toBe("/og/home.png?v=paper");
+  // A Brand site gets a Signal card, not a Pro one.
+  expect(ogImage("home", { theme: "brand", proPalette: "paper" })).toBe("/og/home.png?v=signal");
 });
 ```
 
 and mock settings for the route:
 
 ```ts
-vi.mock("../src/lib/site-settings", () => ({ getSiteSettings: vi.fn(async () => ({ proPalette: "paper" })) }));
+vi.mock("../src/lib/site-settings", () => ({ getSiteSettings: vi.fn(async () => ({ theme: "pro", proPalette: "paper" })) }));
 ```
 
 (import `vi` from vitest; the PNG test keeps passing). In `seo.test.ts` add:
 
 ```ts
-  it("sets theme-color for light and dark from the palette", async () => {
-    const html = await renderSeo({ title: "Jason Matherly", themeColors: { light: "#f3f4f1", dark: "#0e1211" } });
-    expect(html).toContain('<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f1">');
-    expect(html).toContain('<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1211">');
+  it("sets theme-color from the palette: both sides when following the system, one when the mode is forced", async () => {
+    const both = await renderSeo({ title: "Jason Matherly", themeColor: { light: "#f3f4f1", dark: "#0e1211" } });
+    expect(both).toContain('<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f1">');
+    expect(both).toContain('<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1211">');
+    const forced = await renderSeo({ title: "Jason Matherly", themeColor: "#0e1211" });
+    expect(forced).toContain('<meta name="theme-color" content="#0e1211">');
+    expect(forced).not.toContain("prefers-color-scheme");
   });
 ```
 
@@ -1745,51 +1818,62 @@ Run: `cd web && env -u NODE_ENV pnpm vitest run tests/og.test.ts tests/seo.test.
 - [ ] **Step 2: `og.ts`**
 
 ```ts
-import type { ProPalette } from "../theme/palettes";
-// … ogCards unchanged (plus `changelog` from Task 8) …
+import { BRAND_PALETTE, type SiteThemeDefaults } from "../theme/palettes";
+// … ogCards unchanged (Task 8 adds `changelog`) …
 
-// Cards render in the site's current Pro palette (set on /admin); the version parameter makes social caches
-// refetch when an admin changes it.
-export const ogImage = (slug: keyof typeof ogCards & string, palette: ProPalette) => `/og/${slug}.png?v=${palette}`;
+type CardSite = Pick<SiteThemeDefaults, "theme" | "proPalette">;
+
+// The palette a share card renders in: Signal for a Brand site, otherwise the Pro palette set on /admin.
+export const cardPalette = (site: CardSite) => (site.theme === "brand" ? BRAND_PALETTE : site.proPalette);
+
+// The version parameter makes social caches refetch when an admin changes the theme or palette.
+export const ogImage = (slug: keyof typeof ogCards & string, site: CardSite) => `/og/${slug}.png?v=${cardPalette(site)}`;
 ```
 
-Remove the `SITE_DEFAULTS` import.
+Remove the `SITE_DEFAULTS` import. `SiteSettings extends SiteThemeDefaults`, so pages pass `Astro.locals.siteSettings`.
 
 - [ ] **Step 3: `og/[slug].png.ts`**: replace `import { SITE_DEFAULTS } …` with
-`import { getSiteSettings } from "../../lib/site-settings";` and
-`const c = paletteColors((await getSiteSettings()).proPalette, "dark");`.
+`import { getSiteSettings } from "../../lib/site-settings";`, import `cardPalette` from `../../lib/og`, and
+`const c = paletteColors(cardPalette(await getSiteSettings()), "dark");`.
 
-- [ ] **Step 4: `Seo.astro`**: add an optional prop `themeColors?: { light: string; dark: string }` and render
+- [ ] **Step 4: `Seo.astro`**: add an optional prop `themeColor?: string | { light: string; dark: string }` and render
 
 ```astro
-{themeColors && <meta name="theme-color" media="(prefers-color-scheme: light)" content={themeColors.light} />}
-{themeColors && <meta name="theme-color" media="(prefers-color-scheme: dark)" content={themeColors.dark} />}
+{typeof themeColor === "string" && <meta name="theme-color" content={themeColor} />}
+{typeof themeColor === "object" && <meta name="theme-color" media="(prefers-color-scheme: light)" content={themeColor.light} />}
+{typeof themeColor === "object" && <meta name="theme-color" media="(prefers-color-scheme: dark)" content={themeColor.dark} />}
 ```
 
-- [ ] **Step 5: `Base.astro`**: compute and pass them
+- [ ] **Step 5: `Base.astro`**: compute and pass it
 
 ```astro
 import { paletteColors } from "../theme/colors";
-const themeColors = { light: paletteColors(palette, "light").bg, dark: paletteColors(palette, "dark").bg };
+// A forced mode gets that side's background; "system" leaves the choice to the browser's own media query.
+// (Two media-queried tags under a forced mode would follow the OS, not the page: light chrome on a dark page.)
+const bg = (side: "light" | "dark") => paletteColors(palette, side).bg;
+const themeColor = mode === "system" ? { light: bg("light"), dark: bg("dark") } : bg(mode);
 ---
-<Seo {...seo} themeColors={themeColors} />
+<Seo {...seo} themeColor={themeColor} />
 ```
 
-- [ ] **Step 6: Pages**: `index.astro`, `work.astro`, `about.astro`, `writing/index.astro`, `changelog.astro` call
-`ogImage("<slug>", Astro.locals.siteSettings.proPalette)`.
+- [ ] **Step 6: Pages**: `index.astro`, `work.astro`, `about.astro`, `writing/index.astro` call
+`ogImage("<slug>", Astro.locals.siteSettings)`. (Tasks 7 and 8 write `index.astro` and `changelog.astro` with the
+same call.)
 
 - [ ] **Step 7: Run everything; verify the live card**
 
 Run: `cd web && env -u NODE_ENV pnpm vitest run && env -u NODE_ENV pnpm check`
 Then `env -u NODE_ENV aspire resource web restart`;
-`curl -s http://localhost:4321/ | grep -o 'og:image" content="[^"]*"'` ends in `?v=<the /admin palette>`;
-`curl -s http://localhost:4321/ | grep -c 'name="theme-color"'` → `2`.
+`curl -s http://localhost:4321/ | grep -o 'og:image" content="[^"]*"'` ends in `?v=signal` with the default Brand
+theme, or `?v=<the /admin palette>` after switching the default to Pro on /admin;
+`curl -s http://localhost:4321/ | grep -c 'name="theme-color"'` → `2`, and with a forced mode
+`curl -s -b mn-mode=dark http://localhost:4321/ | grep -c 'name="theme-color"'` → `1`.
 
 - [ ] **Step 8: Commit**
 
 ```bash
 git add web/src/lib/og.ts web/src/pages web/src/components/Seo.astro web/src/layouts/Base.astro web/tests/og.test.ts web/tests/seo.test.ts
-git commit -m "Share cards use the /admin palette; theme-color from the active palette
+git commit -m "Share cards follow the /admin theme and palette; theme-color from the active palette and mode
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -1882,8 +1966,12 @@ meta: it does have it, so `mobile` is fine):
   - Assert via `evaluate_script`: `document.documentElement.scrollWidth <= clientWidth`; portrait
     `getBoundingClientRect()` is 160×160 / 128×128 (home) and 132×132 / 112×112 (changelog);
     `getComputedStyle(h1).fontFamily` contains "Newsreader" when `data-type="serif"`.
+  - Without reduced motion, watch one full 6 s loop of the gateway pulse: it runs the first wire, jumps across the
+    gateway box, runs the second wire to Azure AI Foundry, and never stalls mid-wire (screenshots can't show this).
   - Emulate `prefers-reduced-motion: reduce` and confirm the pulse circle is hidden and the navigation shows no
     cross-fade.
+  - On `/changelog` in Serif, confirm `getComputedStyle(document.querySelector("h1 em")).fontStyle === "italic"` and
+    that the Network panel shows the `wght-italic` Newsreader file (real italic, not synthesized).
   - Lighthouse (navigation, desktop) on both pages: Accessibility 100, Best Practices 100.
   - Screenshots to `out/ui-audit/final/` for the record.
 

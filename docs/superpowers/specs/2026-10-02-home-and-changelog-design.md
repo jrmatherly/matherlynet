@@ -17,7 +17,9 @@ what he built, and how to reach him within one screen, and the site has a visual
    Browsers without support navigate normally. No `<ClientRouter />`.
 3. The theme model gains a typography axis, `typeface: "sans" | "serif"`, beside `theme` and `mode`: a visitor
    cookie (`mn-type`), an admin default on /admin, and a `data-type` attribute on `<html>`. The serif display
-   face is Newsreader (variable, from `@fontsource-variable/newsreader` through the existing npm font provider).
+   face is Newsreader (variable, from `@fontsource-variable/newsreader`, loaded through Astro's local font provider
+   with the package's normal and italic files: the npm provider reads only `index.css`, which has no italic face,
+   and the changelog headline's final sentence is italic).
    B's colours are a new Pro palette, `paper` ("Paper & Evergreen"). A is Titanium & Flare + Geist: no new palette.
    The changelog page may later be pinned to the serif; the attribute makes that a one-line change.
 4. Contact is LinkedIn only: "Let's talk" in the header, "Message me on LinkedIn" in page bodies. No email.
@@ -54,7 +56,7 @@ A two-column rail: year column (with a dot per entry on a vertical rule) and bod
    sentence italic in the accent), intro, optional availability line, actions, portrait, three facts.
 2. "Read this as a…" perspectives (same data as home, tab-style labels).
 3. 2021 to now: Manager, Infrastructure Services. The gateway's three generations as a definition list, then
-   "In the same period": MCP, agents, Kubernetes, rollouts, team.
+   "In the same period": MCP, agents, Kubernetes, rollouts, team (`samePeriod` in `profile.ts`, five entries).
 4. 2015: Sr. Infrastructure Engineer: data center, DR, SD-WAN, Azure, Always-On VPN.
 5. 2012: Network Engineer: addressing plan, firewall migrations, PAM.
 6. 2009: Network Analyst: store connectivity, SonicWALL, degree.
@@ -96,9 +98,12 @@ tokens and view-transition CSS. Two audit fixes land on About: the timeline date
 
 ## Share cards and metadata
 
-- `ogImage(slug, palette)` takes the live Pro palette; pages pass `Astro.locals.siteSettings.proPalette`, and
-  `/og/[slug].png` reads `getSiteSettings()` instead of `SITE_DEFAULTS` (audit finding 11). New card `changelog`.
-- `<meta name="theme-color">` for light and dark from the active palette's `--bg`, via `paletteColors()`.
+- `ogImage(slug, site)` follows the site's default theme: Signal when it is Brand, otherwise the live Pro palette
+  (a Brand site must not ship Pro-coloured cards). Pages pass `Astro.locals.siteSettings`, and `/og/[slug].png`
+  reads `getSiteSettings()` instead of `SITE_DEFAULTS` (audit finding 11). New card `changelog`.
+- `<meta name="theme-color">` from the active palette's `--bg` via `paletteColors()`: a light/dark pair behind
+  `prefers-color-scheme` when the mode is "system", a single value when the visitor forced a mode (so the browser
+  chrome follows the page, not the OS).
 
 ## Out of scope
 
