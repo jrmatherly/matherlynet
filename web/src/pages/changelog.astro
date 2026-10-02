@@ -10,7 +10,7 @@ import { person } from "../lib/site";
 // Bound by position, newest first; profile.test.ts pins the four roles so an added one can't shift these silently.
 const [manager, senior, engineer, analyst] = career;
 const year = (role: (typeof career)[number]) => role.start.slice(-4);
-const period =(role: (typeof career)[number]) => `${role.title}, ${role.start.slice(-4)} to ${role.end?.slice(-4) ?? "now"}`;
+const period = (role: (typeof career)[number]) => `${role.title}, ${year(role)} to ${role.end?.slice(-4) ?? "now"}`;
 const link = "font-semibold underline decoration-accent decoration-2 underline-offset-4";
 ---
 
