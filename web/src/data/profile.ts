@@ -55,13 +55,6 @@ export const facts = [
   { title: "Spoons of Salt", detail: "volunteer IT since 2023" },
 ];
 
-export const metrics = [
-  { label: "AI Gateway", value: "~2B", detail: "tokens / month" },
-  { label: "MCP servers", value: "~20", detail: "managed, OAuth + approvals" },
-  { label: "AI chat platform", value: "400", detail: "users across 14 teams" },
-  { label: "Core infrastructure", value: "99.999%", detail: "uptime · 15,000+ employees" },
-] as const;
-
 export interface Perspective {
   id: string;
   label: string;

@@ -1,0 +1,16 @@
+---
+interface Props {
+  // Owner-supplied wording, or null (nothing renders).
+  text: string | null;
+}
+const { text } = Astro.props;
+---
+
+{
+  text && (
+    <p class="flex items-start gap-2.5 text-sm">
+      <span class="mt-1.5 size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />
+      <span>{text}</span>
+    </p>
+  )
+}
