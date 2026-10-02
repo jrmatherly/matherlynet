@@ -91,7 +91,7 @@
   --muted: light-dark(#5d6068, #a1a4ab);
   --accent: light-dark(#c2410c, #ff7a2f);
   --accent-ink: light-dark(#ffffff, #160a02);
-  --accent-soft: light-dark(#fdeadf, #2c1a0f);
+  --accent-soft: light-dark(#fdeee4, #2c1a0f);
   --danger: light-dark(#b4233f, #ff6b81);
   --success: light-dark(#1d7f4b, #5cc489);
   --info: light-dark(#1f6fb8, #7cc4ff);
@@ -123,7 +123,7 @@
   --muted: light-dark(#55626e, #98a4b0);
   --accent: light-dark(#c2462a, #ff8a65);
   --accent-ink: light-dark(#ffffff, #1a0b05);
-  --accent-soft: light-dark(#fbe6df, #2e1d18);
+  --accent-soft: light-dark(#fdf3ef, #2e1d18);
   --danger: light-dark(#b4233f, #ff6b81);
   --success: light-dark(#1d7f4b, #5cc489);
   --info: light-dark(#1f6fb8, #7cc4ff);
@@ -203,7 +203,7 @@
   --muted: light-dark(#555b61, #a3aaa5);
   --accent: light-dark(#0f7a63, #3fbf9b);
   --accent-ink: light-dark(#ffffff, #06211b);
-  --accent-soft: light-dark(#dcefe8, #10302a);
+  --accent-soft: light-dark(#e2f2ec, #10302a);
   --danger: light-dark(#b4233f, #ff6b81);
   --success: light-dark(#1d7f4b, #5cc489);
   --info: light-dark(#1f6fb8, #7cc4ff);

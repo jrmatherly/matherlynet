@@ -72,6 +72,8 @@ describe("palettes.css", () => {
       for (const side of ["light", "dark"] as const) {
         const c = colorsFromCss(css, palette, side);
         expect(contrast(c.accent, c.bg), `${palette}/${side} accent on bg`).toBeGreaterThanOrEqual(4.5);
+        // The current gateway generation sets accent text on an accent-soft card (CaseStudy.astro).
+        expect(contrast(c.accent, c["accent-soft"]), `${palette}/${side} accent on accent-soft`).toBeGreaterThanOrEqual(4.5);
         expect(contrast(c["accent-ink"], c.accent), `${palette}/${side} accent-ink on accent`).toBeGreaterThanOrEqual(4.5);
         expect(contrast(c.muted, c.bg), `${palette}/${side} muted on bg`).toBeGreaterThanOrEqual(4.5);
         expect(contrast(c.muted, c.surface), `${palette}/${side} muted on surface`).toBeGreaterThanOrEqual(4.5);
