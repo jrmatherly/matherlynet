@@ -125,14 +125,14 @@ export const work: WorkItem[] = [
   {
     title: "AI Gateway",
     summary:
-      "The company's single path to large language models. It evolved from LiteLLM to Azure APIM to a custom in-house platform, with SSO, per-user and per-team cost accounting, rate limiting, guardrails, model routing and audit logging.",
+      "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic and written to the audit log, with cost tracked per user and team.",
     period: "2024 to now",
     result: "About 2 billion tokens a month; projected licensing from $100K+ a year to near zero",
   },
   {
     title: "MCP Gateway, Registry & Portal",
     summary:
-      "A governed way for teams to connect AI agents to internal systems and data: a server is approved into the registry before any agent can reach it, and every call is signed in with OAuth.",
+      "How Claude Code, Claude Desktop and company agents reach internal systems and data. A server is approved into the registry once; from then on, every call to it goes through the MCP Gateway.",
     period: "2025 to now",
     result: "About 20 MCP servers, each approved into the registry, behind OAuth",
   },
@@ -150,9 +150,9 @@ export const work: WorkItem[] = [
   },
   {
     title: "SD-WAN for every store",
-    summary: "Led the SD-WAN rollout to every store on CloudGenix, then migrated the store network to Meraki.",
+    summary: "Led the SD-WAN rollout to every store on CloudGenix. Later moved SD-WAN onto the Meraki equipment the stores already had, which simplified each store's hardware and cut licensing costs.",
     period: "2015 to 2021",
-    result: "CloudGenix to 2,300+ stores, later migrated to Meraki",
+    result: "2,300+ stores; later moved onto existing Meraki gear for a simpler stack and lower licensing",
   },
   {
     title: "Data centers, DR & corporate offices",
