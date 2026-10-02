@@ -241,8 +241,8 @@ export const career: Role[] = [
 ];
 
 export const skills: { group: string; items: string[] }[] = [
-  { group: "AI platform engineering", items: ["AI & MCP gateways", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure APIM", "AI agents & agent skills", "RAG & Graph-RAG", "Model evaluations", "AI security & governance"] },
-  { group: "Cloud & Kubernetes", items: ["Kubernetes", "Docker", "Talos Linux", "GitOps (Flux & Argo CD)", "Cilium", "External Secrets Operator", "Grafana & Zabbix", "Azure & ExpressRoute"] },
+  { group: "AI platform engineering", items: ["AI gateways & Model Context Protocol (MCP)", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure APIM", "AI agents & agent skills", "RAG & Graph-RAG", "Model evaluations", "LLMOps", "AI security & governance", "Responsible AI policy", "AI cost management", "AI enablement & adoption"] },
+  { group: "Platform engineering & cloud", items: ["Kubernetes", "Docker", "Talos Linux", "GitOps (Flux & Argo CD)", "Cilium", "External Secrets Operator", "Observability (Grafana & Zabbix)", "Azure & ExpressRoute"] },
   { group: "Networking", items: ["Cisco ASR & Nexus 9K", "Aruba / Meraki / Ubiquiti", "SD-WAN", "F5", "Infoblox", "Wireless", "WAN circuits"] },
   { group: "Security & identity", items: ["Palo Alto & GlobalProtect", "Meraki firewalls", "Aruba ClearPass (802.1X)", "Secret Server (PAM)", "Active Directory & Entra ID", "Microsoft 365", "Intune"] },
   { group: "Data center", items: ["VMware & Hyper-V", "Cisco UCS", "HPE Nimble & Pure Storage", "Rubrik", "Zerto DR"] },

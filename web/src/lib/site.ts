@@ -11,7 +11,7 @@ export const person = {
   locality: "Atlanta, GA",
   worksFor: "The Aaron's Company",
   // Read by search engines and sourcing tools (JSON-LD), not shown on the page.
-  knowsAbout: ["AI platform engineering", "AI gateways", "Model Context Protocol", "Retrieval-augmented generation", "AI governance", "Kubernetes", "Enterprise infrastructure", "Data centers", "SD-WAN"],
+  knowsAbout: ["AI platform engineering", "AI gateways", "Model Context Protocol", "Retrieval-augmented generation", "Agentic AI", "LLMOps", "AI governance", "Responsible AI", "AI cost management", "AI enablement", "Platform engineering", "Kubernetes", "Enterprise infrastructure", "Data centers", "SD-WAN"],
   // No GitHub: its public repos are archived and don't represent current work.
   sameAs: ["https://www.linkedin.com/in/jason-matherly"],
 } as const;
