@@ -1,7 +1,8 @@
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { describe, expect, it } from "vitest";
 import WorkCard from "../src/components/WorkCard.astro";
-import { work } from "../src/data/profile";
+import { perspectives, work } from "../src/data/profile";
+import { ogCards } from "../src/lib/og";
 import About from "../src/pages/about.astro";
 import { SITE_DEFAULTS, resolveTheme } from "../src/theme/palettes";
 
@@ -18,6 +19,13 @@ describe("About", () => {
     expect(html).toMatch(/whitespace-nowrap[^>]*>\s*2015 – 2021\s*</);
     expect(html).toMatch(/<a[^>]*href="https:\/\/resume\.matherly\.net[^"]*"[^>]*target="_blank"[^>]*rel="noopener"/);
     expect(html).not.toMatch(/font-mono[^"]*uppercase|uppercase[^"]*font-mono/);
+  });
+});
+
+describe("tenure copy", () => {
+  it("says \"Seventeen years\" everywhere, never \"nearly 17\" (decided 2026-10-02)", async () => {
+    const about = await (await AstroContainer.create()).renderToString(About, { locals, request: new Request("http://localhost/about") });
+    for (const text of [about, JSON.stringify(perspectives), JSON.stringify(ogCards)]) expect(text).not.toMatch(/nearly 17/i);
   });
 });
 
