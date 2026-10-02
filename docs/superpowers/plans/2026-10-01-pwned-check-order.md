@@ -35,8 +35,8 @@ described below; green: 109/109 web tests, `astro check` 0 errors, eslint clean.
   `Set-Cookie` was dropped; the shipped hook reads with `disableRefresh` and refuses (401) instead of skipping when it
   sees no session (test: "leaves the session refresh, and its cookie, to the endpoint").
 - Nothing in the app calls the gated routes (no change-password or admin-user UI); only `reset-password.astro` sets a
-  password besides sign-up. Both forms have `minlength="8"`, so items 1 and 3 matter for direct API calls (anyone can
-  POST to `/api/auth/*`), not for the UI's normal path.
+  password besides sign-up. Both forms had `minlength="8"` (Task 2 made them `minlength="12" maxlength="128"`), so
+  items 1 and 3 matter for direct API calls (anyone can POST to `/api/auth/*`), not for the UI's normal path.
 - Order changes visible to API clients: a short password now gets `PASSWORD_TOO_SHORT` ahead of sign-up's
   `INVALID_EMAIL` and reset's missing-token `INVALID_TOKEN`. Harmless: both are 400s for a request that must change.
 
@@ -430,3 +430,22 @@ Expected: every step PASS.
 Pushing and opening the PR need explicit approval. Once approved, push `fix/pwned-check-order` and open a PR using
 `.github/pull_request_template.md`. Put the Findings table's item 2 verdict (no change, with evidence) in the PR
 body, so the "no path" note isn't re-raised.
+
+## Post-PR review (PR #4, 2026-10-01)
+
+Five reviewers (code, tests, comments, silent failures, types); every finding fixed on the branch:
+
+- The hook's session read uses `getSession` directly: `getSessionFromCtx` turned a database error into a 401 that
+  never reached Sentry; now it is a 500 through `onAPIError`. A header-less call has no session (getSession throws a
+  400 without headers).
+- `/change-password` and `/admin/set-user-password` get the hook's 401 server-side too (their middlewares refuse a
+  call without a session even without headers); only `/admin/create-user` accepts a session-less server call.
+- `adminChecks(path, body)` mirrors `/admin/create-user`'s extra `set-role` and `ban` 403s, in the endpoint's order.
+- The admin plugin's endpoint is called through its own type (`ReturnType<typeof admin<{}>>`), so permissions and
+  error codes are checked at compile time; four casts removed.
+- A test in `auth-config.test.ts` keeps this the only before hook on password routes: before hooks see the original
+  body, so another one rewriting a password would have it stored unchecked.
+- Tests pin the admin plugin's rule for null, multiple and unknown roles, `adminUserIds`, scoped roles and
+  server-side calls with headers; the lookup-before-current-password order on `/change-password`; expired sessions;
+  and the configured 12-character minimum.
+- Comments and AGENTS.md corrected (the hook answers 401/403 before the length rules, not after).

@@ -21,9 +21,9 @@ web/
                        (`/ok` exempt so K8s probes stay 200 when Postgres is down; pinned in auth-config.test.ts),
                        admin-email promotion hook, social providers from env
   src/lib/pwned.ts     pwnedPasswordCheck(): Have I Been Pwned in a before hook (ahead of the reset-token
-                       consume), after the length rules and, on session-gated routes, the session check (401)
-                       and the admin plugin's permission (403, via its userHasPermission endpoint); fetch
-                       aborted after 5 s; fails closed with a 503, logged
+                       consume), after the session check (401), the admin plugin's permissions (403, via its
+                       userHasPermission endpoint) and the length rules; fetch aborted after 5 s; fails closed
+                       with a 503, logged
   src/lib/mail.ts      nodemailer over SMTP_URL (Mailpit locally); fire-and-forget
   src/lib/site-settings.ts  site_settings row (theme, Sentry, Umami), 30 s per-process cache; reconfigures Sentry;
                        expired entries refresh in the background; database down: last known (or default) settings
