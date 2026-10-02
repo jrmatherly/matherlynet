@@ -31,7 +31,7 @@ const option =
 
 <script>
   import { BRAND_PALETTE, THEME_COOKIE, TYPE_COOKIE } from "../theme/palettes";
-  import { remember } from "../lib/theme-cookie";
+  import { remember, syncThemeColor } from "../lib/theme-cookie";
 
   const root = document.documentElement;
   const controls = document.querySelector<HTMLElement>("[data-theme-controls]");
@@ -47,6 +47,7 @@ const option =
         link.href = `${theme === "pro" ? "/pro/" : "/"}${link.dataset.icon}`;
       });
       remember(THEME_COOKIE, theme);
+      syncThemeColor();
       press("data-set-theme", theme);
     }),
   );
