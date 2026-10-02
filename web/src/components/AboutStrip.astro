@@ -2,11 +2,6 @@
 import { bio, facts, resumeUrl } from "../data/profile";
 import { person } from "../lib/site";
 
-interface Props {
-  // Rendered portrait size in px (square).
-  size?: number;
-}
-const { size = 160 } = Astro.props;
 const btn = "rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold";
 ---
 
@@ -20,7 +15,7 @@ const btn = "rounded-full border border-border bg-surface px-4 py-2 text-sm font
     alt={`${person.name}, smiling, in a shirt and tie`}
     loading="lazy"
     decoding="async"
-    class:list={["aspect-square h-auto rounded-xl border border-border object-cover", size === 160 ? "w-40" : "w-[132px]"]}
+    class="aspect-square h-auto w-40 rounded-xl border border-border object-cover"
   />
   <div class="grid gap-4">
     <h2 id="about-title" class="display text-3xl">About</h2>
