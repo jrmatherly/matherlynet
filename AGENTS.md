@@ -107,6 +107,8 @@ out/                   aspire publish output (gitignored)
   (a string for a forced mode, a light/dark pair when following the system) and emits `theme-color` meta tags.
 - Nav visibility is the `nav` flag in `publicRoutes`: `/writing` is `nav: false` until the first post (page, feed and
   sitemap stay live). The header's "Let's talk" button links to `person.sameAs[0]`; Account/Sign in live in the footer.
+- Owner-supplied wording stays `null` in `profile.ts` until the owner provides it (`availability` today), and the
+  page renders it only when set; don't write placeholder copy.
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
 
 <!-- END AUTO-MANAGED -->
