@@ -52,14 +52,16 @@ recorded as `REDACTED`.
 | `GITHUB_*`, `GOOGLE_*` | optional; a provider is enabled only when both its id and secret are set |
 
 ```sh
-cd out/compose
+cd out/compose           # aspire publish also wrote docker-compose.override.yaml (the web healthcheck)
 docker compose --env-file .env up -d
-docker compose ps        # web: Up (published Compose has no healthcheck)
-docker compose exec web wget -qO- http://127.0.0.1:4321/api/auth/ok   # {"ok":true} once migrations ran
+docker compose ps        # web: Up … (healthy) once migrations ran and the server answers
 ```
 
-`migrate.mjs` waits up to 60 s for Postgres; `restart: unless-stopped` retries if it gives up. The 13.6 TypeScript
-SDK doesn't expose Compose's `healthcheck`, so readiness is checked by hand as above.
+`migrate.mjs` waits up to 60 s for Postgres; `restart: unless-stopped` retries if it gives up. Aspire 13.6's
+TypeScript SDK can't express a Compose `healthcheck`, so it lives in `deploy/docker-compose.override.yaml`, which
+`aspire publish` copies into the output directory and Compose merges automatically. Copy the whole output directory
+to the server, override included. The healthcheck probes `/api/auth/ok`, which stays up while Postgres is down, so
+a database outage doesn't mark web unhealthy.
 
 The admin account is promoted when its email becomes verified (the emailed link, or a Google/GitHub sign-in that
 vouches for it), never later: an account verified before `ADMIN_EMAIL` was set stays a normal user. For an OAuth
