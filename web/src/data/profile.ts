@@ -191,7 +191,7 @@ export const career: Role[] = [
     ],
     heading: "One gateway, three generations",
     summary:
-      "The company's single path to large language models. Each generation was retired when it couldn't answer the business's questions: who is spending what, on which model, under which rules.",
+      "The company's single path to large language models since December 2024. Each generation was retired when it couldn't answer the business's questions: who is spending what, on which model, under which rules.",
   },
   {
     title: "Sr. Infrastructure Engineer",
@@ -233,8 +233,8 @@ export const career: Role[] = [
     start: "Nov 2006",
     end: "Nov 2009",
     highlights: ["Started in the IT call center and quality assurance before moving into infrastructure"],
-    heading: "First, the customers",
-    summary: "Started in the IT call center and quality assurance, then moved into infrastructure.",
+    heading: "First, the help desk",
+    summary: "Started in the IT call center, supporting the company's stores and employees, and in quality assurance, then moved into infrastructure.",
   },
 ];
 
