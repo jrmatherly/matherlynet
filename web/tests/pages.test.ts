@@ -23,7 +23,7 @@ const page = async (Page: Parameters<AstroContainer["renderToString"]>[0], path:
 describe("About", () => {
   it("shows year-only role dates on one line, opens the résumé in a new tab, and has no mono eyebrows", async () => {
     const html = await page(About, "/about");
-    expect(html).toMatch(/whitespace-nowrap[^>]*>\s*2015 – 2021\s*</);
+    expect(html).toMatch(/whitespace-nowrap[^>]*>\s*2015 to 2021\s*</);
     expect(html).toMatch(/<a[^>]*href="https:\/\/resume\.matherly\.net[^"]*"[^>]*target="_blank"[^>]*rel="noopener"/);
     expect(html).not.toMatch(/font-mono[^"]*uppercase|uppercase[^"]*font-mono/);
   });

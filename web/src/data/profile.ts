@@ -184,7 +184,7 @@ export const career: Role[] = [
       "Leads company-wide AI strategy and adoption: AI Gateway, MCP Gateway, Registry and Portal, and the internal AI chat platform",
       "Rolled out Microsoft Copilot and Copilot Studio, packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune, and hosts a weekly AI community of practice",
       "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime; leads a team of 4",
-      "Led BrandsMart USA's 4-person infrastructure team after the acquisition (Mar 2023 – Mar 2026), for 8 direct reports, standardizing policies and tooling across a data center and 12 sites",
+      "After the BrandsMart USA acquisition, also led its 4-person infrastructure team from March 2023 to March 2026 (8 direct reports in all), standardizing policies and tooling across a data center and 12 sites",
       "Designed and built the disaster recovery data center (2021) and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime",
       "Delivered $2M+ in infrastructure projects (the largest about $1.5M) and replaced paid tools with in-house platforms: SolarWinds with Zabbix and Grafana, ADAudit Plus with a custom auditing platform",
       "Rolled out self-service automation for VMs, storage, VDI, accounts and firewall changes",
@@ -247,10 +247,10 @@ export const skills: { group: string; items: string[] }[] = [
   { group: "Programming", items: ["Python", "TypeScript", "Go"] },
 ];
 
-export const education = { degree: "B.S., Computer Science", school: "Kennesaw State University (Southern Polytechnic)", years: "2008 – 2012" };
+export const education = { degree: "B.S., Computer Science", school: "Kennesaw State University (Southern Polytechnic)", years: "2008 to 2012" };
 
 export const volunteer = {
   org: "Spoons of Salt",
-  years: "2023 – present",
+  years: "since 2023",
   summary: "IT and technical support for a local 501(c)(3) nonprofit that supports people living with chronic illness.",
 };
