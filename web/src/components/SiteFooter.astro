@@ -1,21 +1,29 @@
 ---
+import ThemeControls from "./ThemeControls.astro";
 import { person } from "../lib/site";
 
 const year = new Date().getFullYear();
 const label: Record<string, string> = { "www.linkedin.com": "LinkedIn", "github.com": "GitHub" };
+const { user, theme, siteSettings } = Astro.locals;
+const quiet = "hover:text-foreground";
 ---
 
 <footer class="border-t border-border">
-  <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6">
-    <span>© {year} {person.name} · {person.locality}</span>
-    <nav aria-label="Elsewhere" class="flex gap-4">
-      {
-        person.sameAs.map((href) => (
-          <a href={href} rel="me noopener" class="hover:text-foreground">
-            {label[new URL(href).host] ?? new URL(href).host}
-          </a>
-        ))
-      }
-    </nav>
+  <div class="mx-auto grid max-w-6xl gap-5 px-4 py-8 text-sm text-muted sm:px-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <ThemeControls theme={theme.theme} typeface={theme.typeface} proPalette={siteSettings.proPalette} />
+      <nav aria-label="Elsewhere" class="flex flex-wrap gap-4">
+        {
+          person.sameAs.map((href) => (
+            <a href={href} rel="me noopener" class={quiet}>
+              {label[new URL(href).host] ?? new URL(href).host}
+            </a>
+          ))
+        }
+        <a href="/rss.xml" class={quiet}>RSS</a>
+        {user ? <a href="/account" class={quiet}>Account</a> : <a href="/sign-in" class={quiet}>Sign in</a>}
+      </nav>
+    </div>
+    <span>© {year} {person.name}, {person.locality}</span>
   </div>
 </footer>
