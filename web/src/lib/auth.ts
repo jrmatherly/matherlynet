@@ -53,7 +53,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    // Every password route reads this, and the breached-password hook (pwned.ts) applies it to /admin/create-user.
+    // Enforced by every password route except /admin/create-user (better-auth 1.7.7), where the breached-password hook
+    // (pwned.ts) applies it.
     minPasswordLength: 12,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) =>

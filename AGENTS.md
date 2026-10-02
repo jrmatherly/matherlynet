@@ -120,11 +120,11 @@ out/                   aspire publish output (gitignored)
   loopback, link-local and shared (100.64/10) hosts, including IPv6 forms that embed IPv4. `isPrivateAddress()` is
   reused at connect time by server Sentry's DNS lookup (`sentry.ts`), so a name that resolves locally is refused;
   a zone id is stripped first and unparseable IPv6 fails closed. Server Sentry ignores http(s)_proxy (it warns).
-- `web/src/lib/pwned.ts` runs the breach lookup last: length rules (12-128) first, then, on session-gated password
-  routes, a 401 refusal without a session (refuse, not skip, so a mismatched session read can't let a password
-  through unchecked) and, on the admin routes, the admin plugin's own 403 (asked through its `userHasPermission`
-  endpoint, since its `hasPermission` isn't exported). Its session read passes `disableRefresh` because this hook's
-  Set-Cookie is dropped; the endpoint's own read must refresh.
+- `web/src/lib/pwned.ts` answers what the route would refuse anyway before its breach lookup, in the endpoints' order:
+  no session 401, missing admin permission 403, then the length rules (12-128). It refuses rather than skips when its
+  session read disagrees with the endpoint's, so nothing gets through unchecked; its read passes `disableRefresh`
+  (this hook's Set-Cookie is dropped) and lets a database error surface as a 500. It must stay the only before hook on
+  password routes: before hooks see the original body (a test in `auth-config.test.ts` enforces this).
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
   Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
   -R jrmatherly/matherlynet`.
