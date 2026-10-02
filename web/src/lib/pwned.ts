@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { BetterAuthPlugin } from "better-auth";
+import { BASE_ERROR_CODES, type BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx } from "better-auth/api";
 
 // Routes that set a password, and the body field each reads (better-auth 1.7.7, admin plugin). Not covered:
@@ -81,6 +81,11 @@ export function pwnedPasswordCheck(timeoutMs = 5_000): BetterAuthPlugin {
             if (!password) return;
             // A request the endpoint will refuse with 401 isn't worth a lookup (nor a 503 during an outage).
             if (SESSION_PATHS.has(ctx.path) && (ctx.request || ctx.headers) && !(await getAuthoritativeSessionFromCtx(ctx))) return;
+            // The endpoints' own length rules, first, so a short password is reported as short (not compromised) and
+            // costs no lookup. /admin/create-user checks only the maximum in better-auth 1.7.7: this adds the minimum.
+            const { minPasswordLength, maxPasswordLength } = ctx.context.password.config;
+            if (password.length < minPasswordLength) throw APIError.from("BAD_REQUEST", BASE_ERROR_CODES.PASSWORD_TOO_SHORT);
+            if (password.length > maxPasswordLength) throw APIError.from("BAD_REQUEST", BASE_ERROR_CODES.PASSWORD_TOO_LONG);
             if (await isBreached(password, timeoutMs)) {
               throw new APIError("BAD_REQUEST", {
                 message: "The password you entered has been compromised. Please choose a different password.",

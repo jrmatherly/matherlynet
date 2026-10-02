@@ -53,6 +53,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    // Every password route reads this, and the breached-password hook (pwned.ts) applies it to /admin/create-user.
+    minPasswordLength: 12,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) =>
       sendMail(user.email, "Reset your password", `Reset your matherlynet password:\n\n${url}\n\nIf you didn't ask for this, ignore this email.`),

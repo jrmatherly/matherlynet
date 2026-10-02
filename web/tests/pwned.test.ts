@@ -256,3 +256,25 @@ describe("pwnedPasswordCheck and sessions", () => {
     });
   });
 });
+
+describe("pwnedPasswordCheck and length limits", () => {
+  // The lower bound itself is still looked up: BREACHED ("password") is exactly 8 characters.
+  it("reports a too-short or too-long password as such, without a lookup", async () => {
+    const fetch = answer(BREACHED_RANGE);
+    vi.stubGlobal("fetch", fetch);
+    const { auth } = makeAuth();
+    await expect(signUp(auth, "m@example.test", "pass")).rejects.toMatchObject({ body: { code: "PASSWORD_TOO_SHORT" } });
+    await expect(signUp(auth, "m@example.test", "p".repeat(129))).rejects.toMatchObject({ body: { code: "PASSWORD_TOO_LONG" } });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  // better-auth 1.7.7's /admin/create-user checks only the maximum; the hook applies the minimum there too.
+  it("refuses a too-short password on /admin/create-user", async () => {
+    const fetch = answer(CLEAN_RANGE);
+    vi.stubGlobal("fetch", fetch);
+    await expect(makeAuth().auth.api.createUser({ body: { email: "n@example.test", password: "pass", name: "N" } })).rejects.toMatchObject({
+      body: { code: "PASSWORD_TOO_SHORT" },
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
