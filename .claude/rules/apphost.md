@@ -28,7 +28,9 @@ paths:
     `flag()` (true/false in any case, anything else throws), never `=== 'true'`.
   - The TS `Service` type for Compose has no `healthcheck` member (upstream `Healthcheck` lacks `[AspireExport]`):
     web's healthcheck is `deploy/docker-compose.override.yaml`, which the `copy-compose-override` pipeline step
-    copies into the publish output (`Pipeline:OutputPath`; `PipelineStepContext` has no output path). The published
+    copies into the publish output (`Pipeline:OutputPath`; `PipelineStepContext` has no output path). Register
+    such steps outside run mode only: `aspire run`/`start` have no `publish-*` steps, and a `dependsOn` naming an
+    unknown step fails the AppHost (local `/verify` on an already-running stack won't notice). The published
     dashboard is configured through `configureDashboard` → `publishAsDockerComposeService` (UI port on loopback).
 - Root `package.json` is the AppHost's npm project: keep `vscode-jsonrpc` on 8.x and TypeScript on
   6.0.x (see AGENTS.md); `tsconfig.apphost.json` must keep `"types": ["node"]` for TypeScript 6.
