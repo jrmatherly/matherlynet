@@ -5,7 +5,7 @@ import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { admin } from "better-auth/plugins";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PASSWORD_FIELDS, breachCount, passwordFrom, pwnedPasswordCheck } from "../src/lib/pwned";
+import { PASSWORD_FIELDS, SESSION_PATHS, breachCount, passwordFrom, pwnedPasswordCheck } from "../src/lib/pwned";
 
 const SAFE = "a-long-unpwned-test-password-91";
 // SHA-1("password") = 5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8; the range response lists suffixes after the prefix.
@@ -43,12 +43,28 @@ function makeAuth(timeoutMs = 200) {
         resetToken = token;
       },
     },
-    plugins: [pwnedPasswordCheck(timeoutMs)],
+    plugins: [admin(), pwnedPasswordCheck(timeoutMs)],
   });
   return { auth, db, resetToken: () => resetToken };
 }
 const signUp = (auth: ReturnType<typeof makeAuth>["auth"], email: string, password: unknown = SAFE) =>
   auth.api.signUpEmail({ body: { email, password: password as string, name: "T" } });
+type Auth = ReturnType<typeof makeAuth>["auth"];
+// An HTTP request as the browser sends it. auth.api calls without headers are server-side calls.
+const post = (auth: Auth, path: string, body: object, cookie = "") =>
+  auth.handler(
+    new Request(`http://localhost:4321/api/auth${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "http://localhost:4321", cookie },
+      body: JSON.stringify(body),
+    }),
+  );
+// Signs up and in over HTTP; returns the Cookie header for later requests. Needs a fetch stub that answers clean.
+async function signedIn(auth: Auth, email: string) {
+  await signUp(auth, email);
+  const res = await post(auth, "/sign-in/email", { email, password: SAFE });
+  return res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -93,6 +109,9 @@ describe("passwordFrom", () => {
     for (const e of endpoints) {
       if (e.path && e.options?.body?.shape && "newPassword" in e.options.body.shape) expect(passwordFrom(e.path, { newPassword: "x" }), e.path).toBe("x");
     }
+  });
+  it("lists only password routes as session-gated", () => {
+    for (const path of SESSION_PATHS) expect(Object.hasOwn(PASSWORD_FIELDS, path), path).toBe(true);
   });
   it("returns null for other paths and for missing, empty or non-string values", () => {
     expect(passwordFrom("/sign-in/email", { password: "a" })).toBeNull();
@@ -204,5 +223,36 @@ describe("pwnedPasswordCheck in better-auth", () => {
 
     vi.stubGlobal("fetch", answer(CLEAN_RANGE));
     await expect(auth.api.resetPassword({ body: { token, newPassword: "another-unlisted-password-42" } })).resolves.toMatchObject({ status: true });
+  });
+});
+
+describe("pwnedPasswordCheck and sessions", () => {
+  it("skips the lookup for a signed-out request to a session-gated route, which the endpoint refuses with 401", async () => {
+    const fetch = answer(BREACHED_RANGE);
+    vi.stubGlobal("fetch", fetch);
+    const { auth } = makeAuth();
+    expect((await post(auth, "/change-password", { newPassword: BREACHED, currentPassword: SAFE })).status).toBe(401);
+    expect((await post(auth, "/admin/set-user-password", { userId: "u1", newPassword: BREACHED })).status).toBe(401);
+    expect((await post(auth, "/admin/create-user", { email: "x@example.test", password: BREACHED, name: "X" })).status).toBe(401);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("still checks a signed-in password change", async () => {
+    vi.stubGlobal("fetch", answer(CLEAN_RANGE));
+    const { auth } = makeAuth();
+    const cookie = await signedIn(auth, "k@example.test");
+    const fetch = answer(BREACHED_RANGE);
+    vi.stubGlobal("fetch", fetch);
+    const res = await post(auth, "/change-password", { newPassword: BREACHED, currentPassword: SAFE }, cookie);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "PASSWORD_COMPROMISED" });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("still checks server-side calls, which /admin/create-user accepts without a session", async () => {
+    vi.stubGlobal("fetch", answer(BREACHED_RANGE));
+    await expect(makeAuth().auth.api.createUser({ body: { email: "l@example.test", password: BREACHED, name: "L" } })).rejects.toMatchObject({
+      body: { code: "PASSWORD_COMPROMISED" },
+    });
   });
 });
