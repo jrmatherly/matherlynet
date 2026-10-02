@@ -147,8 +147,9 @@ if (!k8s) {
 
 // Compose: Aspire 13.6's TS SDK can't set a healthcheck (.claude/rules/apphost.md), so web's lives in
 // deploy/docker-compose.override.yaml. Publishing copies it next to docker-compose.yaml, where Compose merges it.
-// The output directory is Aspire's Pipeline:OutputPath (`-o`), else <AppHost dir>/aspire-output.
-if (!k8s) {
+// The output directory is Aspire's Pipeline:OutputPath (`-o`), else <AppHost dir>/aspire-output. Not in run mode:
+// `aspire run`/`start` have no publish-compose step, and depending on an unknown step fails the AppHost.
+if (!k8s && !(await builder.executionContext().isRunMode())) {
   await builder.pipeline().addStep('copy-compose-override', async () => {
     const output = await config.getConfigValue('Pipeline:OutputPath');
     const dir = output ? resolve(output) : join((await config.getConfigValue('AppHost:Directory')) ?? '.', 'aspire-output');
