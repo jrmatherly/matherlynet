@@ -102,9 +102,7 @@ export const perspectives: Perspective[] = [
 
 export interface WorkItem {
   title: string;
-  area: string;
   summary: string;
-  outcomes: string[];
   // "2021 to now" or "2015 to 2021".
   period: string;
   // One short line: the outcome a reader should remember.
@@ -114,52 +112,40 @@ export interface WorkItem {
 export const work: WorkItem[] = [
   {
     title: "AI Gateway",
-    area: "AI · FinOps",
     summary:
       "The company's single path to large language models. It evolved from LiteLLM to Azure APIM to a custom in-house platform, with SSO, per-user and per-team cost accounting, rate limiting, guardrails, model routing and audit logging.",
-    outcomes: ["~2 billion tokens a month across Azure AI Foundry and Anthropic", "Projected AI licensing costs cut to near zero"],
     period: "2021 to now",
     result: "~2 billion tokens a month; projected licensing cost cut to near zero",
   },
   {
     title: "MCP Gateway, Registry & Portal",
-    area: "AI · Governance",
     summary:
       "A governed way for teams to connect AI agents to internal systems and data, with tool-approval workflows and OAuth.",
-    outcomes: ["~20 managed MCP servers"],
     period: "2021 to now",
     result: "About 20 managed MCP servers behind OAuth and tool-approval workflows",
   },
   {
     title: "AI chat platform & agents",
-    area: "AI · Adoption",
     summary: "An internal AI chat platform and agents grounded in company knowledge, built in Python, TypeScript and Go.",
-    outcomes: ["~30 agents", "400 users across 14 teams"],
     period: "2021 to now",
     result: "About 30 agents grounded in company knowledge, 400 users across 14 teams",
   },
   {
     title: "On-prem Kubernetes platform",
-    area: "Kubernetes · GitOps",
     summary: "Talos Linux clusters run with GitOps (Flux and Argo CD), Cilium networking, and External Secrets Operator backed by Secret Server.",
-    outcomes: [],
     period: "2021 to now",
     result: "Talos Linux, Flux and Argo CD, Cilium, External Secrets backed by Secret Server",
   },
   {
     title: "SD-WAN for every store",
-    area: "Networking",
     summary: "Led the SD-WAN rollout to every store on CloudGenix, then migrated the store network to Meraki.",
-    outcomes: ["2,300+ stores at the time", "Earlier: re-IP'd every store to one standard addressing plan"],
     period: "2015 to 2021",
     result: "CloudGenix to 2,300+ stores, later migrated to Meraki",
   },
   {
     title: "Data centers & disaster recovery",
-    area: "Infrastructure",
     summary:
       "Directed the new primary data center build-out and migration, then the disaster recovery data center and the storage move from HPE Nimble to Pure Storage.",
-    outcomes: ["Zero unplanned downtime", "Built hybrid connectivity: Azure tenant + ExpressRoute"],
     period: "2015 to 2021",
     result: "New primary data center and DR site, Nimble to Pure Storage, Azure with ExpressRoute; zero unplanned downtime",
   },

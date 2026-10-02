@@ -8,29 +8,29 @@ import { person } from "../lib/site";
 <Base title="About" description={person.description} image={ogImage("about", Astro.locals.siteSettings)} type="profile">
   <div class="mx-auto grid max-w-6xl gap-16 px-4 py-16 sm:px-6 sm:py-20">
     <header class="grid max-w-3xl gap-4">
-      <h1 class="text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">About</h1>
+      <h1 class="display text-4xl sm:text-5xl">About</h1>
       <p class="text-lg text-muted">
         AI platform and infrastructure leader with nearly 17 years at {employer.name}, promoted from Network Analyst to Manager of
         Infrastructure Services. I lead company-wide AI strategy and adoption, and I combine hands-on engineering with deep
         experience in enterprise networking, security, data centers and disaster recovery.
       </p>
       <p>
-        <a href={resumeUrl} class="inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground">View full résumé</a>
+        <a href={resumeUrl} target="_blank" rel="noopener" class="inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground">View full résumé</a>
       </p>
     </header>
 
     <section aria-labelledby="changelog" class="grid gap-6 lg:grid-cols-[1fr_2fr]">
       <div class="grid content-start gap-2">
-        <p class="font-mono text-xs tracking-wider text-muted uppercase">Changelog</p>
-        <h2 id="changelog" class="text-3xl font-extrabold tracking-tight text-balance">Nearly 17 years, one company, three promotions.</h2>
-        <p class="text-muted">{employer.name} · {employer.location} · since {employer.since}</p>
+        <p class="text-sm text-muted">Changelog</p>
+        <h2 id="changelog" class="display text-3xl">Nearly 17 years, one company, three promotions.</h2>
+        <p class="text-muted">{employer.name}, {employer.location}, since {employer.since}</p>
       </div>
       <ol class="grid">
         {
           career.map((role, i) => (
             <li class="grid gap-2 border-t border-border py-5 sm:grid-cols-[8.5rem_1fr] sm:gap-4">
-              <span class:list={["font-mono text-sm tabular-nums", i === 0 ? "text-foreground" : "text-muted"]}>
-                {role.start} – {role.end ?? "now"}
+              <span class:list={["text-sm whitespace-nowrap tabular-nums", i === 0 ? "text-foreground" : "text-muted"]}>
+                {role.start.slice(-4)} – {role.end?.slice(-4) ?? "now"}
               </span>
               <div class="grid gap-2">
                 <h3 class="text-lg font-bold">{role.title}</h3>
@@ -47,7 +47,7 @@ import { person } from "../lib/site";
     </section>
 
     <section aria-labelledby="skills" class="grid gap-6">
-      <h2 id="skills" class="text-3xl font-extrabold tracking-tight">Skills</h2>
+      <h2 id="skills" class="display text-3xl">Skills</h2>
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {
           skills.map((s) => (
@@ -66,13 +66,13 @@ import { person } from "../lib/site";
 
     <section aria-label="Education and volunteering" class="grid gap-4 sm:grid-cols-2">
       <div class="grid content-start gap-1 rounded-2xl border border-border p-5">
-        <p class="font-mono text-xs tracking-wider text-muted uppercase">Education</p>
+        <p class="text-sm text-muted">Education</p>
         <h2 class="text-lg font-bold">{education.degree}</h2>
-        <p class="text-muted">{education.school} · {education.years}</p>
+        <p class="text-muted">{education.school}, {education.years}</p>
       </div>
       <div class="grid content-start gap-1 rounded-2xl border border-border p-5">
-        <p class="font-mono text-xs tracking-wider text-muted uppercase">Volunteer</p>
-        <h2 class="text-lg font-bold">{volunteer.org} <span class="font-normal text-muted">· {volunteer.years}</span></h2>
+        <p class="text-sm text-muted">Volunteer</p>
+        <h2 class="text-lg font-bold">{volunteer.org} <span class="font-normal text-muted">{volunteer.years}</span></h2>
         <p class="text-muted">{volunteer.summary}</p>
       </div>
     </section>

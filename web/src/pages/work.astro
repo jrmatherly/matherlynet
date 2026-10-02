@@ -8,10 +8,10 @@ import { ogImage } from "../lib/og";
 <Base title="Work" description="AI gateways, MCP, Kubernetes and enterprise infrastructure built and run by Jason Matherly." image={ogImage("work", Astro.locals.siteSettings)}>
   <section class="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 sm:py-20">
     <header class="grid max-w-3xl gap-3">
-      <h1 class="text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">Platforms that run in production, not in slides.</h1>
+      <h1 class="display text-4xl sm:text-5xl">Platforms that run in production, not in slides.</h1>
       <p class="text-lg text-muted">The systems I've designed, built and operated at The Aaron's Company, from the AI platform down to the store network.</p>
     </header>
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid border-b border-border">
       {work.map((item) => <WorkCard item={item} />)}
     </div>
   </section>
