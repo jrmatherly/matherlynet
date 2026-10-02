@@ -116,6 +116,10 @@ out/                   aspire publish output (gitignored)
 - Server Sentry is initialised once (`web/src/lib/sentry.ts`); a /admin DSN change only retargets
   `makeMultiplexedTransport` (`@sentry/core`). A second `Sentry.init` inside a request binds to that request's scope
   only and stacks process handlers, so later requests kept the old client.
+- The Sentry DSN is admin-supplied and the server posts to it, so `web/src/lib/settings-form.ts` rejects private,
+  loopback, link-local and shared (100.64/10) hosts, including IPv6 forms that embed IPv4. `isPrivateAddress()` is
+  reused at connect time by server Sentry's DNS lookup (`sentry.ts`), so a name that resolves locally is refused;
+  unparseable or zone-scoped IPv6 fails closed.
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
   Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
   -R jrmatherly/matherlynet`.
