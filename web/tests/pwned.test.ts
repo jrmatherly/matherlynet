@@ -1,7 +1,8 @@
 // pwnedPasswordCheck inside a real betterAuth (memoryAdapter), with fetch standing in for api.pwnedpasswords.com.
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthPlugin } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { admin } from "better-auth/plugins";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -30,7 +31,8 @@ const hang = () => {
   return { fn, signals };
 };
 
-function makeAuth(timeoutMs = 200) {
+// `before`: plugins registered ahead of the check (their before hooks run first).
+function makeAuth(timeoutMs = 200, before: BetterAuthPlugin[] = []) {
   let resetToken = "";
   const db: Record<string, unknown[]> = { user: [], session: [], account: [], verification: [] };
   const auth = betterAuth({
@@ -43,7 +45,7 @@ function makeAuth(timeoutMs = 200) {
         resetToken = token;
       },
     },
-    plugins: [admin(), pwnedPasswordCheck(timeoutMs)],
+    plugins: [admin(), ...before, pwnedPasswordCheck(timeoutMs)],
   });
   return { auth, db, resetToken: () => resetToken };
 }
@@ -247,6 +249,38 @@ describe("pwnedPasswordCheck and sessions", () => {
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ code: "PASSWORD_COMPROMISED" });
     expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  // Context changes from before hooks (e.g. headers a bearer-style plugin derives) apply only after all of them have
+  // run (better-auth 1.7.7 api/dispatch.mjs), so the check can see no session where the endpoint sees one. It must
+  // refuse then, not skip the check.
+  it("refuses, rather than skips the check, when it sees no session but the endpoint would", async () => {
+    vi.stubGlobal("fetch", answer(CLEAN_RANGE));
+    let cookie = "";
+    const lateCookie: BetterAuthPlugin = {
+      id: "late-cookie",
+      hooks: {
+        before: [{ matcher: (ctx) => ctx.path === "/change-password", handler: createAuthMiddleware(async () => ({ context: { headers: new Headers({ cookie }) } })) }],
+      },
+    };
+    const { auth } = makeAuth(200, [lateCookie]);
+    cookie = await signedIn(auth, "o@example.test");
+    const fetch = answer(BREACHED_RANGE);
+    vi.stubGlobal("fetch", fetch);
+    expect((await post(auth, "/change-password", { newPassword: BREACHED, currentPassword: SAFE })).status).toBe(401);
+  });
+
+  // The check's own session read must not refresh the session: the refresh's Set-Cookie would be lost (the
+  // endpoint's response headers replace the hook's), leaving the browser cookie on its old expiry.
+  it("leaves the session refresh, and its cookie, to the endpoint", async () => {
+    vi.stubGlobal("fetch", answer(CLEAN_RANGE));
+    const { auth, db } = makeAuth();
+    const cookie = await signedIn(auth, "p@example.test");
+    // Due for refresh: expiresIn is 7 days and updateAge 1 day, so a session expiring in 5 days was refreshed 2 days ago.
+    for (const s of db.session as { expiresAt: Date }[]) s.expiresAt = new Date(Date.now() + 5 * 86_400_000);
+    const res = await post(auth, "/change-password", { newPassword: "another-unlisted-password-42", currentPassword: SAFE }, cookie);
+    expect(res.status).toBe(200);
+    expect(res.headers.getSetCookie().some((c) => c.startsWith("better-auth.session_token="))).toBe(true);
   });
 
   it("still checks server-side calls, which /admin/create-user accepts without a session", async () => {

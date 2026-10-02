@@ -30,7 +30,10 @@ described below; green: 109/109 web tests, `astro check` 0 errors, eslint clean.
 
 - `Set-Cookie` on a signed-in `/change-password` is unchanged by the hook's extra session read (one
   `better-auth.session_token`, same as without the plugin). The cost is one more session query per signed-in request
-  to a gated route (both reads bypass the cookie cache by design).
+  to a gated route (both reads bypass the cookie cache by design). **Corrected by the final review:** true only for a
+  fresh session. For one due for refresh, `getAuthoritativeSessionFromCtx` in the hook refreshed it and its
+  `Set-Cookie` was dropped; the shipped hook reads with `disableRefresh` and refuses (401) instead of skipping when it
+  sees no session (test: "leaves the session refresh, and its cookie, to the endpoint").
 - Nothing in the app calls the gated routes (no change-password or admin-user UI); only `reset-password.astro` sets a
   password besides sign-up. Both forms have `minlength="8"`, so items 1 and 3 matter for direct API calls (anyone can
   POST to `/api/auth/*`), not for the UI's normal path.

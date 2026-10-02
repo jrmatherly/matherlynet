@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { BASE_ERROR_CODES, type BetterAuthPlugin } from "better-auth";
-import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 
 // Routes that set a password, and the body field each reads (better-auth 1.7.7, admin plugin). Not covered:
 // server-only setPassword (no route) and the email-otp/phone-number reset routes (plugins not installed). The test
@@ -13,8 +13,9 @@ export const PASSWORD_FIELDS: Readonly<Record<string, "password" | "newPassword"
   "/admin/set-user-password": "newPassword",
 };
 
-// Password routes that refuse a request without a session (401), using the same getAuthoritativeSessionFromCtx
-// the hook calls. /admin/create-user also accepts server-side calls (no request, no headers) without one.
+// Password routes that refuse a request without a session (401; getAuthoritativeSessionFromCtx in better-auth 1.7.7's
+// sensitiveSessionMiddleware, adminMiddleware and createUser). /admin/create-user also accepts server-side calls (no
+// request, no headers) without one.
 export const SESSION_PATHS: ReadonlySet<string> = new Set(["/change-password", "/admin/create-user", "/admin/set-user-password"]);
 
 // The password a request sets, or null (another path, or a missing/non-string value the endpoint will reject).
@@ -79,8 +80,18 @@ export function pwnedPasswordCheck(timeoutMs = 5_000): BetterAuthPlugin {
           handler: createAuthMiddleware(async (ctx) => {
             const password = passwordFrom(ctx.path, ctx.body);
             if (!password) return;
-            // A request the endpoint will refuse with 401 isn't worth a lookup (nor a 503 during an outage).
-            if (SESSION_PATHS.has(ctx.path) && (ctx.request || ctx.headers) && !(await getAuthoritativeSessionFromCtx(ctx))) return;
+            // A request the endpoint will refuse with 401 isn't worth a lookup (nor a 503 during an outage): refuse it
+            // here. Refusing, not skipping the check, so a read that disagrees with the endpoint's (a failed read, or
+            // headers a later before hook supplies) can't let a password through unchecked.
+            if (SESSION_PATHS.has(ctx.path) && (ctx.request || ctx.headers)) {
+              // Read like getAuthoritativeSessionFromCtx (no cached session or cookie cache) but without refreshing:
+              // this hook's Set-Cookie is dropped (the endpoint's response headers replace it), so the endpoint's
+              // own read must be the one that refreshes.
+              ctx.context.session = null;
+              if (!(await getSessionFromCtx(ctx, { disableCookieCache: true, disableRefresh: true }))) {
+                throw APIError.from("UNAUTHORIZED", { message: "Unauthorized", code: "UNAUTHORIZED" });
+              }
+            }
             // The endpoints' own length rules, first, so a short password is reported as short (not compromised) and
             // costs no lookup. /admin/create-user checks only the maximum in better-auth 1.7.7: this adds the minimum.
             const { minPasswordLength, maxPasswordLength } = ctx.context.password.config;
