@@ -1,7 +1,7 @@
 import { db } from "../db";
 import { siteSettings } from "../db/schema";
 import { SITE_DEFAULTS, isProPalette, isTypeface } from "../theme/palettes";
-import { configureSentry } from "./sentry";
+import { captureError, configureSentry } from "./sentry";
 import type { SiteSettings } from "./settings-form";
 
 // ponytail: per-process cache, so other replicas see an admin change within TTL_MS; add pub/sub if that lag matters.
@@ -44,6 +44,7 @@ async function load(): Promise<SiteSettings> {
     // Usually the database is unreachable (anything else lands here too, so the message says "load failed"):
     // keep pages up with the last settings (or built-in defaults) and retry in 5 s instead of on every request.
     console.error("site-settings: load failed, serving last known settings", error);
+    captureError(error);
     const fallback = cached?.value ?? fromRow(undefined);
     cached = { value: fallback, expires: Date.now() + 5_000 };
     return fallback;
@@ -60,6 +61,13 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     refreshing = null;
   });
   return cached ? cached.value : refreshing;
+}
+
+// The /admin form reads the row itself and lets a failure throw: filled from getSiteSettings()'s fallback, it
+// would show built-in defaults as the current settings, and saving would overwrite the real row with them.
+export async function readSiteSettings(): Promise<SiteSettings> {
+  const [row] = await db.select().from(siteSettings).limit(1);
+  return fromRow(row);
 }
 
 export async function saveSiteSettings(value: SiteSettings): Promise<void> {

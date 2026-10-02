@@ -12,7 +12,7 @@ const header = size === "size-8";
 ---
 
 <!-- Larger sizes render both marks; global.css shows the brand raster under Signal and the monogram otherwise,
-     so the theme toggle swaps logos without JavaScript. -->
+     so the Brand/Pro control swaps logos without touching this markup. -->
 <span class="inline-flex" role="img" aria-label="Matherly">
   {!header && <img src="/m-logo.png" alt="" width="140" height="140" class:list={["logo-brand", size]} />}
   <span class:list={[!header && "logo-pro", "text-foreground [&>svg]:size-full", size]} set:html={proMark} />

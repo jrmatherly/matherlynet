@@ -1,6 +1,6 @@
 ---
 import AuthCard from "../components/AuthCard.astro";
-import { saveSiteSettings } from "../lib/site-settings";
+import { readSiteSettings, saveSiteSettings } from "../lib/site-settings";
 import { parseSettingsForm } from "../lib/settings-form";
 import { field, label, primary, textLink } from "../lib/form";
 import { PRO_PALETTES } from "../theme/palettes";
@@ -21,7 +21,7 @@ if (Astro.request.method === "POST") {
   error = result.error;
 }
 
-const current = Astro.locals.siteSettings;
+const current = await readSiteSettings();
 const legend = "mb-1 text-lg font-bold";
 const check = "flex items-center gap-2 text-sm";
 const hint = "text-sm text-muted";

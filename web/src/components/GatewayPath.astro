@@ -1,7 +1,7 @@
 ---
 // How a request moves through the AI Gateway: drawn, not a screenshot, so it follows the palette.
 // Below the sm breakpoint (640px) the SVG keeps its 520px drawing width and scrolls inside the card: shrinking it
-// makes the labels unreadable (audited at 4.6px).
+// makes the labels unreadable.
 const node = "fill-surface-2 stroke-border";
 const text = "fill-foreground text-[12px]";
 const small = "fill-muted text-[10.5px]";
@@ -38,7 +38,7 @@ const wire = "fill-none stroke-border stroke-[1.5]";
     <rect class={node} x="12" y="190" width="130" height="46" rx="8" />
     <text class={text} x="77" y="210" text-anchor="middle">MCP Gateway</text>
     <text class={small} x="77" y="225" text-anchor="middle">~20 servers, approvals</text>
-    <!-- One pulse along the two wires; the M in the path is the jump across the gateway box. Hidden under
+    <!-- One pulse from the person through the gateway to Foundry; the M in the path is the jump across the gateway box. Hidden under
          reduced motion. -->
     <circle class="fill-accent motion-reduce:hidden" r="4">
       <animateMotion dur="6s" repeatCount="indefinite" path="M92 70 H150 M370 70 H410 Q426 70 426 54 V35" />

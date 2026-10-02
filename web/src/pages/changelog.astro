@@ -7,8 +7,10 @@ import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 
+// Bound by position, newest first; profile.test.ts pins the four roles so an added one can't shift these silently.
 const [manager, senior, engineer, analyst] = career;
-const period = (role: (typeof career)[number]) => `${role.title}, ${role.start.slice(-4)} to ${role.end?.slice(-4) ?? "now"}`;
+const year = (role: (typeof career)[number]) => role.start.slice(-4);
+const period =(role: (typeof career)[number]) => `${role.title}, ${role.start.slice(-4)} to ${role.end?.slice(-4) ?? "now"}`;
 const link = "font-semibold underline decoration-accent decoration-2 underline-offset-4";
 ---
 
@@ -80,7 +82,7 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
         </div>
       </RailEntry>
 
-      <RailEntry year="2021 to now" now meta={period(manager)} id="work">
+      <RailEntry year={`${year(manager)} to now`} now meta={period(manager)} id="work">
         <h2 class="display text-3xl">{manager.heading}</h2>
         <p class="max-w-[62ch]">{manager.summary}</p>
         <dl class="grid max-w-[62ch] border-t border-border">
@@ -106,17 +108,17 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
         </dl>
       </RailEntry>
 
-      <RailEntry year="2015" meta={period(senior)} id="career">
+      <RailEntry year={year(senior)} meta={period(senior)} id="career">
         <h2 class="display text-3xl">{senior.heading}</h2>
         <p class="max-w-[62ch]">{senior.summary}</p>
       </RailEntry>
 
-      <RailEntry year="2012" meta={period(engineer)}>
+      <RailEntry year={year(engineer)} meta={period(engineer)}>
         <h2 class="display text-3xl">{engineer.heading}</h2>
         <p class="max-w-[62ch]">{engineer.summary}</p>
       </RailEntry>
 
-      <RailEntry year="2009" meta={period(analyst)}>
+      <RailEntry year={year(analyst)} meta={period(analyst)}>
         <h2 class="display text-3xl">{analyst.heading}</h2>
         <p class="max-w-[62ch] text-muted">{analyst.summary}</p>
       </RailEntry>

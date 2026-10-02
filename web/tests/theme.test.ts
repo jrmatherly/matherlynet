@@ -46,6 +46,8 @@ describe("resolveTheme", () => {
       palette: BRAND_PALETTE,
       typeface: "sans",
     });
+    // Names inherited from Object.prototype are not typefaces.
+    for (const type of ["constructor", "__proto__"]) expect(resolveTheme({ type }, site).typeface).toBe("sans");
   });
 
   it("falls back to a valid palette if the stored default is unknown", () => {
@@ -77,6 +79,10 @@ describe("palettes.css", () => {
         expect(contrast(c["accent-ink"], c.accent), `${palette}/${side} accent-ink on accent`).toBeGreaterThanOrEqual(4.5);
         expect(contrast(c.muted, c.bg), `${palette}/${side} muted on bg`).toBeGreaterThanOrEqual(4.5);
         expect(contrast(c.muted, c.surface), `${palette}/${side} muted on surface`).toBeGreaterThanOrEqual(4.5);
+        // CaseStudy.astro and GatewayPath.astro also set muted on accent-soft and surface-2, and accent on surface.
+        expect(contrast(c.muted, c["accent-soft"]), `${palette}/${side} muted on accent-soft`).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(c.muted, c["surface-2"]), `${palette}/${side} muted on surface-2`).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(c.accent, c.surface), `${palette}/${side} accent on surface`).toBeGreaterThanOrEqual(4.5);
       }
     }
   });
@@ -97,7 +103,7 @@ describe("global.css", () => {
   });
 
   it("enables cross-document view transitions and disables them under reduced motion", () => {
-    expect(css).toContain("@view-transition { navigation: auto; }");
+    expect(css).toMatch(/@view-transition\s*\{\s*navigation:\s*auto;?\s*\}/);
     expect(css).toMatch(/prefers-reduced-motion: reduce[\s\S]*::view-transition-group\(\*\)[\s\S]*animation: none/);
   });
 });

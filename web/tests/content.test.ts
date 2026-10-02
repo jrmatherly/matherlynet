@@ -39,6 +39,6 @@ describe("feeds", () => {
 
   it("lists every public section in the sitemap", async () => {
     const xml = await (await get(sitemap)).text();
-    for (const path of ["/", "/work", "/writing", "/about"]) expect(xml).toContain(`<loc>${new URL(path, ORIGIN).href}</loc>`);
+    for (const path of ["/", "/work", "/changelog", "/writing", "/about"]) expect(xml).toContain(`<loc>${new URL(path, ORIGIN).href}</loc>`);
   });
 });

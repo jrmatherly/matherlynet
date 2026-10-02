@@ -1,10 +1,14 @@
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { describe, expect, it } from "vitest";
 import WorkCard from "../src/components/WorkCard.astro";
-import { perspectives, work } from "../src/data/profile";
+import * as profile from "../src/data/profile";
 import { ogCards } from "../src/lib/og";
 import About from "../src/pages/about.astro";
+import Changelog from "../src/pages/changelog.astro";
+import Home from "../src/pages/index.astro";
 import { SITE_DEFAULTS, resolveTheme } from "../src/theme/palettes";
+
+const { work } = profile;
 
 const locals = {
   user: null,
@@ -22,10 +26,38 @@ describe("About", () => {
   });
 });
 
+const page = async (Page: Parameters<AstroContainer["renderToString"]>[0], path: string, theme = locals.theme) =>
+  (await AstroContainer.create()).renderToString(Page, { locals: { ...locals, theme }, request: new Request(`http://localhost${path}`) });
+
 describe("tenure copy", () => {
-  it("says \"Seventeen years\" everywhere, never \"nearly 17\" (decided 2026-10-02)", async () => {
-    const about = await (await AstroContainer.create()).renderToString(About, { locals, request: new Request("http://localhost/about") });
-    for (const text of [about, JSON.stringify(perspectives), JSON.stringify(ogCards)]) expect(text).not.toMatch(/nearly 17/i);
+  it("never says \"nearly 17\" on a page, in the profile data or on a share card", async () => {
+    const pages = await Promise.all([page(About, "/about"), page(Home, "/"), page(Changelog, "/changelog")]);
+    for (const text of [...pages, JSON.stringify(profile), JSON.stringify(ogCards)]) expect(text).not.toMatch(/nearly 17/i);
+  });
+});
+
+describe("Changelog", () => {
+  it("has one h1 and puts each role's heading after its start year, newest first", async () => {
+    const html = await page(Changelog, "/changelog");
+    expect(html.match(/<h1/g)).toHaveLength(1);
+    let from = 0;
+    for (const role of profile.career) {
+      const year = html.indexOf(`>${role.start.slice(-4)}`, from);
+      const heading = html.indexOf(role.heading, year);
+      expect(year, `${role.title} year`).toBeGreaterThan(-1);
+      expect(heading, `${role.title} heading`).toBeGreaterThan(year);
+      from = heading;
+    }
+  });
+});
+
+describe("Base", () => {
+  it("gives a forced dark mode one theme-color tag and puts the typeface on <html>", async () => {
+    const html = await page(About, "/about", { theme: "pro", mode: "dark", palette: "paper", typeface: "serif" });
+    expect(html).toMatch(/<html[^>]*data-type="serif"/);
+    const tags = html.match(/<meta name="theme-color"[^>]*>/g) ?? [];
+    expect(tags).toHaveLength(1);
+    expect(tags[0]).not.toContain("media");
   });
 });
 

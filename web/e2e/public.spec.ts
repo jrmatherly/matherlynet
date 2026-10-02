@@ -8,6 +8,18 @@ test("public pages render and the nav links work", async ({ page }) => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
   }
+  // Writing stays out of the nav until the first post.
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Writing" })).toHaveCount(0);
+});
+
+test("each perspective's panel shows when it is picked", async ({ page }) => {
+  for (const path of ["/", "/changelog"]) {
+    await page.goto(path);
+    for (const id of ["leaders", "security", "recruiters"]) {
+      await page.locator(`label:has(input[value="${id}"])`).click();
+      await expect(page.locator(`[data-panel="${id}"]`)).toBeVisible();
+    }
+  }
 });
 
 test("the theme choice survives a reload", async ({ page }) => {
@@ -16,6 +28,9 @@ test("the theme choice survives a reload", async ({ page }) => {
   await expect(html).toHaveAttribute("data-palette", "signal");
   await page.getByRole("button", { name: "Pro" }).click();
   await page.getByRole("button", { name: "Dark" }).click();
+  // A forced mode re-syncs theme-color to one tag with no media query.
+  await expect(page.locator('meta[name="theme-color"]')).toHaveCount(1);
+  await expect(page.locator('meta[name="theme-color"]')).not.toHaveAttribute("media");
   await page.getByRole("button", { name: "Serif" }).click();
   await page.reload();
   await expect(html).not.toHaveAttribute("data-palette", "signal");

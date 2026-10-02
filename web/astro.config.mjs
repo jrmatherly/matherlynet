@@ -62,7 +62,8 @@ export default defineConfig({
       options: { package: "@fontsource-variable/geist-mono" },
     },
     {
-      // Local provider on the fontsource files: the npm provider reads only index.css, which has no italic face.
+      // Local provider on the fontsource files: the npm provider parses one CSS file per family (index.css by
+      // default), and no Newsreader file declares both the normal and the italic face.
       provider: fontProviders.local(),
       name: "Newsreader Variable",
       cssVariable: "--font-newsreader",

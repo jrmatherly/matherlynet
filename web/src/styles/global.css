@@ -49,7 +49,7 @@
 }
 
 /* Cross-document view transitions: the header holds still (view-transition-name in SiteHeader), the rest
-   cross-fades, so a palette or typeface change between pages re-colours instead of flashing. */
+   cross-fades. */
 @view-transition { navigation: auto; }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 400ms; }
 @media (prefers-reduced-motion: reduce) {
@@ -69,7 +69,7 @@
   }
 }
 
-/* Brand shows the mask logo; every Pro palette shows the monogram (see Logo.astro). */
+/* Above header size, Brand shows the brand raster and every Pro palette the monogram (see Logo.astro). */
 :root[data-palette="signal"] .logo-pro,
 :root:not([data-palette="signal"]) .logo-brand {
   display: none;

@@ -1,4 +1,4 @@
-// Server-side access to palette colors (OG images). palettes.css stays the single source of truth;
+// Server-side access to palette colors (share cards, theme-color). palettes.css stays the single source of truth;
 // this module is separate from palettes.ts so the browser bundle never includes the stylesheet text.
 import css from "../styles/palettes.css?raw";
 import { colorsFromCss, type Side } from "./palette-css";

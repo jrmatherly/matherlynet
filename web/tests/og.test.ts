@@ -13,7 +13,9 @@ describe("ogImage", () => {
   });
 });
 
-const call = (slug: string) => GET({ params: { slug } } as unknown as Parameters<typeof GET>[0]) as Promise<Response>;
+const call = (slug: string, query = "") =>
+  GET({ params: { slug }, url: new URL(`http://localhost/og/${slug}.png${query}`) } as unknown as Parameters<typeof GET>[0]) as Promise<Response>;
+const bytes = async (query: string) => Buffer.from(await (await call("home", query)).arrayBuffer());
 
 describe("paletteColors", () => {
   it("reads either side of a palette's light-dark() pairs from palettes.css", () => {
@@ -37,6 +39,14 @@ describe("/og/[slug].png", () => {
     expect(png.subarray(1, 4).toString()).toBe("PNG");
     // IHDR: width and height are big-endian at bytes 16 and 20.
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630]);
+  });
+
+  it("renders the palette the URL names, and the /admin palette for an unknown or missing one", async () => {
+    const [paper, signal, bogus, none] = await Promise.all(["?v=paper", "?v=signal", "?v=constructor", ""].map(bytes));
+    expect(paper.equals(signal)).toBe(false);
+    // The mocked settings are Pro/paper.
+    expect(bogus.equals(paper)).toBe(true);
+    expect(none.equals(paper)).toBe(true);
   });
 
   it("returns 404 for unknown cards instead of rendering arbitrary text", async () => {

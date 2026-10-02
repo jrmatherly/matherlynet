@@ -6,19 +6,17 @@ import SiteHeader from "../components/SiteHeader.astro";
 import Telemetry from "../components/Telemetry.astro";
 import "../styles/global.css";
 import { paletteColors } from "../theme/colors";
+import { themeColorFor } from "../theme/theme-color";
 
 interface Props extends SeoProps {
-  // "minimal" (sign-in, 404) drops the nav, account link and footer.
+  // "minimal" (sign-in, 404) drops the nav, contact action and footer.
   chrome?: "full" | "minimal";
 }
 
 const { chrome = "full", ...seo } = Astro.props;
 const { theme, mode, palette, typeface } = Astro.locals.theme;
 const icons = theme === "pro" ? "/pro/" : "/";
-// A forced mode gets that side's background; "system" leaves the choice to the browser's own media query.
-// (Two media-queried tags under a forced mode would follow the OS, not the page: light chrome on a dark page.)
-const bg = (side: "light" | "dark") => paletteColors(palette, side).bg;
-const themeColor = mode === "system" ? { light: bg("light"), dark: bg("dark") } : bg(mode);
+const themeColor = themeColorFor(mode, (side) => paletteColors(palette, side).bg);
 ---
 
 <!doctype html>
@@ -34,7 +32,6 @@ const themeColor = mode === "system" ? { light: bg("light"), dark: bg("dark") } 
     <link rel="manifest" href={`${icons}site.webmanifest`} data-icon="site.webmanifest" />
     <Font cssVariable="--font-geist" preload />
     <Font cssVariable="--font-geist-mono" />
-    <!-- The serif is preloaded only when it is the active display face. -->
     <Font cssVariable="--font-newsreader" preload={typeface === "serif"} />
     <Telemetry />
   </head>

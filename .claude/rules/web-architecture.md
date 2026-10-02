@@ -37,7 +37,8 @@ web/
   src/lib/auth-client.ts  better-auth browser client
   src/lib/site.ts      public origin (from BETTER_AUTH_URL at run time), person details, public routes list (+ nav flag)
   src/lib/og.ts        share-card copy (ogCards), cardPalette(), ogImage(slug, site) with a ?v=<palette> cache key
-  src/lib/theme-cookie.ts  remember(): the one-year visitor theme cookie, shared by ModeToggle and ThemeControls
+  src/lib/theme-cookie.ts  browser helpers for ModeToggle and ThemeControls: remember() (one-year visitor theme
+                       cookie) and syncThemeColor() (rebuilds the theme-color tags after a switch)
   src/data/profile.ts  all résumé-derived copy (headline, intro, availability, contact, gateway case study,
                        perspectives, recruiterFacts, samePeriod, work, career, bio, facts, skills); edit facts here
   src/content/writing/  Markdown posts (schema in src/content.config.ts; `draft: true` hides a post everywhere)
@@ -47,6 +48,8 @@ web/
                        typeface)
   src/theme/colors.ts  paletteColors() for Vite server code (reads palettes.css via `?raw`); palette-css.ts is the
                        pure colorsFromCss() parser, so plain Node scripts can parse palettes.css too
+  src/theme/theme-color.ts  themeColorFor() (one color for a forced mode, a light/dark pair for system) and
+                       themeColorTags(); shared by Base/Seo and theme-cookie.ts
   src/styles/           global.css (Tailwind tokens, dark variant, .display heading face, view transitions, Prism token
                         colors) + palettes.css (one light-dark() block per palette)
   src/layouts/Base.astro  <html data-palette data-mode data-type>, Seo (+ theme-color), favicons, fonts,
@@ -61,11 +64,11 @@ web/
   src/pages/ (account)  sign-in, sign-up, forgot/reset-password, account (sessions), admin (role-gated, 404
                        otherwise); all noindex, AuthCard shell, form classes in src/lib/form.ts
   src/pages/og/[slug].png.ts  share cards rendered on demand by Takumi (cards in src/lib/og.ts, colors from
-                       palettes.css in the /admin theme's palette)
+                       palettes.css in the palette ?v= names, else the /admin theme's palette)
   src/pages/api/auth/[...all].ts  better-auth request handler
   tests/               Vitest (node env) + Astro Container API
   scripts/social-preview.mts  renders .github/social-preview.png (GitHub social preview, 1280x640) with Takumi
   e2e/                 Playwright against the Aspire stack: public pages, headers, sign-up -> verify (Mailpit)
                        -> sign-out -> password reset; each run creates an e2e-*@example.test user
-  public/              brand favicons, web manifest, mask logo, portrait.jpg (648x648); public/pro/ = Pro monogram set
+  public/              brand favicons, web manifest, brand raster logo, portrait.jpg (648x648); public/pro/ = Pro monogram set
 ```
