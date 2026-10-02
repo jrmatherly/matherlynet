@@ -70,7 +70,8 @@ out/                   aspire publish output (gitignored)
 - Markdown: 120-column limit; every file starts with a top-level heading.
 - Styling: Tailwind utilities on design tokens only (`bg-surface`, `text-muted`, `bg-accent`…); the default
   Tailwind palette is disabled. New palettes need a block in `palettes.css` and a key in `palettes.ts` (a test
-  enforces the match).
+  enforces the match). Each palette, light and dark, must keep accent and muted text at WCAG AA (4.5:1) on bg, and
+  accent-ink on accent; `theme.test.ts` fails otherwise.
 - CSP (`security.csp` in `astro.config.mjs`, sent as a header; `astro dev` skips it, so check a build): no inline
   `style` attributes, `on*=` handlers or unhashed inline scripts. Third-party origins are added per request with
   `Astro.csp` (see Telemetry.astro). Code blocks use Prism (token classes, colored from the palette in
