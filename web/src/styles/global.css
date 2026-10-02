@@ -63,6 +63,8 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
+  /* Keeps a paragraph's last line from being one or two words. */
+  p { text-wrap: pretty; }
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
