@@ -10,6 +10,8 @@ export const siteSettings = pgTable(
     id: integer("id").primaryKey().default(1),
     theme: text("theme").notNull(),
     proPalette: text("pro_palette").notNull(),
+    // Display face for headings: "sans" (Geist) or "serif" (Newsreader). Default so the existing row migrates.
+    typeface: text("typeface").notNull().default("sans"),
     // Error monitoring: any Sentry-compatible DSN; server and browser reporting switch independently.
     sentryDsn: text("sentry_dsn"),
     sentryServer: boolean("sentry_server").default(false).notNull(),

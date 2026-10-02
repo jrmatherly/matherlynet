@@ -24,6 +24,12 @@ describe("getSiteSettings", () => {
     await expect(getSiteSettings()).resolves.toMatchObject({ theme: "brand", sentry: { server: false } });
   });
 
+  it("falls back to sans when the stored typeface is unknown", async () => {
+    select.mockResolvedValue([{ theme: "pro", proPalette: "merlot", typeface: "gothic" }]);
+    const { getSiteSettings } = await import("../src/lib/site-settings");
+    await expect(getSiteSettings()).resolves.toMatchObject({ typeface: "sans" });
+  });
+
   it("keeps serving the last settings when a refresh fails", async () => {
     vi.useFakeTimers();
     select.mockResolvedValueOnce([{ theme: "pro", proPalette: "merlot" }]).mockRejectedValue(new Error("down"));
