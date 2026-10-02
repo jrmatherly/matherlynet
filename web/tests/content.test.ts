@@ -19,9 +19,9 @@ afterEach(() => {
 describe("Perspectives", () => {
   it("offers each audience as a radio option, with the first selected and a panel per option", async () => {
     const html = await (await AstroContainer.create()).renderToString(Perspectives);
-    expect(perspectives.map((p) => p.label)).toEqual(["Engineering leaders", "Security & governance", "Recruiters"]);
+    expect(perspectives.map((p) => p.label)).toEqual(["Recruiters", "Engineering leaders", "Security & governance"]);
     expect(html.match(/type="radio"/g)).toHaveLength(3);
-    expect(html).toMatch(/value="leaders"\s+checked/);
+    expect(html).toMatch(/value="recruiters"\s+checked/);
     for (const p of perspectives) expect(html).toContain(`data-panel="${p.id}"`);
   });
 });
