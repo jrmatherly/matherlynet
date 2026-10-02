@@ -1,5 +1,5 @@
 // Browser-side helpers for the visitor theme controls (ModeToggle, ThemeControls).
-import { themeColorTags } from "../theme/theme-color";
+import { themeColorFor, themeColorTags } from "../theme/theme-color";
 
 // One-year, Lax cookie for a visitor's theme choice; Secure on https.
 export const remember = (name: string, value: string): void => {
@@ -8,9 +8,9 @@ export const remember = (name: string, value: string): void => {
 };
 
 // Rebuilds <meta name="theme-color"> after a mode or palette switch, as Base.astro would render it: the server
-// only computes it per request, so without this the browser chrome keeps the old colour until the next page.
+// only computes it per request, so without this the browser chrome keeps the old color until the next page.
 export const syncThemeColor = (): void => {
-  // --bg is a light-dark() pair: a hidden probe resolves one side per colour scheme (CSSOM, which the CSP allows).
+  // --bg is a light-dark() pair: a hidden probe resolves one side per color scheme (CSSOM, which the CSP allows).
   const bg = (scheme: "light" | "dark") => {
     const probe = document.createElement("div");
     probe.hidden = true;
@@ -21,8 +21,7 @@ export const syncThemeColor = (): void => {
     probe.remove();
     return color;
   };
-  const mode = document.documentElement.dataset.mode;
-  const tags = themeColorTags(mode === "light" || mode === "dark" ? bg(mode) : { light: bg("light"), dark: bg("dark") });
+  const tags = themeColorTags(themeColorFor(document.documentElement.dataset.mode, bg));
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
   for (const t of tags) {
     const meta = document.createElement("meta");

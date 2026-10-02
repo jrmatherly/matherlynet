@@ -37,9 +37,9 @@ const option =
       button.addEventListener("click", () => {
         const mode = button.dataset.setMode!;
         root.dataset.mode = mode;
+        group.querySelectorAll<HTMLButtonElement>("[data-set-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
         remember(MODE_COOKIE, mode);
         syncThemeColor();
-        group.querySelectorAll<HTMLButtonElement>("[data-set-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
       }),
     ),
   );

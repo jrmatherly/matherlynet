@@ -8,6 +8,7 @@ import { cardPalette, ogCards } from "../../lib/og";
 import { person, siteOrigin } from "../../lib/site";
 import { getSiteSettings } from "../../lib/site-settings";
 import { paletteColors } from "../../theme/colors";
+import { BRAND_PALETTE, isProPalette } from "../../theme/palettes";
 
 const require = createRequire(import.meta.url);
 const font = (path: string) => readFile(require.resolve(path));
@@ -23,14 +24,17 @@ const ready = Promise.all([
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, url }) => {
   const slug = params.slug ?? "";
   // Own keys only: "constructor", "__proto__" etc. are inherited and would crash the renderer.
-  const card = Object.hasOwn(ogCards, slug) ? ogCards[slug] : undefined;
+  const card = Object.hasOwn(ogCards, slug) ? ogCards[slug as keyof typeof ogCards] : undefined;
   if (!card) return new Response("Not found", { status: 404 });
 
-  // Colors come only from palettes.css and the /admin settings, never from the request.
-  const c = paletteColors(cardPalette(await getSiteSettings()), "dark");
+  // The card renders in the palette its URL names (ogImage's ?v=), so a process whose cached settings are older
+  // can't put another palette's card into a shared cache under that key. The request only picks among the
+  // palettes in palettes.css; anything else gets the /admin theme's palette.
+  const v = url.searchParams.get("v");
+  const c = paletteColors(v === BRAND_PALETTE || isProPalette(v) ? v : cardPalette(await getSiteSettings()), "dark");
   const logo = mark.replaceAll("var(--accent, currentColor)", c.accent).replaceAll("currentColor", c.text);
   await ready;
 

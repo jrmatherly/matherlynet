@@ -14,6 +14,15 @@ describe("profile data", () => {
     }
   });
 
+  it("keeps the four roles the changelog binds by position, newest first, with \"Mon YYYY\" dates", () => {
+    expect(career).toHaveLength(4);
+    career.forEach((role, i) => {
+      expect(role.start).toMatch(/^[A-Z][a-z]{2} \d{4}$/);
+      // Only the current role is open-ended, and each role ends where the next one up starts.
+      expect(role.end).toBe(i === 0 ? undefined : career[i - 1].start);
+    });
+  });
+
   it("gives every platform a period and a one-line result", () => {
     for (const item of work) {
       expect(item.period).toMatch(/^20\d\d to (20\d\d|now)$/);

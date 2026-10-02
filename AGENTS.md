@@ -70,14 +70,14 @@ out/                   aspire publish output (gitignored)
 - Markdown: 120-column limit; every file starts with a top-level heading.
 - Styling: Tailwind utilities on design tokens only (`bg-surface`, `text-muted`, `bg-accent`…); the default
   Tailwind palette is disabled. New palettes need a block in `palettes.css` and a key in `palettes.ts` (a test
-  enforces the match). Each palette, light and dark, must keep accent and muted text at WCAG AA (4.5:1) on bg, and
-  accent-ink on accent; `theme.test.ts` fails otherwise.
+  enforces the match). Each palette, light and dark, must keep text at WCAG AA (4.5:1): accent and muted on bg,
+  surface and accent-soft, muted on surface-2, and accent-ink on accent; `theme.test.ts` fails otherwise.
 - CSP (`security.csp` in `astro.config.mjs`, sent as a header; `astro dev` skips it, so check a build): no inline
   `style` attributes, `on*=` handlers or unhashed inline scripts. Third-party origins are added per request with
   `Astro.csp` (see Telemetry.astro). Code blocks use Prism (token classes, colored from the palette in
   global.css), not Shiki, whose inline styles the CSP blocks.
-- Size images with classes (`w-28 h-auto aspect-square`), never Astro's `style:` shortcut or a `style` attribute; give
-  `<img>` its real `width`/`height` for layout shift and `h-auto` so they don't stretch it. SVG figures take color from
+- Size images with classes (`w-28 h-auto aspect-square`), never a `style` attribute (string or object); give `<img>`
+  its real `width`/`height` for layout shift and `h-auto` so they don't stretch it. SVG figures take color from
   `fill-*`/`stroke-*` token utilities, not `fill="#…"` or `style`.
 
 <!-- END AUTO-MANAGED -->
@@ -96,18 +96,23 @@ out/                   aspire publish output (gitignored)
 - Public pages come from `publicRoutes` in `src/lib/site.ts`; the public origin is `BETTER_AUTH_URL`.
 - Site settings (`site_settings` row, edited on /admin) carry the default theme, Pro palette and display typeface
   (`sans`/`serif`). New columns need a DB default so the existing row migrates; `fromRow()` in `site-settings.ts`
-  falls back to `SITE_DEFAULTS` for unknown values, and `parseSettingsForm()` rejects them.
-- The display typeface is `data-type` on `<html>` (set in `Base.astro`); headings use the `.display` class, which reads
-  `--display-face`. Newsreader goes through Astro's local font provider on the `@fontsource-variable/newsreader` files
-  (the npm provider reads only `index.css`, which has no italic) and is preloaded only when serif is active.
+  falls back to `SITE_DEFAULTS` for unknown values, and `parseSettingsForm()` rejects them. The /admin form reads the
+  row with `readSiteSettings()`, which throws on a database error: `getSiteSettings()` falls back to defaults, and a
+  form filled from those would save them over the real row.
+- The display typeface is `data-type` on `<html>` (set in `Base.astro`); page and section titles use the `.display`
+  class, which reads `--display-face` (small card and list headings stay Geist bold). Newsreader goes through Astro's
+  local font provider on the `@fontsource-variable/newsreader` files (the npm provider parses one CSS file per family,
+  and none declares both normal and italic) and is preloaded only when serif is active.
   Cross-document view transitions are on (`@view-transition` in `global.css`); the header keeps its own
   `view-transition-name`.
 - Visitor theme choices are cookies written by page script (`remember()` in `lib/theme-cookie.ts`): the header's
   `ModeToggle` sets color mode; the footer's `ThemeControls` sets Brand/Pro and Sans/Serif. The server reads them back
   into `Astro.locals.theme`.
 - Share cards follow the site theme: pages call `ogImage(slug, siteSettings)` and `cardPalette()` picks Signal for a
-  Brand site, else the Pro palette; the `?v=` palette key makes social caches refetch. `Seo.astro` takes `themeColor`
-  (a string for a forced mode, a light/dark pair when following the system) and emits `theme-color` meta tags.
+  Brand site, else the Pro palette; the `?v=` palette key makes social caches refetch, and the route renders the
+  palette it names (so a replica with older cached settings can't cache the wrong card under it). `Seo.astro` takes
+  `themeColor` (a string for a forced mode, a light/dark pair when following the system; `themeColorFor()` decides)
+  and emits `theme-color` meta tags.
 - Nav visibility is the `nav` flag in `publicRoutes`: `/writing` is `nav: false` until the first post (page, feed and
   sitemap stay live). The header's "Let's talk" button links to `person.sameAs[0]`; Account/Sign in live in the footer.
 - Owner-supplied wording stays `null` in `profile.ts` until the owner provides it (`availability` today), and the
@@ -220,9 +225,9 @@ out/                   aspire publish output (gitignored)
   no Compose environment and the publish fails validation.
 - GitHub Actions: pin actions to full commit SHAs with a `# vX.Y.Z` comment, keep the concurrency
   group, emoji step names, and run `actionlint`.
-- Theme = palette × mode × typeface: visitor cookies `mn-theme`, `mn-mode`, `mn-type` over the /admin defaults. Page
-  transitions are native cross-document view transitions (`@view-transition` in `global.css`); don't add
-  `<ClientRouter />`. Headings take `.display`; body text is always Geist.
+- Theme = palette × mode × typeface: visitor cookies `mn-theme`, `mn-mode`, `mn-type` over the /admin defaults (mode
+  has none; it defaults to `system`). Page transitions are native cross-document view transitions (`@view-transition`
+  in `global.css`); don't add `<ClientRouter />`. Page and section titles take `.display`; body text is always Geist.
 - Markdown follows `.markdownlint-cli2.jsonc` (120 columns); the pre-commit hook enforces it.
 - Don't push, publish images, or deploy without explicit approval.
 

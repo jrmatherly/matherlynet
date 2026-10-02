@@ -51,7 +51,7 @@ export const isProPalette = (value: unknown): value is ProPalette =>
 
 export const isTypeface = (value: unknown): value is Typeface => typeof value === "string" && Object.hasOwn(TYPEFACES, value);
 
-// Cookies are visitor input: anything unrecognised falls back to the site defaults.
+// Cookies are visitor input: anything unrecognised falls back to the site defaults (mode has none: "system").
 export function resolveTheme(
   cookies: { theme?: string; mode?: string; type?: string },
   site: SiteThemeDefaults = SITE_DEFAULTS,

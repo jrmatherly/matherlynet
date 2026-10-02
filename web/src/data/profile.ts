@@ -1,5 +1,6 @@
 // Site copy drawn from Jason's résumé (resume.matherly.net/jason/matherly). Edit facts here, not in pages.
 // Contact details are deliberately absent: LinkedIn and the résumé link handle contact.
+import { person } from "../lib/site";
 
 export const resumeUrl = "https://resume.matherly.net/jason/matherly";
 
@@ -8,7 +9,7 @@ export const intro =
   "Seventeen years at The Aaron's Company, from store networks to the company's AI Gateway, MCP platform and Kubernetes clusters, with security, governance and cost accounting designed in from the start.";
 // Rendered only when set. Jason supplies the wording (roles, remote/Atlanta, timing).
 export const availability: string | null = null;
-export const contact = { label: "Message me on LinkedIn", href: "https://www.linkedin.com/in/jason-matherly" } as const;
+export const contact = { label: "Message me on LinkedIn", href: person.sameAs[0] } as const;
 
 export const gateway = {
   title: "AI Gateway",
@@ -38,7 +39,7 @@ export const recruiterFacts = [
   { term: "Languages", detail: "Python, TypeScript, Go" },
 ];
 
-// The changelog's "In the same period" list beside the gateway (mockup B). Facts from the career highlights.
+// The changelog's "In the same period" list under the gateway generations.
 export const samePeriod = [
   { term: "MCP", detail: "Gateway, Registry and Portal: about 20 managed servers behind OAuth and approvals." },
   { term: "Agents", detail: "Internal chat platform and about 30 agents, 400 users across 14 teams." },
@@ -56,10 +57,13 @@ export const facts = [
 ];
 
 export interface Perspective {
-  id: string;
+  // Each id has a selector in the <style> of Perspectives.astro and changelog.astro: a new one needs a line in
+  // both, or its panel never shows.
+  id: "recruiters" | "leaders" | "security";
   label: string;
   headline: string;
   body: string;
+  // Home page only, and not for recruiters, whose panel lists recruiterFacts instead.
   points: string[];
 }
 
@@ -153,6 +157,7 @@ export const work: WorkItem[] = [
 
 export interface Role {
   title: string;
+  // "Mon YYYY": pages take the year with slice(-4). Only the current role has no end.
   start: string;
   end?: string;
   highlights: string[];

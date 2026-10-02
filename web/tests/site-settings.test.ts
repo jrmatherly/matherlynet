@@ -1,27 +1,48 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const select = vi.fn();
-const upsert = vi.fn(async () => {});
+const upsert = vi.fn<(conflict: { set: object }) => Promise<void>>(async () => {});
+const values = vi.fn<(row: object) => object>(() => ({ onConflictDoUpdate: upsert }));
 vi.mock("../src/db", () => ({
   db: {
     select: () => ({ from: () => ({ limit: select }) }),
-    insert: () => ({ values: () => ({ onConflictDoUpdate: upsert }) }),
+    insert: () => ({ values }),
   },
 }));
-vi.mock("../src/lib/sentry", () => ({ configureSentry: vi.fn() }));
+const captureError = vi.fn();
+vi.mock("../src/lib/sentry", () => ({ configureSentry: vi.fn(), captureError }));
 
 describe("getSiteSettings", () => {
   beforeEach(() => {
     vi.resetModules();
     select.mockReset();
+    captureError.mockReset();
     vi.useRealTimers();
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  it("falls back to built-in defaults when the first query fails", async () => {
-    select.mockRejectedValue(new Error("ECONNREFUSED"));
+  it("falls back to built-in defaults when the first query fails, and reports the failure", async () => {
+    const down = new Error("ECONNREFUSED");
+    select.mockRejectedValue(down);
     const { getSiteSettings } = await import("../src/lib/site-settings");
     await expect(getSiteSettings()).resolves.toMatchObject({ theme: "brand", sentry: { server: false } });
+    expect(captureError).toHaveBeenCalledWith(down);
+  });
+
+  it("the /admin form's read throws instead of falling back, so defaults can't be saved over the real row", async () => {
+    select.mockRejectedValue(new Error("ECONNREFUSED"));
+    const { readSiteSettings } = await import("../src/lib/site-settings");
+    await expect(readSiteSettings()).rejects.toThrow("ECONNREFUSED");
+  });
+
+  it("reads and saves the display typeface", async () => {
+    select.mockResolvedValue([{ theme: "pro", proPalette: "merlot", typeface: "serif" }]);
+    const { getSiteSettings, saveSiteSettings } = await import("../src/lib/site-settings");
+    const settings = await getSiteSettings();
+    expect(settings.typeface).toBe("serif");
+    await saveSiteSettings(settings);
+    expect(values.mock.lastCall?.[0]).toMatchObject({ typeface: "serif" });
+    expect(upsert.mock.lastCall?.[0].set).toMatchObject({ typeface: "serif" });
   });
 
   it("falls back to sans when the stored typeface is unknown", async () => {

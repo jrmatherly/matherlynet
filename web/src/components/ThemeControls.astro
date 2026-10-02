@@ -46,9 +46,9 @@ const option =
       document.querySelectorAll<HTMLLinkElement>("link[data-icon]").forEach((link) => {
         link.href = `${theme === "pro" ? "/pro/" : "/"}${link.dataset.icon}`;
       });
+      press("data-set-theme", theme);
       remember(THEME_COOKIE, theme);
       syncThemeColor();
-      press("data-set-theme", theme);
     }),
   );
 
@@ -56,8 +56,8 @@ const option =
     button.addEventListener("click", () => {
       const type = button.dataset.setType!;
       root.dataset.type = type;
-      remember(TYPE_COOKIE, type);
       press("data-set-type", type);
+      remember(TYPE_COOKIE, type);
     }),
   );
 </script>
