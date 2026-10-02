@@ -9,7 +9,8 @@ The Astro app, file by file (moved out of AGENTS.md to keep it short; AGENTS.md'
 
 ```text
 web/
-  astro.config.mjs     output: 'server', @astrojs/node standalone, Tailwind 4 (Vite plugin), Geist, CSP directives,
+  astro.config.mjs     output: 'server', @astrojs/node standalone, Tailwind 4 (Vite plugin), fonts (Geist via the npm
+                       provider; Newsreader normal + italic via the local provider), CSP directives,
                        security.allowedDomains (trust X-Forwarded-Proto behind Cloudflare)
   migrate.mjs          applies web/drizzle/ on start (retry + Postgres advisory lock)
   server.mjs           production entry (`start`): startServer() from dist/server/entry.mjs, graceful shutdown
@@ -25,7 +26,8 @@ web/
                        userHasPermission endpoint) and the length rules; fetch aborted after 5 s; fails closed
                        with a 503, logged
   src/lib/mail.ts      nodemailer over SMTP_URL (Mailpit locally); fire-and-forget
-  src/lib/site-settings.ts  site_settings row (theme, Sentry, Umami), 30 s per-process cache; reconfigures Sentry;
+  src/lib/site-settings.ts  site_settings row (theme, Pro palette, typeface, Sentry, Umami), 30 s per-process cache;
+                       reconfigures Sentry;
                        expired entries refresh in the background; database down: last known (or default) settings
   src/lib/settings-form.ts  SiteSettings type + /admin form validation (pure, unit-tested); isPrivateAddress()
   src/lib/sentry.ts    server Sentry (@sentry/node): errors only, one client; DSN changes retarget its transport;
@@ -33,29 +35,37 @@ web/
                        connects only to public addresses (publicOnlyLookup), directly (never via http(s)_proxy)
   src/lib/scrub-url.ts stripQuery(): path-only URLs for browser Sentry events/breadcrumbs (reset tokens)
   src/lib/auth-client.ts  better-auth browser client
-  src/lib/site.ts      public origin (from BETTER_AUTH_URL at run time), person details, public routes list
-  src/data/profile.ts  all résumé-derived copy (metrics, perspectives, work, career, skills); edit facts here
+  src/lib/site.ts      public origin (from BETTER_AUTH_URL at run time), person details, public routes list (+ nav flag)
+  src/lib/og.ts        share-card copy (ogCards), cardPalette(), ogImage(slug, site) with a ?v=<palette> cache key
+  src/lib/theme-cookie.ts  remember(): the one-year visitor theme cookie, shared by ModeToggle and ThemeControls
+  src/data/profile.ts  all résumé-derived copy (headline, intro, availability, contact, gateway case study,
+                       perspectives, recruiterFacts, samePeriod, work, career, bio, facts, skills); edit facts here
   src/content/writing/  Markdown posts (schema in src/content.config.ts; `draft: true` hides a post everywhere)
   src/db/              Drizzle client (`APPDB_URI`, pool timeouts), generated auth-schema.ts, app tables in schema.ts
   src/middleware.ts    session, siteSettings and theme into Astro.locals; Sentry error capture; security headers
-  src/theme/palettes.ts  palette keys, cookie names, resolveTheme() (cookies -> theme, mode, palette)
+  src/theme/palettes.ts  palette keys, typefaces, cookie names, resolveTheme() (cookies -> theme, mode, palette,
+                       typeface)
   src/theme/colors.ts  paletteColors() for Vite server code (reads palettes.css via `?raw`); palette-css.ts is the
                        pure colorsFromCss() parser, so plain Node scripts can parse palettes.css too
-  src/styles/           global.css (Tailwind tokens, dark variant, Prism token colors)
-                        + palettes.css (one light-dark() block per palette)
-  src/layouts/Base.astro  <html data-palette data-mode>, Seo, favicons, fonts, header/footer (chrome full|minimal)
-  src/components/       Seo (canonical, OG, Person JSON-LD, noindex), SiteHeader/SiteFooter, ThemeToggle, Logo,
-                        StatusPanel, Perspectives (no-JS radio switcher), WorkCard, Telemetry (Umami tag +
-                        lazy @sentry/browser, both from site settings)
-  src/pages/           index, work, about, writing/ (+[slug]), 404; robots/sitemap/rss built per request
+  src/styles/           global.css (Tailwind tokens, dark variant, .display heading face, view transitions, Prism token
+                        colors) + palettes.css (one light-dark() block per palette)
+  src/layouts/Base.astro  <html data-palette data-mode data-type>, Seo (+ theme-color), favicons, fonts,
+                       header/footer (chrome full|minimal)
+  src/components/       Seo (canonical, OG, Person JSON-LD, noindex, theme-color), SiteHeader (nav, ModeToggle,
+                        Let's talk), SiteFooter (ThemeControls: Brand/Pro + Sans/Serif, links, sign in), Logo
+                        (monogram at header size), Telemetry (Umami tag + lazy @sentry/browser, both from site
+                        settings); home: GatewayPath (SVG request path), Perspectives (no-JS radio switcher),
+                        CaseStudy, PlatformList, AboutStrip, Cta, Availability (renders only when set);
+                        changelog: RailEntry; work: WorkCard (a row)
+  src/pages/           index, changelog, work, about, writing/ (+[slug]), 404; robots/sitemap/rss built per request
   src/pages/ (account)  sign-in, sign-up, forgot/reset-password, account (sessions), admin (role-gated, 404
                        otherwise); all noindex, AuthCard shell, form classes in src/lib/form.ts
   src/pages/og/[slug].png.ts  share cards rendered on demand by Takumi (cards in src/lib/og.ts, colors from
-                       palettes.css)
+                       palettes.css in the /admin theme's palette)
   src/pages/api/auth/[...all].ts  better-auth request handler
   tests/               Vitest (node env) + Astro Container API
   scripts/social-preview.mts  renders .github/social-preview.png (GitHub social preview, 1280x640) with Takumi
   e2e/                 Playwright against the Aspire stack: public pages, headers, sign-up -> verify (Mailpit)
                        -> sign-out -> password reset; each run creates an e2e-*@example.test user
-  public/              brand favicons, web manifest, mask logo; public/pro/ = Pro monogram set
+  public/              brand favicons, web manifest, mask logo, portrait.jpg (648x648); public/pro/ = Pro monogram set
 ```
