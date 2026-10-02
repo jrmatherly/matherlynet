@@ -61,6 +61,19 @@ export default defineConfig({
       fallbacks: ["monospace"],
       options: { package: "@fontsource-variable/geist-mono" },
     },
+    {
+      // Local provider on the fontsource files: the npm provider reads only index.css, which has no italic face.
+      provider: fontProviders.local(),
+      name: "Newsreader Variable",
+      cssVariable: "--font-newsreader",
+      fallbacks: ["Georgia", "serif"],
+      options: {
+        variants: [
+          { weight: "200 800", style: "normal", src: ["@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2"] },
+          { weight: "200 800", style: "italic", src: ["@fontsource-variable/newsreader/files/newsreader-latin-wght-italic.woff2"] },
+        ],
+      },
+    },
   ],
   vite: {
     // Hidden source maps (no sourceMappingURL comment) with Sentry debug IDs injected into bundles and maps.

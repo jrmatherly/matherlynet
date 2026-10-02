@@ -39,6 +39,23 @@
 :root[data-mode="dark"] { color-scheme: dark; }
 :root[data-mode="system"] { color-scheme: light dark; }
 
+/* Display face for headings: Geist by default, Newsreader when the visitor (or the site default) picks serif.
+   Body text is always Geist. */
+:root { --display-face: var(--font-geist); --display-weight: 800; --display-tracking: -0.03em; }
+:root[data-type="serif"] { --display-face: var(--font-newsreader); --display-weight: 500; --display-tracking: -0.015em; }
+
+@layer components {
+  .display { font-family: var(--display-face); font-weight: var(--display-weight); letter-spacing: var(--display-tracking); line-height: 1.05; text-wrap: balance; }
+}
+
+/* Cross-document view transitions: the header holds still (view-transition-name in SiteHeader), the rest
+   cross-fades, so a palette or typeface change between pages re-colours instead of flashing. */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 400ms; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
+}
+
 @layer base {
   html {
     background-color: var(--bg);
