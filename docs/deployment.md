@@ -59,9 +59,10 @@ docker compose ps        # web: Up … (healthy) once migrations ran and the ser
 
 `migrate.mjs` waits up to 60 s for Postgres; `restart: unless-stopped` retries if it gives up. Aspire 13.6's
 TypeScript SDK can't express a Compose `healthcheck`, so it lives in `deploy/docker-compose.override.yaml`, which
-`aspire publish` copies into the output directory and Compose merges automatically. Copy the whole output directory
-to the server, override included. The healthcheck probes `/api/auth/ok`, which stays up while Postgres is down, so
-a database outage doesn't mark web unhealthy.
+`aspire publish` copies into the output directory and Compose merges automatically when no `-f` is given (an
+explicit `-f docker-compose.yaml` drops it). Copy the whole output directory to the server, override included.
+The healthcheck probes `/api/auth/ok`, which stays up while Postgres is down, so a database outage doesn't mark web
+unhealthy.
 
 The admin account is promoted when its email becomes verified (the emailed link, or a Google/GitHub sign-in that
 vouches for it), never later: an account verified before `ADMIN_EMAIL` was set stays a normal user. For an OAuth

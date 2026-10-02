@@ -1,4 +1,4 @@
-# Merged into the published docker-compose.yaml by Docker Compose (same directory, default name). Aspire 13.6's
+# Merged into the published docker-compose.yaml by Docker Compose (same directory, default name, no `-f`). Aspire 13.6's
 # TypeScript SDK can't set a Compose healthcheck (its Healthcheck type isn't exported), so it lives here;
 # `aspire publish` copies it into the output directory (apphost.mts, copy-compose-override step).
 services:
@@ -9,6 +9,6 @@ services:
       interval: 30s
       timeout: 3s
       retries: 3
-      # migrate.mjs waits up to 60 s for Postgres before the server starts. (No start_interval: it needs a newer
-      # Compose/Engine than the production host is known to have, and nothing waits on web being healthy.)
+      # migrate.mjs waits up to 60 s for Postgres before the server starts. (No start_interval: it needs Compose
+      # 2.20.2+ and Engine support the production host isn't confirmed to have; nothing waits on web being healthy.)
       start_period: 90s

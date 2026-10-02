@@ -6,6 +6,7 @@ on:
       - 'web/**'
       - 'apphost.mts'
       - 'aspire.config.json'
+      - 'deploy/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/e2e.yml'
@@ -75,6 +76,14 @@ jobs:
 
       - name: 🎭 Run E2E
         run: pnpm --dir web e2e
+
+      # aspire start is run mode; publish-only AppHost code (the copy-compose-override step) only runs here.
+      - name: 📦 Check publish output
+        run: |
+          aspire publish -o out/compose --non-interactive --nologo
+          test -f out/compose/docker-compose.override.yaml
+          WEB_IMAGE=x PG_PASSWORD=x docker compose --project-directory out/compose config | grep -q 'start_period: 1m30s'
+          DEPLOY_TARGET=k8s aspire publish -o out/k8s --non-interactive --nologo
 
       - name: 📜 Stack logs
         if: failure()

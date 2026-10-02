@@ -30,7 +30,8 @@ paths:
     web's healthcheck is `deploy/docker-compose.override.yaml`, which the `copy-compose-override` pipeline step
     copies into the publish output (`Pipeline:OutputPath`; `PipelineStepContext` has no output path). Register
     such steps outside run mode only: `aspire run`/`start` have no `publish-*` steps, and a `dependsOn` naming an
-    unknown step fails the AppHost (local `/verify` on an already-running stack won't notice). The published
+    unknown step fails the AppHost. `/verify` reuses a running AppHost, so restart it (`aspire stop`, then `aspire
+    start`) to test AppHost changes; CI's e2e job also runs `aspire publish` for the publish-only code. The published
     dashboard is configured through `configureDashboard` → `publishAsDockerComposeService` (UI port on loopback).
 - Root `package.json` is the AppHost's npm project: keep `vscode-jsonrpc` on 8.x and TypeScript on
   6.0.x (see AGENTS.md); `tsconfig.apphost.json` must keep `"types": ["node"]` for TypeScript 6.
