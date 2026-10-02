@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const ADMIN = "owner@example.test";
 const PASSWORD = "a-long-unpwned-test-password-91";
+const CLEAN_RANGE = "0018A45C4D1DEF81644B54AB7F969B88D65:0\r\n";
 
 const h = vi.hoisted(() => ({
   mem: { user: [], session: [], account: [], verification: [], rateLimit: [] } as Record<string, Record<string, unknown>[]>,
@@ -72,8 +73,8 @@ beforeAll(async () => {
   vi.stubEnv("ADMIN_EMAIL", ADMIN);
   vi.stubEnv("BETTER_AUTH_URL", "http://localhost:4321");
   vi.stubEnv("BETTER_AUTH_SECRET", "test-secret-test-secret-test-secret-123");
-  // Have I Been Pwned range lookup: an empty body means not compromised.
-  vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 200 })));
+  // Have I Been Pwned range lookup: a padding-only list means not compromised (an empty body fails closed).
+  vi.stubGlobal("fetch", vi.fn(async () => new Response(CLEAN_RANGE, { status: 200 })));
   ({ auth } = (await import("../src/lib/auth")) as unknown as { auth: Auth });
 });
 afterAll(() => {
@@ -138,6 +139,8 @@ describe("admin promotion", () => {
       }),
     );
     expect(res.status).toBe(503);
+    // Once: through onAPIError only (a before hook's throw skips the after hook).
+    expect(capture).toHaveBeenCalledOnce();
     expect(capture).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 503 }));
   });
 
@@ -145,11 +148,10 @@ describe("admin promotion", () => {
     const capture = await captureError();
     capture.mockClear();
     vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 200 })));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(CLEAN_RANGE, { status: 200 })));
     await auth.api.signUpEmail({ body: { email: "f5@example.test", password: PASSWORD, name: "T" } as never });
     h.sessionInsertFails = true;
-    const res = await auth.handler(new Request(link("f5@example.test")));
-    h.sessionInsertFails = false;
+    const res = await auth.handler(new Request(link("f5@example.test"))).finally(() => (h.sessionInsertFails = false));
     expect(res.status).toBe(500);
     // Only the after hook passes { path }: this pins that path, not onAPIError's.
     expect(capture).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 500 }), { path: "/verify-email" });
