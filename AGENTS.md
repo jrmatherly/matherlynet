@@ -120,6 +120,10 @@ out/                   aspire publish output (gitignored)
   loopback, link-local and shared (100.64/10) hosts, including IPv6 forms that embed IPv4. `isPrivateAddress()` is
   reused at connect time by server Sentry's DNS lookup (`sentry.ts`), so a name that resolves locally is refused;
   a zone id is stripped first and unparseable IPv6 fails closed. Server Sentry ignores http(s)_proxy (it warns).
+- `web/src/lib/pwned.ts` runs the breach lookup last: length rules (12-128) first, then, on session-gated password
+  routes, a 401 refusal without a session (refuse, not skip, so a mismatched session read can't let a password
+  through unchecked). Its session read passes `disableRefresh` because this hook's Set-Cookie is dropped; the
+  endpoint's own read must refresh.
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
   Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
   -R jrmatherly/matherlynet`.
