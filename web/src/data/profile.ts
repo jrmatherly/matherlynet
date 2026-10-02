@@ -157,8 +157,8 @@ export const work: WorkItem[] = [
   {
     title: "Data centers, DR & corporate offices",
     summary:
-      "Designed and built the new primary data center and led its migration. Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018). Later, as manager, designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage.",
-    period: "2015 to now",
+      "Designed and built the new primary data center and led its migration. Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018). In 2021, as manager, designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage.",
+    period: "2015 to 2021",
     result: "Primary and DR data centers, three corporate offices, Azure with ExpressRoute; zero unplanned downtime",
   },
 ];
@@ -185,7 +185,7 @@ export const career: Role[] = [
       "Rolled out Microsoft Copilot and Copilot Studio, packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune, and hosts a weekly AI community of practice",
       "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime; leads a team of 4",
       "Led BrandsMart USA's 4-person infrastructure team after the acquisition (Mar 2023 – Mar 2026), for 8 direct reports, standardizing policies and tooling across a data center and 12 sites",
-      "Designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime",
+      "Designed and built the disaster recovery data center (2021) and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime",
       "Delivered $2M+ in infrastructure projects (the largest about $1.5M) and replaced paid tools with in-house platforms: SolarWinds with Zabbix and Grafana, ADAudit Plus with a custom auditing platform",
       "Rolled out self-service automation for VMs, storage, VDI, accounts and firewall changes",
     ],
