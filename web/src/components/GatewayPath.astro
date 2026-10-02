@@ -1,0 +1,51 @@
+---
+// How a request moves through the AI Gateway: drawn, not a screenshot, so it follows the palette.
+// Below the sm breakpoint (640px) the SVG keeps its 520px drawing width and scrolls inside the card: shrinking it
+// makes the labels unreadable (audited at 4.6px).
+const node = "fill-surface-2 stroke-border";
+const text = "fill-foreground text-[12px]";
+const small = "fill-muted text-[10.5px]";
+const wire = "fill-none stroke-border stroke-[1.5]";
+---
+
+<figure class="m-0 overflow-x-auto rounded-2xl border border-border bg-surface p-5 pb-3.5">
+  <svg viewBox="0 0 520 300" role="img" aria-labelledby="path-title path-desc" class="block h-auto w-full min-w-[520px] font-sans sm:min-w-0">
+    <title id="path-title">How a request moves through the AI Gateway</title>
+    <desc id="path-desc">A person signs in with SSO, the gateway applies rate limits, guardrails, cost accounting and model routing, then calls Azure AI Foundry or Anthropic. Every call is written to the audit log.</desc>
+    <path class={wire} d="M92 70 H150" />
+    <path class={wire} d="M370 70 H410 Q426 70 426 86 V105" />
+    <path class={wire} d="M370 70 H410 Q426 70 426 54 V35" />
+    <path class={wire} d="M260 142 V190" />
+    <path class={wire} d="M142 213 H170" />
+    <rect class={node} x="12" y="44" width="80" height="52" rx="8" />
+    <text class={text} x="52" y="66" text-anchor="middle">A person</text>
+    <text class={small} x="52" y="82" text-anchor="middle">SSO sign-in</text>
+    <rect class="fill-accent-soft stroke-accent" x="150" y="18" width="220" height="124" rx="10" />
+    <text class={`${text} font-bold`} x="260" y="40" text-anchor="middle">AI Gateway</text>
+    <text class={small} x="166" y="66">SSO</text>
+    <text class={small} x="166" y="84">Rate limits</text>
+    <text class={small} x="166" y="102">Guardrails</text>
+    <text class={small} x="262" y="66">Cost per user and team</text>
+    <text class={small} x="262" y="84">Model routing</text>
+    <text class={small} x="262" y="102">Audit record</text>
+    <rect class={node} x="400" y="6" width="112" height="46" rx="8" />
+    <text class={text} x="456" y="33" text-anchor="middle">Azure AI Foundry</text>
+    <rect class={node} x="400" y="104" width="112" height="46" rx="8" />
+    <text class={text} x="456" y="131" text-anchor="middle">Anthropic</text>
+    <rect class={node} x="170" y="190" width="180" height="46" rx="8" />
+    <text class={text} x="260" y="210" text-anchor="middle">Audit log</text>
+    <text class={small} x="260" y="225" text-anchor="middle">every call, every token, who and what for</text>
+    <rect class={node} x="12" y="190" width="130" height="46" rx="8" />
+    <text class={text} x="77" y="210" text-anchor="middle">MCP Gateway</text>
+    <text class={small} x="77" y="225" text-anchor="middle">~20 servers, approvals</text>
+    <!-- One pulse along the two wires; the M in the path is the jump across the gateway box. Hidden under
+         reduced motion. -->
+    <circle class="fill-accent motion-reduce:hidden" r="4">
+      <animateMotion dur="6s" repeatCount="indefinite" path="M92 70 H150 M370 70 H410 Q426 70 426 54 V35" />
+    </circle>
+    <text class={small} x="12" y="282">About 2 billion tokens a month take this path.</text>
+  </svg>
+  <figcaption class="mt-2.5 flex flex-wrap justify-between gap-3 text-sm text-muted">
+    <span>The in-house gateway, third generation</span><span>Azure AI Foundry and Anthropic</span>
+  </figcaption>
+</figure>
