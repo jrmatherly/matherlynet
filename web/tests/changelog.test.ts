@@ -11,4 +11,11 @@ describe("RailEntry", () => {
     expect(html).toMatch(/data-now="true"/);
     expect(html).toContain("<p>body</p>");
   });
+
+  it("puts the anchor id on a box that can be scrolled to, not on the display:contents wrapper", async () => {
+    const container = await AstroContainer.create();
+    const html = await container.renderToString(RailEntry, { props: { year: "2015", id: "career" } });
+    expect(html).not.toMatch(/<section[^>]*id="career"/);
+    expect(html).toMatch(/<div[^>]*id="career"/);
+  });
 });
