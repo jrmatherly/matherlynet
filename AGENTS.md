@@ -220,6 +220,9 @@ out/                   aspire publish output (gitignored)
   no Compose environment and the publish fails validation.
 - GitHub Actions: pin actions to full commit SHAs with a `# vX.Y.Z` comment, keep the concurrency
   group, emoji step names, and run `actionlint`.
+- Theme = palette × mode × typeface: visitor cookies `mn-theme`, `mn-mode`, `mn-type` over the /admin defaults. Page
+  transitions are native cross-document view transitions (`@view-transition` in `global.css`); don't add
+  `<ClientRouter />`. Headings take `.display`; body text is always Geist.
 - Markdown follows `.markdownlint-cli2.jsonc` (120 columns); the pre-commit hook enforces it.
 - Don't push, publish images, or deploy without explicit approval.
 
