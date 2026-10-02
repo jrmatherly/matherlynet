@@ -90,6 +90,9 @@ out/                   aspire publish output (gitignored)
 - Account forms handled by page script still declare `method="post"`, so a submit that beats the script can't put
   the password in a query string.
 - Public pages come from `publicRoutes` in `src/lib/site.ts`; the public origin is `BETTER_AUTH_URL`.
+- Site settings (`site_settings` row, edited on /admin) carry the default theme, Pro palette and display typeface
+  (`sans`/`serif`). New columns need a DB default so the existing row migrates; `fromRow()` in `site-settings.ts`
+  falls back to `SITE_DEFAULTS` for unknown values, and `parseSettingsForm()` rejects them.
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
 
 <!-- END AUTO-MANAGED -->
