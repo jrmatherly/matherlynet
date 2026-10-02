@@ -6,7 +6,7 @@ import { formatDate, publishedPosts } from "../../lib/writing";
 const posts = await publishedPosts();
 ---
 
-<Base title="Writing" description="Notes on AI platforms, governance and infrastructure from Jason Matherly." image={ogImage("writing")}>
+<Base title="Writing" description="Notes on AI platforms, governance and infrastructure from Jason Matherly." image={ogImage("writing", Astro.locals.siteSettings)}>
   <section class="mx-auto grid max-w-3xl gap-10 px-4 py-16 sm:px-6 sm:py-20">
     <header class="grid gap-3">
       <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl">Writing</h1>

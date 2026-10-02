@@ -8,7 +8,7 @@ import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 ---
 
-<Base title={person.name} type="profile" image={ogImage("home")}>
+<Base title={person.name} type="profile" image={ogImage("home", Astro.locals.siteSettings)}>
   <section class="relative overflow-hidden">
     <div
       class="pointer-events-none absolute inset-0 bg-[linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] bg-size-[56px_56px] opacity-50 mask-[radial-gradient(ellipse_at_75%_30%,#000_0%,transparent_65%)]"
