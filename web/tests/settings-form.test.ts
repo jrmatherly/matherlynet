@@ -88,6 +88,12 @@ describe("isPrivateAddress", () => {
       expect(isPrivateAddress(ip), ip).toBe(true);
     }
   });
+  it("fails closed: scoped (zone id) and unparseable IPv6 count as private", () => {
+    // A hosts-file entry such as `fe80::1%lo0 localhost` resolves to a scoped address.
+    for (const ip of ["fe80::1%eth0", "::1%lo0", "1::2::3", "zzzz::1"]) {
+      expect(isPrivateAddress(ip), ip).toBe(true);
+    }
+  });
   it("passes public addresses, including NAT64 and 6to4 forms of public IPv4", () => {
     for (const ip of [
       "104.16.0.1", "100.63.255.255", "100.128.0.1", "172.32.0.1", "2606:4700::1111", "2001:db8::1",

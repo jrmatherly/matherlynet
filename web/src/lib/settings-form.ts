@@ -55,8 +55,9 @@ export function isPrivateAddress(ip: string): boolean {
     const parts = ip.split(".").map(Number);
     return parts.length === 4 && parts.every(Number.isInteger) && isPrivateIPv4(parts);
   }
-  const g = ipv6Groups(ip);
-  if (!g) return false;
+  // A zone id (`fe80::1%eth0`, from a hosts-file entry) doesn't change the address; anything unparseable fails closed.
+  const g = ipv6Groups(ip.replace(/%.*$/, ""));
+  if (!g) return true;
   const v4 = (hi: number, lo: number) => [hi >> 8, hi & 255, lo >> 8, lo & 255];
   const zeros = (from: number, to: number) => g.slice(from, to).every((x) => x === 0);
   if (zeros(0, 6)) return true; // ::, ::1 and the deprecated IPv4-compatible ::a.b.c.d
