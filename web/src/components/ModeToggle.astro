@@ -29,7 +29,7 @@ const option =
 
 <script>
   import { MODE_COOKIE } from "../theme/palettes";
-  import { remember } from "../lib/theme-cookie";
+  import { remember, syncThemeColor } from "../lib/theme-cookie";
 
   const root = document.documentElement;
   document.querySelectorAll<HTMLElement>("[data-mode-toggle]").forEach((group) =>
@@ -38,6 +38,7 @@ const option =
         const mode = button.dataset.setMode!;
         root.dataset.mode = mode;
         remember(MODE_COOKIE, mode);
+        syncThemeColor();
         group.querySelectorAll<HTMLButtonElement>("[data-set-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
       }),
     ),
