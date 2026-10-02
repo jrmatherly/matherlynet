@@ -23,4 +23,30 @@ describe("GatewayPath", () => {
     expect(html).toContain("min-w-[520px]");
     expect(html).toContain("motion-reduce:hidden");
   });
+
+  it("shows the real callers, each gateway's checks in order, and where requests go", async () => {
+    const html = await render(GatewayPath);
+    for (const label of ["Claude Code", "Claude Desktop", "Agents", "End users", "Azure AI Foundry", "Anthropic", "MCP servers", "Audit log", "MCP Gateway"])
+      expect(html, label).toContain(`>${label}</text>`);
+    const checks = ["SSO", "Rate limits", "Guardrails", "Cache", "Routing", "OAuth", "Registry"].map((check) => html.indexOf(`>${check}</text>`));
+    expect(checks.every((at) => at > -1)).toBe(true);
+    expect(checks).toEqual([...checks].sort((a, b) => a - b));
+  });
+
+  it("keeps several requests in motion, refuses one at the guardrails and answers one from the cache", async () => {
+    const html = await render(GatewayPath);
+    // Five requests reach a model; one stops at the guardrails and one turns back at the cache.
+    expect(html.match(/data-pulse="passed"/g)).toHaveLength(5);
+    expect(html.match(/data-pulse="refused"/g)).toHaveLength(1);
+    expect(html.match(/data-pulse="cached"/g)).toHaveLength(1);
+    // Tool calls take the MCP Gateway's lane.
+    expect(html.match(/data-pulse="tool"/g)).toHaveLength(3);
+    // SMIL needs keyTimes that start at 0, end at 1 and never go backwards, or the browser drops the animation.
+    for (const [, list] of html.matchAll(/keyTimes="([^"]+)"/g)) {
+      const times = list.split(";").map(Number);
+      expect(times[0]).toBe(0);
+      expect(times.at(-1)).toBe(1);
+      expect(times).toEqual([...times].sort((a, b) => a - b));
+    }
+  });
 });
