@@ -11,12 +11,12 @@ draft: true
 
 Every model call at The Aaron's Company, a 15,000-person retailer, goes through one gateway. Claude Code, Claude
 Desktop, our agents and the people using our internal tools all reach Azure AI Foundry and Anthropic through it.
-I built it on my own, and in eighteen months I built it three times.
+I built it alone, then rebuilt it twice in eighteen months.
 
 ## Quick facts
 
 - **Role:** designer and sole builder; Manager, Infrastructure Services
-- **Timeline:** December 2024 to June 2026, in production since
+- **Timeline:** built December 2024 to June 2026; the current version has been in production since June 2026
 - **Scale:** from about 15 million tokens a month at launch to about 2 billion, across 400 users and 14 teams
 - **Cost:** projected licensing from $100K+ a year to about $38K, then to near zero
 
@@ -64,7 +64,6 @@ Tools sit behind a separate MCP Gateway, which reaches only the MCP servers appr
 | Metric | Before | Now |
 | :--- | :--- | :--- |
 | Tokens a month | about 15 million (launch) | about 2 billion |
-| Users | — | 400 across 14 teams |
 | Projected licensing | $100K+ a year (LiteLLM) | near zero |
 
 ## What I'd do differently
