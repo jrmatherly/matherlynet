@@ -85,3 +85,17 @@ describe("palettes.css", () => {
     }
   });
 });
+
+describe("global.css", () => {
+  const css = readFileSync(new URL("../src/styles/global.css", import.meta.url), "utf8");
+
+  it("switches the display face with data-type", () => {
+    expect(css).toMatch(/:root\[data-type="serif"\]\s*\{[^}]*--display-face: var\(--font-newsreader\)/);
+    expect(css).toMatch(/\.display\s*\{[^}]*font-family: var\(--display-face\)/);
+  });
+
+  it("enables cross-document view transitions and disables them under reduced motion", () => {
+    expect(css).toContain("@view-transition { navigation: auto; }");
+    expect(css).toMatch(/prefers-reduced-motion: reduce[\s\S]*::view-transition-group\(\*\)[\s\S]*animation: none/);
+  });
+});

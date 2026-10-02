@@ -12,12 +12,12 @@ interface Props extends SeoProps {
 }
 
 const { chrome = "full", ...seo } = Astro.props;
-const { theme, mode, palette } = Astro.locals.theme;
+const { theme, mode, palette, typeface } = Astro.locals.theme;
 const icons = theme === "pro" ? "/pro/" : "/";
 ---
 
 <!doctype html>
-<html lang="en" data-palette={palette} data-mode={mode}>
+<html lang="en" data-palette={palette} data-mode={mode} data-type={typeface}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -29,6 +29,8 @@ const icons = theme === "pro" ? "/pro/" : "/";
     <link rel="manifest" href={`${icons}site.webmanifest`} data-icon="site.webmanifest" />
     <Font cssVariable="--font-geist" preload />
     <Font cssVariable="--font-geist-mono" />
+    <!-- The serif is preloaded only when it is the active display face. -->
+    <Font cssVariable="--font-newsreader" preload={typeface === "serif"} />
     <Telemetry />
   </head>
   <body class="flex min-h-dvh flex-col bg-background text-foreground">
