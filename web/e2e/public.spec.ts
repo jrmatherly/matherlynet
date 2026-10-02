@@ -25,6 +25,9 @@ test("each perspective's panel shows when it is picked", async ({ page }) => {
 test("the theme choice survives a reload", async ({ page }) => {
   await page.goto("/");
   const html = page.locator("html");
+  // Brand and then Pro, each across a reload: whichever the /admin default is, one of them differs from it.
+  await page.getByRole("button", { name: "Brand" }).click();
+  await page.reload();
   await expect(html).toHaveAttribute("data-palette", "signal");
   await page.getByRole("button", { name: "Pro" }).click();
   await page.getByRole("button", { name: "Dark" }).click();

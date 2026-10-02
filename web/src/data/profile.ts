@@ -4,11 +4,15 @@ import { person } from "../lib/site";
 
 export const resumeUrl = "https://resume.matherly.net/jason/matherly";
 
-export const headline = "I run the platform 15,000 people's AI goes through.";
-export const intro =
-  "Seventeen years at The Aaron's Company, from store networks to the company's AI Gateway, MCP platform and Kubernetes clusters, with security, governance and cost accounting designed in from the start.";
+export const headline = "I built the AI platform a 15,000-person company runs on.";
+// One paragraph each for what was built and what comes next. Asterisks mark the phrases the home page sets in the
+// foreground color, so a skim of those alone still tells the story.
+export const intro = [
+  "Over *twenty years* at The Aaron's Company I designed and built its primary and disaster recovery *data centers*, the infrastructure for three corporate offices, and SD-WAN to every store.",
+  "Now I lead its move into *agentic AI*: a gateway carrying about *2 billion tokens a month*, built in-house to take projected licensing from $100K+ a year to near zero.",
+];
 // Rendered only when set. Jason supplies the wording (roles, remote/Atlanta, timing).
-export const availability: string | null = null;
+export const availability: string | null = "Interested in roles leading AI platform, AI enablement or infrastructure teams.";
 export const contact = { label: "Message me on LinkedIn", href: person.sameAs[0] } as const;
 
 export const gateway = {
@@ -33,23 +37,25 @@ export const gateway = {
 
 export const recruiterFacts = [
   { term: "Current title", detail: "Manager, Infrastructure Services" },
-  { term: "Team", detail: "4 direct reports; 8 while leading BrandsMart's team after the acquisition" },
+  { term: "Team", detail: "4 direct reports; 8 while also leading BrandsMart's team, 2023 to 2026" },
+  { term: "Built", detail: "Two data centers, three corporate offices, SD-WAN to 2,300+ stores, and the AI platform" },
   { term: "Location", detail: "Atlanta, remote since 2020" },
   { term: "Education", detail: "B.S. Computer Science, Kennesaw State" },
-  { term: "Languages", detail: "Python, TypeScript, Go" },
+  { term: "Writes code in", detail: "Python, TypeScript, Go" },
 ];
 
 // The changelog's "In the same period" list under the gateway generations.
 export const samePeriod = [
-  { term: "MCP", detail: "Gateway, Registry and Portal: about 20 managed servers behind OAuth and approvals." },
+  { term: "MCP", detail: "Gateway, Registry and Portal: about 20 servers, each approved into the registry, behind OAuth." },
   { term: "Agents", detail: "Internal chat platform and about 30 agents, 400 users across 14 teams." },
   { term: "Kubernetes", detail: "On-prem Talos clusters with Flux, Argo CD, Cilium and External Secrets." },
-  { term: "Rollouts", detail: "Microsoft Copilot and Copilot Studio; managed Claude Code and Claude Desktop packaged via Intune." },
-  { term: "Team", detail: "Led BrandsMart USA's infrastructure team after the acquisition, 2023 to 2026." },
+  { term: "Rollouts", detail: "Microsoft Copilot and Copilot Studio; managed Claude Code and Claude Desktop packaged via Intune; a weekly AI community of practice." },
+  { term: "Data center", detail: "Designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime." },
+  { term: "Team", detail: "Led BrandsMart USA's infrastructure team after the acquisition, 2023 to 2026: a data center and 12 sites." },
 ];
 
 export const bio =
-  "I joined The Aaron's Company as a Network Analyst in 2009 and grew with it: Network Engineer, Senior Infrastructure Engineer, and since 2021 Manager of Infrastructure Services. Along the way I built the store network, the data centers and the Azure footprint, then turned to the question of how a 15,000-person company adopts AI without losing control of cost, data or risk.";
+  "I joined The Aaron's Company's call center in 2006, moved into IT as a Network Analyst in 2009, and grew with it: Network Engineer, Senior Infrastructure Engineer, and since 2021 Manager of Infrastructure Services. Along the way I designed and built the store network, two data centers, three corporate offices and the Azure footprint, then turned to the question of how a 15,000-person company adopts AI without losing control of cost, data or risk.";
 export const facts = [
   { title: "Atlanta, GA", detail: "remote since 2020" },
   { title: "Kennesaw State", detail: "B.S. Computer Science" },
@@ -72,8 +78,8 @@ export const perspectives: Perspective[] = [
   {
     id: "recruiters",
     label: "Recruiters",
-    headline: "Seventeen years, one company, three promotions.",
-    body: "From Network Analyst in 2009 to Manager, Infrastructure Services, now leading company-wide AI strategy and adoption at The Aaron's Company. B.S. in Computer Science from Kennesaw State. Based in Atlanta, remote since 2020.",
+    headline: "Twenty years, one company, four promotions.",
+    body: "From the call center in 2006 to Manager, Infrastructure Services at The Aaron's Company. I now lead company-wide AI strategy and adoption, along with the infrastructure behind 15,000+ employees and 1,200+ stores.",
     points: [
       "AI platform engineering: gateways, MCP, agents, Copilot and Claude rollouts",
       "Infrastructure leadership: data centers, network, security, DR and identity",
@@ -84,22 +90,24 @@ export const perspectives: Perspective[] = [
     id: "leaders",
     label: "Engineering leaders",
     headline: "A platform leader who still writes the code.",
-    body: "I run infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime. I architected the AI Gateway and the MCP platform. Both run on GitOps-managed Kubernetes, and I still write the code: Python, TypeScript and Go.",
+    body: "I run infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime. I designed the AI Gateway and the MCP platform, both on GitOps-managed Kubernetes, and I write production code in Python, TypeScript and Go.",
     points: [
-      "AI Gateway serving ~2 billion tokens a month across Azure AI Foundry and Anthropic",
-      "On-prem Talos Kubernetes with Flux, Argo CD, Cilium and External Secrets",
+      "AI Gateway carrying about 2 billion tokens a month across Azure AI Foundry and Anthropic",
+      "Took the gateway from LiteLLM to Azure API Management to an in-house platform, and projected licensing from $100K+ a year to about $38K to near zero",
       "Led teams of up to 8 engineers, including an acquired company's infrastructure team",
+      "Designed and built the primary and DR data centers, three corporate offices, and SD-WAN to 2,300+ stores",
     ],
   },
   {
     id: "security",
     label: "Security & governance",
     headline: "AI adoption with the guardrails built in.",
-    body: "Every model call through the AI Gateway gets SSO, rate limiting, guardrails and audit logging, with cost tracked per user and per team. The MCP Gateway adds tool-approval workflows and OAuth, so agents reach internal systems only in approved ways.",
+    body: "Every model call goes through the AI Gateway: signed in with SSO, rate limited, checked for personal data, secrets, prompt injection and restricted topics, and written to the audit log, with cost tracked per user and team. Tools sit behind the MCP Gateway, which reaches only servers approved into the registry, over OAuth.",
     points: [
-      "~20 managed MCP servers behind approvals and OAuth",
-      "Authored AI SDLC guidelines and presented on AI security to the Information Security team",
-      "Owns privileged access (PAM) and identity; earlier rolled out 802.1X network access control",
+      "Audit logs kept for at least 90 days and reviewed by audit and compliance",
+      "About 20 MCP servers, each approved into the registry before any agent can call it",
+      "Wrote the company's guidelines for building software with AI, and briefed the Information Security team on AI security",
+      "Responsible for privileged access (PAM) and identity; rolled out 802.1X network access control",
     ],
   },
 ];
@@ -119,14 +127,14 @@ export const work: WorkItem[] = [
     summary:
       "The company's single path to large language models. It evolved from LiteLLM to Azure APIM to a custom in-house platform, with SSO, per-user and per-team cost accounting, rate limiting, guardrails, model routing and audit logging.",
     period: "2021 to now",
-    result: "~2 billion tokens a month; projected licensing cost cut to near zero",
+    result: "About 2 billion tokens a month; projected licensing from $100K+ a year to near zero",
   },
   {
     title: "MCP Gateway, Registry & Portal",
     summary:
-      "A governed way for teams to connect AI agents to internal systems and data, with tool-approval workflows and OAuth.",
+      "A governed way for teams to connect AI agents to internal systems and data: a server is approved into the registry before any agent can reach it, and every call is signed in with OAuth.",
     period: "2021 to now",
-    result: "About 20 managed MCP servers behind OAuth and tool-approval workflows",
+    result: "About 20 MCP servers, each approved into the registry, behind OAuth",
   },
   {
     title: "AI chat platform & agents",
@@ -147,11 +155,11 @@ export const work: WorkItem[] = [
     result: "CloudGenix to 2,300+ stores, later migrated to Meraki",
   },
   {
-    title: "Data centers & disaster recovery",
+    title: "Data centers, DR & corporate offices",
     summary:
-      "Directed the new primary data center build-out and migration, then the disaster recovery data center and the storage move from HPE Nimble to Pure Storage.",
-    period: "2015 to 2021",
-    result: "New primary data center and DR site, Nimble to Pure Storage, Azure with ExpressRoute; zero unplanned downtime",
+      "Designed and built the new primary data center and led its migration. Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018). Later, as manager, designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage.",
+    period: "2015 to now",
+    result: "Primary and DR data centers, three corporate offices, Azure with ExpressRoute; zero unplanned downtime",
   },
 ];
 
@@ -166,7 +174,7 @@ export interface Role {
   summary: string;
 }
 
-export const employer = { name: "The Aaron's Company", location: "Atlanta, GA (remote since 2020)", since: "Nov 2009" };
+export const employer = { name: person.worksFor, location: "Atlanta, GA (remote since 2020)", since: "Nov 2006" };
 
 export const career: Role[] = [
   {
@@ -174,10 +182,12 @@ export const career: Role[] = [
     start: "Jul 2021",
     highlights: [
       "Leads company-wide AI strategy and adoption: AI Gateway, MCP Gateway, Registry and Portal, and the internal AI chat platform",
-      "Rolled out Microsoft Copilot and Copilot Studio, and packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune",
+      "Rolled out Microsoft Copilot and Copilot Studio, packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune, and hosts a weekly AI community of practice",
       "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime; leads a team of 4",
-      "Led BrandsMart USA's 4-person infrastructure team after the acquisition (Mar 2023 – Mar 2026), for 8 direct reports",
-      "Delivered multi-million-dollar infrastructure projects and replaced paid tools with in-house platforms",
+      "Led BrandsMart USA's 4-person infrastructure team after the acquisition (Mar 2023 – Mar 2026), for 8 direct reports, standardizing policies and tooling across a data center and 12 sites",
+      "Designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime",
+      "Delivered $2M+ in infrastructure projects (the largest about $1.5M) and replaced paid tools with in-house platforms: SolarWinds with Zabbix and Grafana, ADAudit Plus with a custom auditing platform",
+      "Rolled out self-service automation for VMs, storage, VDI, accounts and firewall changes",
     ],
     heading: "One gateway, three generations",
     summary:
@@ -188,13 +198,14 @@ export const career: Role[] = [
     start: "Apr 2015",
     end: "Jul 2021",
     highlights: [
-      "Directed the new primary data center build-out and migration with zero unplanned downtime",
+      "Designed and built the new primary data center and led its migration with zero unplanned downtime",
+      "Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018)",
       "Established the Azure tenant, subscriptions and ExpressRoute hybrid connectivity",
-      "Led SD-WAN to every store (2,300+ at the time); had Always-On VPN ready the day the company went remote (~1,200 users)",
+      "Led SD-WAN to every store (2,300+ at the time); had Always-On VPN ready the day the company went remote (about 1,200 users)",
     ],
-    heading: "A new data center, a DR site, and SD-WAN to every store",
+    heading: "A new data center, three offices, and SD-WAN to every store",
     summary:
-      "Directed the primary data center build-out and migration with zero unplanned downtime, then the disaster recovery site and the move from HPE Nimble to Pure Storage. Established the Azure tenant and ExpressRoute. Rolled SD-WAN to 2,300+ stores, and had Always-On VPN ready the day the company went remote.",
+      "Designed and built the primary data center and led its migration with zero unplanned downtime. Fitted out three corporate offices between 2015 and 2018. Established the Azure tenant and ExpressRoute. Rolled SD-WAN to 2,300+ stores, and had Always-On VPN ready the day the company went remote.",
   },
   {
     title: "Network Engineer",
@@ -216,6 +227,14 @@ export const career: Role[] = [
     heading: "Started where the packets start",
     summary:
       "Store network connectivity and SonicWALL firewall deployments, while finishing a Computer Science degree at Kennesaw State (Southern Polytechnic), 2008 to 2012.",
+  },
+  {
+    title: "Call Center & Quality Assurance",
+    start: "Nov 2006",
+    end: "Nov 2009",
+    highlights: ["Started in the call center and quality assurance before moving into IT infrastructure"],
+    heading: "First, the customers",
+    summary: "Started in the call center and quality assurance, then moved into IT infrastructure.",
   },
 ];
 

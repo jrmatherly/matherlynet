@@ -7,21 +7,21 @@ import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 
-// Bound by position, newest first; profile.test.ts pins the four roles so an added one can't shift these silently.
-const [manager, senior, engineer, analyst] = career;
+// Bound by position, newest first; profile.test.ts pins the five roles so an added one can't shift these silently.
+const [manager, senior, engineer, analyst, support] = career;
 const year = (role: (typeof career)[number]) => role.start.slice(-4);
 const period = (role: (typeof career)[number]) => `${role.title}, ${year(role)} to ${role.end?.slice(-4) ?? "now"}`;
 const link = "font-semibold underline decoration-accent decoration-2 underline-offset-4";
 ---
 
-<Base title="Changelog" description="Seventeen years at The Aaron's Company, newest first: roles, platforms and what each one changed." image={ogImage("changelog", Astro.locals.siteSettings)} type="profile">
+<Base title="Changelog" description="Twenty years at The Aaron's Company, newest first: roles, platforms and what each one changed." image={ogImage("changelog", Astro.locals.siteSettings)} type="profile">
   <div class="mx-auto max-w-6xl px-4 sm:px-6">
     <div class="grid grid-cols-[4.2rem_1fr] pt-10 sm:grid-cols-[7rem_1fr]">
       <RailEntry year="2026" now>
         <div class="grid gap-8 md:grid-cols-[minmax(0,46rem)_132px] md:justify-start md:gap-10">
           <div class="grid gap-5">
             <h1 class="display max-w-[14ch] text-5xl sm:text-6xl lg:text-7xl">
-              Seventeen years keeping a 1,200&#8209;store company running. <em class="text-accent">Now its AI, too.</em>
+              Twenty years keeping a 1,200&#8209;store company running. <em class="text-accent">Now its AI, too.</em>
             </h1>
             <p class="max-w-[52ch] text-xl">
               I lead infrastructure and company-wide AI adoption at The Aaron's Company: the AI Gateway that about 2 billion tokens a month pass through, the MCP platform behind it, and the Kubernetes, network and data-center estate underneath.
@@ -120,7 +120,12 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
 
       <RailEntry year={year(analyst)} meta={period(analyst)}>
         <h2 class="display text-3xl">{analyst.heading}</h2>
-        <p class="max-w-[62ch] text-muted">{analyst.summary}</p>
+        <p class="max-w-[62ch]">{analyst.summary}</p>
+      </RailEntry>
+
+      <RailEntry year={year(support)} meta={period(support)}>
+        <h2 class="display text-3xl">{support.heading}</h2>
+        <p class="max-w-[62ch] text-muted">{support.summary}</p>
       </RailEntry>
     </div>
 

@@ -23,6 +23,8 @@ const jsonLd = {
   "@type": "Person",
   name: person.name,
   jobTitle: person.jobTitle,
+  worksFor: { "@type": "Organization", name: person.worksFor },
+  knowsAbout: person.knowsAbout,
   url: origin.href,
   address: { "@type": "PostalAddress", addressLocality: person.locality },
   sameAs: person.sameAs,

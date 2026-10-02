@@ -6,7 +6,7 @@ import Cta from "../components/Cta.astro";
 import GatewayPath from "../components/GatewayPath.astro";
 import Perspectives from "../components/Perspectives.astro";
 import PlatformList from "../components/PlatformList.astro";
-import { availability, contact, headline, intro, resumeUrl } from "../data/profile";
+import { availability, career, contact, employer, headline, intro, resumeUrl } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
@@ -17,7 +17,10 @@ import { person } from "../lib/site";
     <section class="grid items-center gap-12 pt-16 pb-6 lg:grid-cols-[1.05fr_1fr] lg:pt-20">
       <div class="grid gap-5">
         <h1 class="display text-5xl sm:text-6xl lg:text-7xl">{headline}</h1>
-        <p class="max-w-xl text-lg text-muted">{intro}</p>
+        <p class="font-medium">{person.jobTitle}. {career[0].title} at {employer.name}.</p>
+        <div class="grid max-w-xl gap-3 text-lg text-muted">
+          {intro.map((paragraph) => <p>{paragraph.split("*").map((part, i) => (i % 2 ? <strong class="font-medium text-foreground">{part}</strong> : part))}</p>)}
+        </div>
         <Availability text={availability} />
         <div class="flex flex-wrap gap-2.5">
           <a href={contact.href} rel="me noopener" class="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground">{contact.label}</a>

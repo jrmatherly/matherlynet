@@ -1,15 +1,16 @@
+import { headline } from "../data/profile";
 import { BRAND_PALETTE, type SiteThemeDefaults } from "../theme/palettes";
 
 // Share cards served by /og/[slug].png. Pages reference them with ogImage(slug, site).
 export const ogCards = {
   home: {
-    title: "I build the platforms enterprise AI runs on.",
+    title: headline,
     subtitle: "AI platform & infrastructure leader · Atlanta, GA",
   },
   work: { title: "Platforms that run in production, not in slides.", subtitle: "AI gateways, MCP, Kubernetes and enterprise infrastructure" },
-  about: { title: "Seventeen years, one company, three promotions.", subtitle: "From store networks to company-wide AI strategy" },
+  about: { title: "Twenty years, one company, four promotions.", subtitle: "From the call center to company-wide AI strategy" },
   writing: { title: "Writing", subtitle: "Notes on AI platforms, governance and infrastructure" },
-  changelog: { title: "Seventeen years, one company, newest first.", subtitle: "Roles, platforms and what each one changed" },
+  changelog: { title: "Twenty years, one company, newest first.", subtitle: "Roles, platforms and what each one changed" },
 } satisfies Record<string, { title: string; subtitle: string }>;
 
 type CardSite = Pick<SiteThemeDefaults, "theme" | "proPalette">;

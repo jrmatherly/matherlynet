@@ -115,8 +115,8 @@ out/                   aspire publish output (gitignored)
   and emits `theme-color` meta tags.
 - Nav visibility is the `nav` flag in `publicRoutes`: `/writing` is `nav: false` until the first post (page, feed and
   sitemap stay live). The header's "Let's talk" button links to `person.sameAs[0]`; Account/Sign in live in the footer.
-- Owner-supplied wording stays `null` in `profile.ts` until the owner provides it (`availability` today), and the
-  page renders it only when set; don't write placeholder copy.
+- Owner-supplied wording stays `null` in `profile.ts` until the owner provides it, and the page renders it only when
+  set; don't write placeholder copy. `availability` is the owner's own sentence, also on his LinkedIn summary.
 - The home gateway figure (`GatewayPath.astro`) animates with SMIL, not script or inline style, so the CSP holds. Pulse
   timings are computed in the frontmatter from lane lengths at one `SPEED`; `home.test.ts` pins the pulse counts and
   that every `keyTimes` list runs 0 to 1 in order (a bad list makes the browser drop the animation).

@@ -14,8 +14,8 @@ describe("profile data", () => {
     }
   });
 
-  it("keeps the four roles the changelog binds by position, newest first, with \"Mon YYYY\" dates", () => {
-    expect(career).toHaveLength(4);
+  it("keeps the five roles the changelog binds by position, newest first, with \"Mon YYYY\" dates", () => {
+    expect(career).toHaveLength(5);
     career.forEach((role, i) => {
       expect(role.start).toMatch(/^[A-Z][a-z]{2} \d{4}$/);
       // Only the current role is open-ended, and each role ends where the next one up starts.
@@ -36,10 +36,10 @@ describe("profile data", () => {
   });
 
   it("lists the recruiter screening facts", () => {
-    expect(recruiterFacts.map((f) => f.term)).toEqual(["Current title", "Team", "Location", "Education", "Languages"]);
+    expect(recruiterFacts.map((f) => f.term)).toEqual(["Current title", "Team", "Built", "Location", "Education", "Writes code in"]);
   });
 
-  it("lists the five same-period items the changelog shows beside the gateway", () => {
-    expect(samePeriod.map((s) => s.term)).toEqual(["MCP", "Agents", "Kubernetes", "Rollouts", "Team"]);
+  it("lists the same-period items the changelog shows under the gateway", () => {
+    expect(samePeriod.map((s) => s.term)).toEqual(["MCP", "Agents", "Kubernetes", "Rollouts", "Data center", "Team"]);
   });
 });

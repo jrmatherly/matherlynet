@@ -9,6 +9,9 @@ export const person = {
   description:
     "AI platform and infrastructure leader in Atlanta: AI and MCP gateways, Kubernetes, and enterprise infrastructure.",
   locality: "Atlanta, GA",
+  worksFor: "The Aaron's Company",
+  // Read by search engines and sourcing tools (JSON-LD), not shown on the page.
+  knowsAbout: ["AI platform engineering", "AI gateways", "Model Context Protocol", "AI governance", "Kubernetes", "Enterprise infrastructure", "Data centers", "SD-WAN"],
   sameAs: ["https://www.linkedin.com/in/jason-matherly", "https://github.com/jrmatherly"],
 } as const;
 
