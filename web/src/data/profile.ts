@@ -68,7 +68,7 @@ export const perspectives: Perspective[] = [
   {
     id: "recruiters",
     label: "Recruiters",
-    headline: "Nearly 17 years, one company, three promotions.",
+    headline: "Seventeen years, one company, three promotions.",
     body: "From Network Analyst in 2009 to Manager, Infrastructure Services, now leading company-wide AI strategy and adoption at The Aaron's Company. B.S. in Computer Science from Kennesaw State. Based in Atlanta, remote since 2020.",
     points: [
       "AI platform engineering: gateways, MCP, agents, Copilot and Claude rollouts",
