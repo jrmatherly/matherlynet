@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { BetterAuthPlugin } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx } from "better-auth/api";
 
 // Routes that set a password, and the body field each reads (better-auth 1.7.7, admin plugin). Not covered:
 // server-only setPassword (no route) and the email-otp/phone-number reset routes (plugins not installed). The test
@@ -12,6 +12,10 @@ export const PASSWORD_FIELDS: Readonly<Record<string, "password" | "newPassword"
   "/reset-password": "newPassword",
   "/admin/set-user-password": "newPassword",
 };
+
+// Password routes that refuse a request without a session (401), using the same getAuthoritativeSessionFromCtx
+// the hook calls. /admin/create-user also accepts server-side calls (no request, no headers) without one.
+export const SESSION_PATHS: ReadonlySet<string> = new Set(["/change-password", "/admin/create-user", "/admin/set-user-password"]);
 
 // The password a request sets, or null (another path, or a missing/non-string value the endpoint will reject).
 export function passwordFrom(path: string | undefined, body: unknown): string | null {
@@ -63,8 +67,8 @@ async function isBreached(password: string, timeoutMs: number): Promise<boolean>
 // reset link (better-auth#10632), and its lookup had no timeout or abort. Upstream fixes #10717 and #11051 were
 // open as of 1.7.7; re-evaluate this plugin once both ship.
 // Fails closed: if the lookup fails or takes longer than timeoutMs, the password is refused with a 503. It runs
-// before the endpoint's own validation and session checks, so during an outage any request to these routes gets
-// the 503 (the rate limiter bounds them).
+// before the endpoint's own validation, so during an outage sign-up, reset and signed-in password changes get the
+// 503 (the rate limiter bounds them); signed-out requests to session-gated routes skip it and get their 401.
 export function pwnedPasswordCheck(timeoutMs = 5_000): BetterAuthPlugin {
   return {
     id: "pwned-password-check",
@@ -74,7 +78,10 @@ export function pwnedPasswordCheck(timeoutMs = 5_000): BetterAuthPlugin {
           matcher: (ctx) => passwordFrom(ctx.path, ctx.body) !== null,
           handler: createAuthMiddleware(async (ctx) => {
             const password = passwordFrom(ctx.path, ctx.body);
-            if (password && (await isBreached(password, timeoutMs))) {
+            if (!password) return;
+            // A request the endpoint will refuse with 401 isn't worth a lookup (nor a 503 during an outage).
+            if (SESSION_PATHS.has(ctx.path) && (ctx.request || ctx.headers) && !(await getAuthoritativeSessionFromCtx(ctx))) return;
+            if (await isBreached(password, timeoutMs)) {
               throw new APIError("BAD_REQUEST", {
                 message: "The password you entered has been compromised. Please choose a different password.",
                 code: "PASSWORD_COMPROMISED",
