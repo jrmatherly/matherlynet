@@ -1,6 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { ogImage } from "../src/lib/og";
 import { GET } from "../src/pages/og/[slug].png";
 import { paletteColors } from "../src/theme/colors";
+
+vi.mock("../src/lib/site-settings", () => ({ getSiteSettings: vi.fn(async () => ({ theme: "pro", proPalette: "paper" })) }));
+
+describe("ogImage", () => {
+  it("versions the card URL by the palette it will render with", () => {
+    expect(ogImage("home", { theme: "pro", proPalette: "paper" })).toBe("/og/home.png?v=paper");
+    // A Brand site gets a Signal card, not a Pro one.
+    expect(ogImage("home", { theme: "brand", proPalette: "paper" })).toBe("/og/home.png?v=signal");
+  });
+});
 
 const call = (slug: string) => GET({ params: { slug } } as unknown as Parameters<typeof GET>[0]) as Promise<Response>;
 

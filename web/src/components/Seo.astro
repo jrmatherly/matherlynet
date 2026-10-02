@@ -8,9 +8,11 @@ export interface Props {
   image?: string;
   type?: "website" | "article" | "profile";
   noindex?: boolean;
+  // Browser chrome colour: one value for a forced mode, a light/dark pair when following the system.
+  themeColor?: string | { light: string; dark: string };
 }
 
-const { title, description = person.description, image, type = "website", noindex = false } = Astro.props;
+const { title, description = person.description, image, type = "website", noindex = false, themeColor } = Astro.props;
 const origin = siteOrigin();
 const canonical = new URL(Astro.url.pathname, origin).href;
 const fullTitle = title === person.name ? title : `${title} · ${person.name}`;
@@ -30,6 +32,9 @@ const jsonLd = {
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical} />
 {noindex && <meta name="robots" content="noindex, nofollow" />}
+{typeof themeColor === "string" && <meta name="theme-color" content={themeColor} />}
+{typeof themeColor === "object" && <meta name="theme-color" media="(prefers-color-scheme: light)" content={themeColor.light} />}
+{typeof themeColor === "object" && <meta name="theme-color" media="(prefers-color-scheme: dark)" content={themeColor.dark} />}
 <meta property="og:type" content={type} />
 <meta property="og:site_name" content={person.name} />
 <meta property="og:title" content={fullTitle} />

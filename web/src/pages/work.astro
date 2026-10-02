@@ -5,7 +5,7 @@ import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
 ---
 
-<Base title="Work" description="AI gateways, MCP, Kubernetes and enterprise infrastructure built and run by Jason Matherly." image={ogImage("work")}>
+<Base title="Work" description="AI gateways, MCP, Kubernetes and enterprise infrastructure built and run by Jason Matherly." image={ogImage("work", Astro.locals.siteSettings)}>
   <section class="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 sm:py-20">
     <header class="grid max-w-3xl gap-3">
       <h1 class="text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">Platforms that run in production, not in slides.</h1>

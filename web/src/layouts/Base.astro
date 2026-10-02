@@ -5,6 +5,7 @@ import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 import Telemetry from "../components/Telemetry.astro";
 import "../styles/global.css";
+import { paletteColors } from "../theme/colors";
 
 interface Props extends SeoProps {
   // "minimal" (sign-in, 404) drops the nav, account link and footer.
@@ -14,6 +15,10 @@ interface Props extends SeoProps {
 const { chrome = "full", ...seo } = Astro.props;
 const { theme, mode, palette, typeface } = Astro.locals.theme;
 const icons = theme === "pro" ? "/pro/" : "/";
+// A forced mode gets that side's background; "system" leaves the choice to the browser's own media query.
+// (Two media-queried tags under a forced mode would follow the OS, not the page: light chrome on a dark page.)
+const bg = (side: "light" | "dark") => paletteColors(palette, side).bg;
+const themeColor = mode === "system" ? { light: bg("light"), dark: bg("dark") } : bg(mode);
 ---
 
 <!doctype html>
@@ -21,7 +26,7 @@ const icons = theme === "pro" ? "/pro/" : "/";
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <Seo {...seo} />
+    <Seo {...seo} themeColor={themeColor} />
     <link rel="icon" href={`${icons}favicon.ico`} sizes="48x48" data-icon="favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href={`${icons}favicon-32x32.png`} data-icon="favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href={`${icons}favicon-16x16.png`} data-icon="favicon-16x16.png" />

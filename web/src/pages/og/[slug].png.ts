@@ -4,10 +4,10 @@ import { Renderer } from "@takumi-rs/core";
 import type { APIRoute } from "astro";
 import { render } from "takumi-js";
 import mark from "../../../public/pro/logo-mark.svg?raw";
-import { ogCards } from "../../lib/og";
+import { cardPalette, ogCards } from "../../lib/og";
 import { person, siteOrigin } from "../../lib/site";
+import { getSiteSettings } from "../../lib/site-settings";
 import { paletteColors } from "../../theme/colors";
-import { SITE_DEFAULTS } from "../../theme/palettes";
 
 const require = createRequire(import.meta.url);
 const font = (path: string) => readFile(require.resolve(path));
@@ -29,8 +29,8 @@ export const GET: APIRoute = async ({ params }) => {
   const card = Object.hasOwn(ogCards, slug) ? ogCards[slug] : undefined;
   if (!card) return new Response("Not found", { status: 404 });
 
-  // Colors come only from palettes.css, never from the request.
-  const c = paletteColors(SITE_DEFAULTS.proPalette, "dark");
+  // Colors come only from palettes.css and the /admin settings, never from the request.
+  const c = paletteColors(cardPalette(await getSiteSettings()), "dark");
   const logo = mark.replaceAll("var(--accent, currentColor)", c.accent).replaceAll("currentColor", c.text);
   await ready;
 

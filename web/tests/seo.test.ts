@@ -33,6 +33,15 @@ describe("Seo", () => {
     expect(html).not.toContain("application/ld+json");
   });
 
+  it("sets theme-color from the palette: both sides when following the system, one when the mode is forced", async () => {
+    const both = await renderSeo({ title: "Jason Matherly", themeColor: { light: "#f3f4f1", dark: "#0e1211" } });
+    expect(both).toContain('<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f1">');
+    expect(both).toContain('<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1211">');
+    const forced = await renderSeo({ title: "Jason Matherly", themeColor: "#0e1211" });
+    expect(forced).toContain('<meta name="theme-color" content="#0e1211">');
+    expect(forced).not.toContain("prefers-color-scheme");
+  });
+
   it("adds Person JSON-LD to public pages", async () => {
     const html = await renderSeo({ title: "Jason Matherly" });
     const json = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)![1]);

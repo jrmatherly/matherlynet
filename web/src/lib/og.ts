@@ -1,4 +1,4 @@
-import { SITE_DEFAULTS } from "../theme/palettes";
+import { BRAND_PALETTE, type SiteThemeDefaults } from "../theme/palettes";
 
 // Share cards served by /og/[slug].png. Pages reference them with ogImage(slug).
 export const ogCards: Record<string, { title: string; subtitle: string }> = {
@@ -11,6 +11,10 @@ export const ogCards: Record<string, { title: string; subtitle: string }> = {
   writing: { title: "Writing", subtitle: "Notes on AI platforms, governance and infrastructure" },
 };
 
-// Cards use the site's default Pro palette; the version parameter makes social caches refetch
-// when an admin changes it.
-export const ogImage = (slug: keyof typeof ogCards & string) => `/og/${slug}.png?v=${SITE_DEFAULTS.proPalette}`;
+type CardSite = Pick<SiteThemeDefaults, "theme" | "proPalette">;
+
+// The palette a share card renders in: Signal for a Brand site, otherwise the Pro palette set on /admin.
+export const cardPalette = (site: CardSite) => (site.theme === "brand" ? BRAND_PALETTE : site.proPalette);
+
+// The version parameter makes social caches refetch when an admin changes the theme or palette.
+export const ogImage = (slug: keyof typeof ogCards & string, site: CardSite) => `/og/${slug}.png?v=${cardPalette(site)}`;
