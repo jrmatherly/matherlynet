@@ -6,7 +6,8 @@ import { createAuthMiddleware } from "better-auth/api";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { admin } from "better-auth/plugins";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PASSWORD_FIELDS, SESSION_PATHS, breachCount, passwordFrom, pwnedPasswordCheck } from "../src/lib/pwned";
+import { defaultStatements } from "better-auth/plugins/admin/access";
+import { ADMIN_PERMISSIONS, PASSWORD_FIELDS, SESSION_PATHS, breachCount, passwordFrom, pwnedPasswordCheck } from "../src/lib/pwned";
 
 const SAFE = "a-long-unpwned-test-password-91";
 // SHA-1("password") = 5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8; the range response lists suffixes after the prefix.
@@ -114,6 +115,17 @@ describe("passwordFrom", () => {
   });
   it("lists only password routes as session-gated", () => {
     for (const path of SESSION_PATHS) expect(Object.hasOwn(PASSWORD_FIELDS, path), path).toBe(true);
+  });
+  // A better-auth upgrade that renames an error code or a permission action would otherwise turn the 403 into a 500.
+  it("names admin permissions and error codes the admin plugin has", () => {
+    const codes = admin().$ERROR_CODES as Record<string, unknown>;
+    for (const [path, { permissions, code }] of Object.entries(ADMIN_PERMISSIONS)) {
+      expect(SESSION_PATHS.has(path), path).toBe(true);
+      expect(codes[code], code).toBeDefined();
+      for (const [resource, actions] of Object.entries(permissions)) {
+        expect(defaultStatements[resource as keyof typeof defaultStatements], resource).toEqual(expect.arrayContaining(actions));
+      }
+    }
   });
   it("returns null for other paths and for missing, empty or non-string values", () => {
     expect(passwordFrom("/sign-in/email", { password: "a" })).toBeNull();
@@ -281,6 +293,37 @@ describe("pwnedPasswordCheck and sessions", () => {
     const res = await post(auth, "/change-password", { newPassword: "another-unlisted-password-42", currentPassword: SAFE }, cookie);
     expect(res.status).toBe(200);
     expect(res.headers.getSetCookie().some((c) => c.startsWith("better-auth.session_token="))).toBe(true);
+  });
+
+  it("refuses a signed-in non-admin on the admin password routes with the endpoint's 403, without a lookup", async () => {
+    vi.stubGlobal("fetch", answer(CLEAN_RANGE));
+    const { auth } = makeAuth();
+    const cookie = await signedIn(auth, "q@example.test");
+    // An outage: a lookup would turn the 403 into a 503.
+    const { fn } = hang();
+    vi.stubGlobal("fetch", fn);
+    const create = await post(auth, "/admin/create-user", { email: "r@example.test", password: SAFE, name: "R" }, cookie);
+    expect(create.status).toBe(403);
+    expect(await create.json()).toMatchObject({ code: "YOU_ARE_NOT_ALLOWED_TO_CREATE_USERS" });
+    const set = await post(auth, "/admin/set-user-password", { userId: "u1", newPassword: SAFE }, cookie);
+    expect(set.status).toBe(403);
+    expect(await set.json()).toMatchObject({ code: "YOU_ARE_NOT_ALLOWED_TO_SET_USERS_PASSWORD" });
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it("still checks an admin's password on the admin password routes", async () => {
+    vi.stubGlobal("fetch", answer(CLEAN_RANGE));
+    const { auth, db } = makeAuth();
+    const cookie = await signedIn(auth, "s@example.test");
+    const users = db.user as { id: string; role?: string }[];
+    users[0].role = "admin";
+    const fetch = answer(BREACHED_RANGE);
+    vi.stubGlobal("fetch", fetch);
+    const create = await post(auth, "/admin/create-user", { email: "t@example.test", password: BREACHED, name: "T" }, cookie);
+    expect(await create.json()).toMatchObject({ code: "PASSWORD_COMPROMISED" });
+    const set = await post(auth, "/admin/set-user-password", { userId: users[0].id, newPassword: BREACHED }, cookie);
+    expect(await set.json()).toMatchObject({ code: "PASSWORD_COMPROMISED" });
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("still checks server-side calls, which /admin/create-user accepts without a session", async () => {

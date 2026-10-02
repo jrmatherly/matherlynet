@@ -13,8 +13,9 @@ describe("rate limiting", () => {
 });
 
 describe("password length", () => {
-  it("requires 12 to 128 characters (the hook applies the same rule to /admin/create-user)", () => {
-    expect(options.emailAndPassword?.minPasswordLength).toBe(12);
-    expect(options.emailAndPassword?.maxPasswordLength ?? 128).toBe(128);
+  // The limits better-auth enforces (resolved from options and its defaults), which the breached-password hook also
+  // applies to /admin/create-user. Reading the resolved values catches a changed default, not just a changed option.
+  it("requires 12 to 128 characters", async () => {
+    expect((await auth.$context).password.config).toEqual({ minPasswordLength: 12, maxPasswordLength: 128 });
   });
 });

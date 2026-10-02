@@ -18,6 +18,13 @@ export const PASSWORD_FIELDS: Readonly<Record<string, "password" | "newPassword"
 // request, no headers) without one.
 export const SESSION_PATHS: ReadonlySet<string> = new Set(["/change-password", "/admin/create-user", "/admin/set-user-password"]);
 
+// The admin plugin permission each admin password route requires (better-auth 1.7.7 plugins/admin/routes.mjs), and
+// the error code its endpoint refuses (403) with.
+export const ADMIN_PERMISSIONS: Readonly<Record<string, { permissions: Record<string, string[]>; code: string }>> = {
+  "/admin/create-user": { permissions: { user: ["create"] }, code: "YOU_ARE_NOT_ALLOWED_TO_CREATE_USERS" },
+  "/admin/set-user-password": { permissions: { user: ["set-password"] }, code: "YOU_ARE_NOT_ALLOWED_TO_SET_USERS_PASSWORD" },
+};
+
 // The password a request sets, or null (another path, or a missing/non-string value the endpoint will reject).
 export function passwordFrom(path: string | undefined, body: unknown): string | null {
   const field = path && Object.hasOwn(PASSWORD_FIELDS, path) ? PASSWORD_FIELDS[path] : null;
@@ -69,7 +76,8 @@ async function isBreached(password: string, timeoutMs: number): Promise<boolean>
 // open as of 1.7.7; re-evaluate this plugin once both ship.
 // Fails closed: if the lookup fails or takes longer than timeoutMs, the password is refused with a 503. It runs
 // before the endpoint's own validation, so during an outage sign-up, reset and signed-in password changes get the
-// 503 (the rate limiter bounds them); signed-out requests to session-gated routes skip it and get their 401.
+// 503 (the rate limiter bounds them); a request its route would refuse anyway (no session: 401; a signed-in user
+// without the admin permission: 403) gets that answer here instead, without a lookup.
 export function pwnedPasswordCheck(timeoutMs = 5_000): BetterAuthPlugin {
   return {
     id: "pwned-password-check",
@@ -88,8 +96,20 @@ export function pwnedPasswordCheck(timeoutMs = 5_000): BetterAuthPlugin {
               // this hook's Set-Cookie is dropped (the endpoint's response headers replace it), so the endpoint's
               // own read must be the one that refreshes.
               ctx.context.session = null;
-              if (!(await getSessionFromCtx(ctx, { disableCookieCache: true, disableRefresh: true }))) {
-                throw APIError.from("UNAUTHORIZED", { message: "Unauthorized", code: "UNAUTHORIZED" });
+              const session = await getSessionFromCtx(ctx, { disableCookieCache: true, disableRefresh: true });
+              if (!session) throw APIError.from("UNAUTHORIZED", { message: "Unauthorized", code: "UNAUTHORIZED" });
+              // Likewise the admin routes' 403. The admin plugin's own rule (roles, adminUserIds), asked through its
+              // userHasPermission endpoint: its hasPermission isn't exported. Without a session or headers that endpoint
+              // judges the given user id and role.
+              const needed = ADMIN_PERMISSIONS[ctx.path];
+              const adminPlugin = needed && ctx.context.options.plugins?.find((p) => p.id === "admin");
+              if (adminPlugin) {
+                const user = session.user as { id: string; role?: string | null };
+                const { success } = (await adminPlugin.endpoints!.userHasPermission({
+                  body: { userId: user.id, role: user.role ?? undefined, permissions: needed.permissions },
+                  context: ctx.context,
+                } as never)) as { success: boolean };
+                if (!success) throw APIError.from("FORBIDDEN", adminPlugin.$ERROR_CODES![needed.code]);
               }
             }
             // The endpoints' own length rules, first, so a short password is reported as short (not compromised) and

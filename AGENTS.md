@@ -122,8 +122,9 @@ out/                   aspire publish output (gitignored)
   a zone id is stripped first and unparseable IPv6 fails closed. Server Sentry ignores http(s)_proxy (it warns).
 - `web/src/lib/pwned.ts` runs the breach lookup last: length rules (12-128) first, then, on session-gated password
   routes, a 401 refusal without a session (refuse, not skip, so a mismatched session read can't let a password
-  through unchecked). Its session read passes `disableRefresh` because this hook's Set-Cookie is dropped; the
-  endpoint's own read must refresh.
+  through unchecked) and, on the admin routes, the admin plugin's own 403 (asked through its `userHasPermission`
+  endpoint, since its `hasPermission` isn't exported). Its session read passes `disableRefresh` because this hook's
+  Set-Cookie is dropped; the endpoint's own read must refresh.
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
   Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
   -R jrmatherly/matherlynet`.
