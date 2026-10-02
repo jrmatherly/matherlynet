@@ -26,7 +26,9 @@ paths:
   - A stopped resource's local port stays open (DCP proxy) and never answers: clients need connect timeouts.
   - `config.getConfigValue` returns strings; an appsettings.json boolean arrives as `"True"`. Read switches with
     `flag()` (true/false in any case, anything else throws), never `=== 'true'`.
-  - The TS `Service` type for Compose has no `healthcheck` member. The published dashboard is configured through
-    `configureDashboard` → `publishAsDockerComposeService` (its UI port is bound to loopback).
+  - The TS `Service` type for Compose has no `healthcheck` member (upstream `Healthcheck` lacks `[AspireExport]`):
+    web's healthcheck is `deploy/docker-compose.override.yaml`, which the `copy-compose-override` pipeline step
+    copies into the publish output (`Pipeline:OutputPath`; `PipelineStepContext` has no output path). The published
+    dashboard is configured through `configureDashboard` → `publishAsDockerComposeService` (UI port on loopback).
 - Root `package.json` is the AppHost's npm project: keep `vscode-jsonrpc` on 8.x and TypeScript on
   6.0.x (see AGENTS.md); `tsconfig.apphost.json` must keep `"types": ["node"]` for TypeScript 6.

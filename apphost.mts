@@ -4,6 +4,8 @@
 //                DEPLOY_TARGET=k8s aspire publish -o out/k8s
 // Push images:   aspire do push        (after `docker login ghcr.io`; CI does this)
 
+import { copyFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { createBuilder, refExpr, ProbeType } from './.aspire/modules/aspire.mjs';
 
 const builder = await createBuilder();
@@ -141,6 +143,17 @@ if (!k8s) {
     if (hostPort === 'loopback') await service.ports.add('127.0.0.1:4321:4321');
     if (hostPort === 'public') await service.ports.add('4321:4321');
   });
+}
+
+// Compose: Aspire 13.6's TS SDK can't set a healthcheck (.claude/rules/apphost.md), so web's lives in
+// deploy/docker-compose.override.yaml. Publishing copies it next to docker-compose.yaml, where Compose merges it.
+// The output directory is Aspire's Pipeline:OutputPath (`-o`), else <AppHost dir>/aspire-output.
+if (!k8s) {
+  await builder.pipeline().addStep('copy-compose-override', async () => {
+    const output = await config.getConfigValue('Pipeline:OutputPath');
+    const dir = output ? resolve(output) : join((await config.getConfigValue('AppHost:Directory')) ?? '.', 'aspire-output');
+    await copyFile(new URL('./deploy/docker-compose.override.yaml', import.meta.url), join(dir, 'docker-compose.override.yaml'));
+  }, { dependsOn: ['publish-compose'], requiredBy: ['publish'] });
 }
 
 await builder.build().run();

@@ -50,6 +50,7 @@ web/                   Astro SSR app (server.mjs entry, otel.mjs, migrate.mjs, s
                        (security updates, CodeQL default setup and private reporting are repo settings)
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported
 docs/deployment.md     production runbook: publish settings, .env, Cloudflare Tunnel + rules, Umami, Sentry, K8s
+deploy/                docker-compose.override.yaml: web healthcheck; `aspire publish` copies it into out/compose
 out/                   aspire publish output (gitignored)
 ```
 
