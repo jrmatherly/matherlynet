@@ -1,6 +1,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { colorsFromCss } from "../src/theme/palette-css";
 import { BRAND_PALETTE, PRO_PALETTES, resolveTheme, type SiteThemeDefaults } from "../src/theme/palettes";
+
+// WCAG 2.1 relative luminance and contrast ratio.
+const luminance = (hex: string) => {
+  const [r, g, b] = [1, 3, 5]
+    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a: string, b: string) => {
+  const [l1, l2] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (l1 + 0.05) / (l2 + 0.05);
+};
 
 const site: SiteThemeDefaults = { theme: "brand", proPalette: "cobalt", typeface: "sans" };
 
@@ -52,6 +65,18 @@ describe("palettes.css", () => {
 
   it("defines exactly the palettes the app offers", () => {
     expect(inCss).toEqual([BRAND_PALETTE, ...Object.keys(PRO_PALETTES)].sort());
+  });
+
+  it("keeps accent, accent-ink and muted text at AA (4.5:1) in every palette and mode", () => {
+    for (const palette of [BRAND_PALETTE, ...Object.keys(PRO_PALETTES)]) {
+      for (const side of ["light", "dark"] as const) {
+        const c = colorsFromCss(css, palette, side);
+        expect(contrast(c.accent, c.bg), `${palette}/${side} accent on bg`).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(c["accent-ink"], c.accent), `${palette}/${side} accent-ink on accent`).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(c.muted, c.bg), `${palette}/${side} muted on bg`).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(c.muted, c.surface), `${palette}/${side} muted on surface`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 
   it("gives every palette all 13 tokens as light-dark pairs", () => {

@@ -9,8 +9,8 @@
   --border: light-dark(#e4dddc, #2e2727);
   --text: light-dark(#151111, #f4efee);
   --muted: light-dark(#6b6262, #a39a99);
-  --accent: light-dark(#c8231b, #dc3229);
-  --accent-ink: light-dark(#ffffff, #ffffff);
+  --accent: light-dark(#c8231b, #ef4b42);
+  --accent-ink: light-dark(#ffffff, #1a0707);
   --accent-soft: light-dark(#fbe7e5, #2a1413);
   --danger: light-dark(#b4233f, #ff6b81);
   --success: light-dark(#1d7f4b, #5cc489);
@@ -191,5 +191,21 @@
   --danger: light-dark(#b4233f, #ff6b81);
   --success: light-dark(#1d7f4b, #5cc489);
   --info: light-dark(#1f6fb8, #6aa8e8);
+  --warning: light-dark(#8a6100, #e5b545);
+}
+
+:root[data-palette="paper"] { /* Paper & Evergreen */
+  --bg: light-dark(#f3f4f1, #0e1211);
+  --surface: light-dark(#ffffff, #151a18);
+  --surface-2: light-dark(#e9ebe6, #1b211e);
+  --border: light-dark(#cfd3cc, #2a312d);
+  --text: light-dark(#16191d, #edf0ec);
+  --muted: light-dark(#555b61, #a3aaa5);
+  --accent: light-dark(#0f7a63, #3fbf9b);
+  --accent-ink: light-dark(#ffffff, #06211b);
+  --accent-soft: light-dark(#dcefe8, #10302a);
+  --danger: light-dark(#b4233f, #ff6b81);
+  --success: light-dark(#1d7f4b, #5cc489);
+  --info: light-dark(#1f6fb8, #7cc4ff);
   --warning: light-dark(#8a6100, #e5b545);
 }

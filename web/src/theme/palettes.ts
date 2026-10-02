@@ -15,6 +15,7 @@ export const PRO_PALETTES = {
   evergreen: "Evergreen",
   navy: "Navy & Brass",
   oxide: "Oxide",
+  paper: "Paper & Evergreen",
 } as const;
 
 export type ProPalette = keyof typeof PRO_PALETTES;
