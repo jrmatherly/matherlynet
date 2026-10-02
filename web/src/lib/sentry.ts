@@ -25,10 +25,14 @@ export const publicOnlyLookup =
   (lookup: typeof dns.lookup = dns.lookup): LookupFunction =>
   (hostname, options, callback) =>
     lookup(hostname, { ...options, all: true as const }, (err, addresses) => {
-      if (err) return callback(err, "");
+      // Logged here: Sentry's transport drops a failed send with no output outside debug builds.
+      if (err) {
+        console.error(`sentry: lookup of ${hostname} failed (${err.code ?? err.message}); envelope not sent`);
+        return callback(err, "");
+      }
       const blocked = addresses.find((a) => isPrivateAddress(a.address));
       if (blocked) {
-        console.error(`sentry: ${hostname} resolves to private address ${blocked.address}; event not sent`);
+        console.error(`sentry: ${hostname} resolves to private address ${blocked.address}; envelope not sent`);
         return callback(Object.assign(new Error(`${hostname} resolves to a private address`), { code: "EPRIVATEADDR" }), "");
       }
       if (options.all) return callback(null, addresses);
@@ -36,9 +40,9 @@ export const publicOnlyLookup =
     });
 
 // Sentry's Node transport with publicOnlyLookup on every request (its httpModule option). Our own agents (Sentry's
-// defaults: keep-alive, 30 sockets, 2 s idle timeout) replace the one it passes, which is a CONNECT proxy agent when
-// http(s)_proxy is set: the proxy would resolve the DSN name itself and the lookup would never run. So server Sentry
-// always connects directly.
+// defaults: keep-alive, 30 sockets, 2 s socket timeout) replace the one it passes, which is a CONNECT proxy agent
+// when a proxy is configured (http(s)_proxy): the proxy would resolve the DSN name itself and the lookup would never
+// run. So server Sentry always connects directly, and says so when a proxy is set (events fail if egress needs it).
 const lookup = publicOnlyLookup();
 const agents = {
   http: new http.Agent({ keepAlive: true, maxSockets: 30, timeout: 2_000 }),
@@ -49,6 +53,12 @@ const publicOnlyHttp = {
     options.protocol === "http:"
       ? http.request({ ...options, agent: agents.http, lookup }, callback)
       : https.request({ ...options, agent: agents.https, lookup }, callback),
+};
+// One transport per DSN (the multiplexer caches them), so this warns once per DSN, not per event.
+const publicOnlyTransport = (options: Parameters<typeof Sentry.makeNodeTransport>[0]) => {
+  const proxy = process.env.https_proxy || process.env.http_proxy;
+  if (proxy) console.warn("sentry: http(s)_proxy is set, but server Sentry connects directly (DSN address checks)");
+  return Sentry.makeNodeTransport({ ...options, httpModule: publicOnlyHttp });
 };
 
 // Called whenever site settings are (re)loaded. Sentry's options are fixed when the client is created, and a
@@ -67,7 +77,7 @@ export function configureSentry(dsn: string | null): void {
     integrations: [Sentry.openTelemetryIntegration()],
     transport: (options) =>
       gateTransport(
-        makeMultiplexedTransport((o) => Sentry.makeNodeTransport({ ...o, httpModule: publicOnlyHttp }), () => (activeDsn ? [activeDsn] : []))(options),
+        makeMultiplexedTransport(publicOnlyTransport, () => (activeDsn ? [activeDsn] : []))(options),
         () => activeDsn !== null,
       ),
     // Request bodies stay out of events (sign-up bodies carry emails); query strings and headers keep the SDK's

@@ -44,11 +44,14 @@ describe("publicOnlyLookup", () => {
     expect(one).toHaveBeenCalledWith(null, "203.0.113.7", 4);
   });
 
-  it("passes resolver errors through", () => {
+  it("passes resolver errors through and logs them (Sentry's transport drops failures silently)", () => {
     const failing = ((_h: string, _o: unknown, callback: (err: Error) => void) =>
       callback(Object.assign(new Error("nope"), { code: "ENOTFOUND" }))) as unknown as typeof dns.lookup;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const cb = vi.fn();
     publicOnlyLookup(failing)("sentry.example.test", {}, cb);
     expect(cb.mock.calls[0][0]).toMatchObject({ code: "ENOTFOUND" });
+    expect(log.mock.calls.flat().join(" ")).toMatch(/sentry\.example\.test.*ENOTFOUND/);
+    log.mockRestore();
   });
 });

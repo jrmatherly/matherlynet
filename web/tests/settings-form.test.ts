@@ -62,7 +62,7 @@ describe("parseSettingsForm", () => {
   });
 
   it("accepts public DSN hosts that merely look numeric or private", () => {
-    for (const host of ["o1.ingest.sentry.io", "10.example.com", "172.32.0.1", "[2001:db8::1]"]) {
+    for (const host of ["o1.ingest.sentry.io", "10.example.com", "172.32.0.1", "[2001:db8::1]", "[2606:4700::1111]"]) {
       expect(parseSettingsForm(form({ sentryDsn: `https://k@${host}/1` }))).toHaveProperty("settings");
     }
   });
@@ -88,11 +88,15 @@ describe("isPrivateAddress", () => {
       expect(isPrivateAddress(ip), ip).toBe(true);
     }
   });
-  it("fails closed: scoped (zone id) and unparseable IPv6 count as private", () => {
-    // A hosts-file entry such as `fe80::1%lo0 localhost` resolves to a scoped address.
+  it("ignores a zone id (a hosts-file `fe80::1%lo0` is still link-local) and fails closed on unparseable IPv6", () => {
     for (const ip of ["fe80::1%eth0", "::1%lo0", "1::2::3", "zzzz::1"]) {
       expect(isPrivateAddress(ip), ip).toBe(true);
     }
+    expect(isPrivateAddress("2606:4700::1111%eth0")).toBe(false);
+  });
+  it("draws the range boundaries where the RFCs do", () => {
+    for (const ip of ["fc00::1", "febf::1", "172.31.255.255", "169.254.0.1"]) expect(isPrivateAddress(ip), ip).toBe(true);
+    for (const ip of ["fbff::1", "fe7f::1", "172.15.255.255", "169.253.0.1", "100.63.255.255"]) expect(isPrivateAddress(ip), ip).toBe(false);
   });
   it("passes public addresses, including NAT64 and 6to4 forms of public IPv4", () => {
     for (const ip of [
