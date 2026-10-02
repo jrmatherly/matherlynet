@@ -1,5 +1,5 @@
 // Site settings shape and /admin form validation. Pure (no database), so tests can cover it.
-import { isProPalette, type SiteThemeDefaults } from "../theme/palettes";
+import { isProPalette, isTypeface, type SiteThemeDefaults } from "../theme/palettes";
 
 export interface SiteSettings extends SiteThemeDefaults {
   sentry: { dsn: string | null; server: boolean; browser: boolean };
@@ -85,7 +85,9 @@ const text = (form: FormData, name: string) => String(form.get(name) ?? "").trim
 export function parseSettingsForm(form: FormData): { settings: SiteSettings } | { error: string } {
   const theme = form.get("theme");
   const proPalette = form.get("proPalette");
+  const typeface = form.get("typeface");
   if ((theme !== "brand" && theme !== "pro") || !isProPalette(proPalette)) return { error: "Pick a theme and a Pro palette." };
+  if (!isTypeface(typeface)) return { error: "Pick a display typeface." };
 
   const dsn = text(form, "sentryDsn");
   // A Sentry DSN is https://<public key>@<host>/<project id>.
@@ -109,6 +111,7 @@ export function parseSettingsForm(form: FormData): { settings: SiteSettings } | 
     settings: {
       theme,
       proPalette,
+      typeface,
       sentry: { dsn: dsn || null, server: sentryServer, browser: sentryBrowser },
       umami: { enabled: umamiEnabled, scriptUrl: scriptUrl || null, websiteId: websiteId || null },
     },

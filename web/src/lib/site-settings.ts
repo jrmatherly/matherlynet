@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { siteSettings } from "../db/schema";
-import { SITE_DEFAULTS, isProPalette } from "../theme/palettes";
+import { SITE_DEFAULTS, isProPalette, isTypeface } from "../theme/palettes";
 import { configureSentry } from "./sentry";
 import type { SiteSettings } from "./settings-form";
 
@@ -21,6 +21,7 @@ function fromRow(row: typeof siteSettings.$inferSelect | undefined): SiteSetting
   return {
     theme: row?.theme === "pro" ? "pro" : row?.theme === "brand" ? "brand" : SITE_DEFAULTS.theme,
     proPalette: isProPalette(row?.proPalette) ? row.proPalette : SITE_DEFAULTS.proPalette,
+    typeface: isTypeface(row?.typeface) ? row.typeface : SITE_DEFAULTS.typeface,
     sentry: { dsn: row?.sentryDsn ?? null, server: row?.sentryServer ?? false, browser: row?.sentryBrowser ?? false },
     umami: {
       enabled: row?.umamiEnabled ?? false,
@@ -65,6 +66,7 @@ export async function saveSiteSettings(value: SiteSettings): Promise<void> {
   const row = {
     theme: value.theme,
     proPalette: value.proPalette,
+    typeface: value.typeface,
     sentryDsn: value.sentry.dsn,
     sentryServer: value.sentry.server,
     sentryBrowser: value.sentry.browser,

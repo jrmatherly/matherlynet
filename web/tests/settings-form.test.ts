@@ -6,7 +6,7 @@ const SITE_ID = "6f1c2b9e-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
-  for (const [key, value] of Object.entries({ theme: "pro", proPalette: "merlot", ...fields })) data.set(key, value);
+  for (const [key, value] of Object.entries({ theme: "pro", proPalette: "merlot", typeface: "serif", ...fields })) data.set(key, value);
   return data;
 };
 
@@ -19,6 +19,7 @@ describe("parseSettingsForm", () => {
       settings: {
         theme: "pro",
         proPalette: "merlot",
+        typeface: "serif",
         sentry: { dsn: DSN, server: true, browser: false },
         umami: { enabled: true, scriptUrl: "https://stats.example.com/script.js", websiteId: SITE_ID },
       },
@@ -33,6 +34,7 @@ describe("parseSettingsForm", () => {
 
   it.each([
     ["an unknown palette", { proPalette: "nope" }],
+    ["an unknown typeface", { typeface: "gothic" }],
     ["a DSN without a key", { sentryDsn: "https://o1.ingest.sentry.io/4507" }],
     ["a DSN without a project id", { sentryDsn: "https://abc@o1.ingest.sentry.io/" }],
     ["a javascript: script URL", { umamiScriptUrl: "javascript:alert(1)" }],

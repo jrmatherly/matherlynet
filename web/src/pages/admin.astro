@@ -53,6 +53,17 @@ const hint = "text-sm text-muted";
           }
         </select>
       </label>
+      <fieldset class="grid gap-1.5">
+        <legend class="text-sm font-semibold">Display typeface</legend>
+        <div class="flex flex-wrap gap-4">
+          <label class={check}>
+            <input type="radio" name="typeface" value="sans" checked={current.typeface === "sans"} /> Geist (sans)
+          </label>
+          <label class={check}>
+            <input type="radio" name="typeface" value="serif" checked={current.typeface === "serif"} /> Newsreader (serif)
+          </label>
+        </div>
+      </fieldset>
     </fieldset>
 
     <fieldset class="grid gap-3">
