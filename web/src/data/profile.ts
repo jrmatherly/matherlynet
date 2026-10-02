@@ -51,7 +51,7 @@ export const samePeriod = [
   { term: "MCP", detail: "Gateway, Registry and Portal: about 20 servers, each approved into the registry, behind OAuth." },
   { term: "Agents", detail: "Internal chat platform and about 30 agents, 400 users across 14 teams." },
   { term: "Kubernetes", detail: "On-prem Talos clusters with Flux, Argo CD, Cilium and External Secrets." },
-  { term: "Rollouts", detail: "Microsoft Copilot and Copilot Studio; managed Claude Code and Claude Desktop packaged via Intune; a weekly AI community of practice." },
+  { term: "Rollouts", detail: "Microsoft Copilot and Copilot Studio for 600 users; managed Claude Code and Claude Desktop, packaged via Intune, for 400; a weekly AI community of practice." },
   { term: "Data center", detail: "Designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime." },
   { term: "Team", detail: "Led BrandsMart USA's infrastructure team after the acquisition, 2023 to 2026: a data center and 12 sites." },
 ];
@@ -140,7 +140,7 @@ export const work: WorkItem[] = [
   },
   {
     title: "AI chat platform & agents",
-    summary: "An internal AI chat platform and agents grounded in company knowledge, built in Python, TypeScript and Go.",
+    summary: "An internal AI chat platform and agents grounded in company knowledge through RAG and Graph-RAG, with model evaluations, built in Python, TypeScript and Go.",
     period: "2025 to now",
     result: "About 30 agents grounded in company knowledge, 400 users across 14 teams",
   },
@@ -184,7 +184,7 @@ export const career: Role[] = [
     start: "Jul 2021",
     highlights: [
       "Leads company-wide AI strategy and adoption. Built the AI Gateway single-handedly and grew it from 15 million tokens a month at launch to about 2 billion, across 400 users and 14 teams; also delivered the MCP Gateway, Registry and Portal and the internal AI chat platform",
-      "Rolled out Microsoft Copilot and Copilot Studio, and packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune, for 600 licensed users; since early 2026, hosts a weekly AI community of practice",
+      "Rolled out Microsoft Copilot and Copilot Studio to 600 users, and packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune for 400; since early 2026, hosts a weekly AI community of practice",
       "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime; leads a team of 4",
       "After the BrandsMart USA acquisition, also led its 4-person infrastructure team from March 2023 to March 2026 (8 direct reports in all), standardizing policies and tooling across a data center and 12 sites",
       "Designed and built the disaster recovery data center (2021) and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime",
@@ -200,7 +200,7 @@ export const career: Role[] = [
     start: "Apr 2015",
     end: "Jul 2021",
     highlights: [
-      "Designed and built the new primary data center (10 racks, 1,400+ VMs, hundreds of applications) and led its migration with zero unplanned downtime",
+      "Designed and built the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications), and led its migration with zero unplanned downtime",
       "Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018)",
       "Established the Azure tenant, subscriptions and ExpressRoute hybrid connectivity",
       "Led SD-WAN to every store (2,300+ at the time); had Always-On VPN ready the day the company went remote (about 1,200 users)",
@@ -241,7 +241,7 @@ export const career: Role[] = [
 ];
 
 export const skills: { group: string; items: string[] }[] = [
-  { group: "AI platform engineering", items: ["AI & MCP gateways", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure APIM", "AI agents & agent skills", "AI security & governance"] },
+  { group: "AI platform engineering", items: ["AI & MCP gateways", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure APIM", "AI agents & agent skills", "RAG & Graph-RAG", "Model evaluations", "AI security & governance"] },
   { group: "Cloud & Kubernetes", items: ["Kubernetes", "Docker", "Talos Linux", "GitOps (Flux & Argo CD)", "Cilium", "External Secrets Operator", "Grafana & Zabbix", "Azure & ExpressRoute"] },
   { group: "Networking", items: ["Cisco ASR & Nexus 9K", "Aruba / Meraki / Ubiquiti", "SD-WAN", "F5", "Infoblox", "Wireless", "WAN circuits"] },
   { group: "Security & identity", items: ["Palo Alto & GlobalProtect", "Meraki firewalls", "Aruba ClearPass (802.1X)", "Secret Server (PAM)", "Active Directory & Entra ID", "Microsoft 365", "Intune"] },
