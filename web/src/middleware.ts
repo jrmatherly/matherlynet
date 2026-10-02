@@ -3,7 +3,7 @@ import { auth } from "./lib/auth";
 import { captureServerError } from "./lib/sentry";
 import { siteOrigin } from "./lib/site";
 import { getSiteSettings } from "./lib/site-settings";
-import { MODE_COOKIE, THEME_COOKIE, resolveTheme } from "./theme/palettes";
+import { MODE_COOKIE, THEME_COOKIE, TYPE_COOKIE, resolveTheme } from "./theme/palettes";
 
 // Security headers beside the CSP (which Astro sets from astro.config.mjs). X-Frame-Options backs up the
 // CSP's frame-ancestors for older browsers.
@@ -29,7 +29,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.session = result?.session ?? null;
     context.locals.siteSettings = siteSettings;
     context.locals.theme = resolveTheme(
-      { theme: context.cookies.get(THEME_COOKIE)?.value, mode: context.cookies.get(MODE_COOKIE)?.value },
+      {
+        theme: context.cookies.get(THEME_COOKIE)?.value,
+        mode: context.cookies.get(MODE_COOKIE)?.value,
+        type: context.cookies.get(TYPE_COOKIE)?.value,
+      },
       siteSettings,
     );
     response = await next();
