@@ -60,13 +60,31 @@ it("sends nothing to a DSN whose name resolves to a private address", async () =
   log.mockRestore();
 });
 
-it("connects directly even when a proxy is configured, so the lookup check always applies", async () => {
-  const d = await sink();
-  // Nothing listens on port 9: through Sentry's proxy agent this event would be lost.
-  vi.stubEnv("http_proxy", "http://127.0.0.1:9");
-  configureSentry(d.dsn);
-  Sentry.captureException(new Error("direct"));
+// Real DSNs are https: the https branch must carry the lookup too. It refuses before connecting, so no TLS sink.
+it("refuses a private https DSN as well", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  configureSentry("https://key@localhost:9/1");
+  Sentry.captureException(new Error("private https"));
   await Sentry.flush(2000);
-  vi.unstubAllEnvs();
+  expect(log.mock.calls.flat().join(" ")).toMatch(/localhost resolves to private address/);
+  log.mockRestore();
+});
+
+it("connects directly even when a proxy is configured, and says so", async () => {
+  const d = await sink();
+  // Nothing listens on port 9: through Sentry's proxy agent this event would be lost. no_proxy is cleared so an
+  // exemption in the environment can't make this pass without the direct agents.
+  vi.stubEnv("http_proxy", "http://127.0.0.1:9");
+  vi.stubEnv("no_proxy", "");
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    configureSentry(d.dsn);
+    Sentry.captureException(new Error("direct"));
+    await Sentry.flush(2000);
+  } finally {
+    vi.unstubAllEnvs();
+  }
   expect(d.events()).toBe(1);
+  expect(warn.mock.calls.flat().join(" ")).toMatch(/proxy is set, but server Sentry connects directly/);
+  warn.mockRestore();
 });
