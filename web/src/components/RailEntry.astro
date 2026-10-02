@@ -1,0 +1,27 @@
+---
+interface Props {
+  // Year label in the rail column; empty string for an unlabelled entry (the perspectives).
+  year: string;
+  // Current entry: accent dot and foreground year.
+  now?: boolean;
+  // Small line above the heading (role and dates).
+  meta?: string;
+  id?: string;
+}
+const { year, now = false, meta, id } = Astro.props;
+---
+
+<!-- display: contents, so the year and body cells sit directly in the page's two-column rail grid. -->
+<section id={id} data-now={String(now)} class="contents">
+  <div class:list={["relative border-r border-border pt-1 text-sm tabular-nums sm:text-base", now ? "text-foreground" : "text-muted"]}>
+    <span class="display text-base font-normal sm:text-lg">{year}</span>
+    <span
+      aria-hidden="true"
+      class:list={["absolute top-3 -right-[5px] size-2.5 rounded-full border-2", now ? "border-accent bg-accent" : "border-muted bg-background"]}
+    />
+  </div>
+  <div class="grid content-start gap-3.5 pb-12 pl-5 sm:pl-10">
+    {meta && <p class="text-sm text-muted">{meta}</p>}
+    <slot />
+  </div>
+</section>

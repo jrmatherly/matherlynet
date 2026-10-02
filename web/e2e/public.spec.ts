@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("public pages render and the nav links work", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/Jason Matherly/);
-  for (const label of ["Work", "About"]) {
+  for (const label of ["Work", "Changelog", "About"]) {
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label }).click();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
