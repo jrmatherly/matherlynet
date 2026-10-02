@@ -99,6 +99,14 @@ out/                   aspire publish output (gitignored)
   (the npm provider reads only `index.css`, which has no italic) and is preloaded only when serif is active.
   Cross-document view transitions are on (`@view-transition` in `global.css`); the header keeps its own
   `view-transition-name`.
+- Visitor theme choices are cookies written by page script (`remember()` in `lib/theme-cookie.ts`): the header's
+  `ModeToggle` sets color mode; the footer's `ThemeControls` sets Brand/Pro and Sans/Serif. The server reads them back
+  into `Astro.locals.theme`.
+- Share cards follow the site theme: pages call `ogImage(slug, siteSettings)` and `cardPalette()` picks Signal for a
+  Brand site, else the Pro palette; the `?v=` palette key makes social caches refetch. `Seo.astro` takes `themeColor`
+  (a string for a forced mode, a light/dark pair when following the system) and emits `theme-color` meta tags.
+- Nav visibility is the `nav` flag in `publicRoutes`: `/writing` is `nav: false` until the first post (page, feed and
+  sitemap stay live). The header's "Let's talk" button links to `person.sameAs[0]`; Account/Sign in live in the footer.
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
 
 <!-- END AUTO-MANAGED -->
