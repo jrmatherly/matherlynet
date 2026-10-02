@@ -36,6 +36,9 @@ export function breachCount(body: string, suffix: string): number {
 }
 
 async function isBreached(password: string, timeoutMs: number): Promise<boolean> {
+  // SHA-1 because the Pwned Passwords range API only matches SHA-1 (or NTLM) hashes. This is a lookup, not storage:
+  // the hash is never kept, and only its first 5 hex chars leave the server. Passwords are stored with better-auth's
+  // scrypt. CodeQL's js/insufficient-password-hash flags this line; dismissed as a false positive (alert #2).
   const hash = createHash("sha1").update(password).digest("hex").toUpperCase();
   try {
     // k-anonymity: only the first 5 hex characters of the hash leave the server.
