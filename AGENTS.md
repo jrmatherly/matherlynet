@@ -76,6 +76,9 @@ out/                   aspire publish output (gitignored)
   `style` attributes, `on*=` handlers or unhashed inline scripts. Third-party origins are added per request with
   `Astro.csp` (see Telemetry.astro). Code blocks use Prism (token classes, colored from the palette in
   global.css), not Shiki, whose inline styles the CSP blocks.
+- Size images with classes (`w-28 h-auto aspect-square`), never Astro's `style:` shortcut or a `style` attribute; give
+  `<img>` its real `width`/`height` for layout shift and `h-auto` so they don't stretch it. SVG figures take color from
+  `fill-*`/`stroke-*` token utilities, not `fill="#…"` or `style`.
 
 <!-- END AUTO-MANAGED -->
 
