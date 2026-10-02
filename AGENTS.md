@@ -94,6 +94,11 @@ out/                   aspire publish output (gitignored)
 - Site settings (`site_settings` row, edited on /admin) carry the default theme, Pro palette and display typeface
   (`sans`/`serif`). New columns need a DB default so the existing row migrates; `fromRow()` in `site-settings.ts`
   falls back to `SITE_DEFAULTS` for unknown values, and `parseSettingsForm()` rejects them.
+- The display typeface is `data-type` on `<html>` (set in `Base.astro`); headings use the `.display` class, which reads
+  `--display-face`. Newsreader goes through Astro's local font provider on the `@fontsource-variable/newsreader` files
+  (the npm provider reads only `index.css`, which has no italic) and is preloaded only when serif is active.
+  Cross-document view transitions are on (`@view-transition` in `global.css`); the header keeps its own
+  `view-transition-name`.
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
 
 <!-- END AUTO-MANAGED -->
