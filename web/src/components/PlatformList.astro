@@ -5,14 +5,17 @@ import { work } from "../data/profile";
 const rest = work.filter((w) => w.title !== "AI Gateway");
 ---
 
-<ul class="grid">
-  {
-    rest.map((item) => (
-      <li class="grid gap-1 border-t border-border py-4 last:border-b md:grid-cols-[7.5rem_1fr_1.2fr] md:items-baseline md:gap-5">
-        <span class="text-sm text-muted tabular-nums">{item.period}</span>
-        <h3 class="font-bold">{item.title}</h3>
-        <p class="text-sm text-muted">{item.result}</p>
-      </li>
-    ))
-  }
-</ul>
+<section aria-labelledby="also-title" class="grid gap-4">
+  <h2 id="also-title" class="display text-2xl">Also built</h2>
+  <ul class="grid">
+    {
+      rest.map((item) => (
+        <li class="grid gap-1 border-t border-border py-4 md:grid-cols-[7.5rem_1fr_1.2fr] md:items-baseline md:gap-5">
+          <span class="text-sm text-muted tabular-nums">{item.period}</span>
+          <h3 class="font-bold">{item.title}</h3>
+          <p class="text-sm text-muted">{item.result}</p>
+        </li>
+      ))
+    }
+  </ul>
+</section>

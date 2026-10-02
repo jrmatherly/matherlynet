@@ -20,17 +20,17 @@ export const gateway = {
   summary:
     "Started as a quick way to give teams safe access to models. Each generation was replaced when it could no longer answer the questions the business asked: who is spending what, on which model, and under which rules.",
   generations: [
-    { name: "LiteLLM", note: "Fast to stand up, proved demand. Couldn't attribute cost per team or enforce policy per use case.", current: false },
-    { name: "Azure API Management", note: "Added SSO and rate limits. Routing and guardrails were awkward to express, and licensing costs grew with usage.", current: false },
+    { name: "LiteLLM", note: "Fast to stand up, proved demand. Couldn't attribute cost per team or enforce policy per use case, and licensing was projected at $100K+ a year.", current: false },
+    { name: "Azure API Management", note: "Added SSO and rate limits, and cut projected licensing to about $38K a year. Routing and guardrails were awkward to express.", current: false },
     {
       name: "In-house platform",
-      note: "SSO, per-user and per-team cost accounting, rate limiting, guardrails, model routing across Azure AI Foundry and Anthropic, audit logging.",
+      note: "Answers all three: cost per user and team, routing across Azure AI Foundry and Anthropic, and guardrails, rate limits and an audit log on every call.",
       current: true,
     },
   ],
   results: [
     { value: "~2 billion", label: "tokens a month" },
-    { value: "Near zero", label: "projected AI licensing cost" },
+    { value: "$100K+ to near zero", label: "projected yearly licensing" },
     { value: "Every call", label: "attributed, limited, logged" },
   ],
 } as const;
@@ -55,7 +55,7 @@ export const samePeriod = [
 ];
 
 export const bio =
-  "I joined The Aaron's Company's call center in 2006, moved into IT as a Network Analyst in 2009, and grew with it: Network Engineer, Senior Infrastructure Engineer, and since 2021 Manager of Infrastructure Services. Along the way I designed and built the store network, two data centers, three corporate offices and the Azure footprint, then turned to the question of how a 15,000-person company adopts AI without losing control of cost, data or risk.";
+  "I started in The Aaron's Company's IT call center in 2006 and moved into infrastructure as a Network Analyst in 2009. Since then I've designed and built the store network, two data centers, three corporate offices and the Azure footprint. Now I work on how a 15,000-person company adopts AI without losing control of cost, data or risk.";
 export const facts = [
   { title: "Atlanta, GA", detail: "remote since 2020" },
   { title: "Kennesaw State", detail: "B.S. Computer Science" },
@@ -79,7 +79,7 @@ export const perspectives: Perspective[] = [
     id: "recruiters",
     label: "Recruiters",
     headline: "Twenty years, one company, four promotions.",
-    body: "From the call center in 2006 to Manager, Infrastructure Services at The Aaron's Company. I now lead company-wide AI strategy and adoption, along with the infrastructure behind 15,000+ employees and 1,200+ stores.",
+    body: "From the IT call center in 2006 to Manager, Infrastructure Services at The Aaron's Company. I now lead company-wide AI strategy and adoption, along with the infrastructure behind 15,000+ employees and 1,200+ stores.",
     points: [
       "AI platform engineering: gateways, MCP, agents, Copilot and Claude rollouts",
       "Infrastructure leadership: data centers, network, security, DR and identity",
@@ -115,7 +115,7 @@ export const perspectives: Perspective[] = [
 export interface WorkItem {
   title: string;
   summary: string;
-  // "2021 to now" or "2015 to 2021".
+  // "2024 to now" or "2015 to 2021".
   period: string;
   // One short line: the outcome a reader should remember.
   result: string;
@@ -126,27 +126,27 @@ export const work: WorkItem[] = [
     title: "AI Gateway",
     summary:
       "The company's single path to large language models. It evolved from LiteLLM to Azure APIM to a custom in-house platform, with SSO, per-user and per-team cost accounting, rate limiting, guardrails, model routing and audit logging.",
-    period: "2021 to now",
+    period: "2024 to now",
     result: "About 2 billion tokens a month; projected licensing from $100K+ a year to near zero",
   },
   {
     title: "MCP Gateway, Registry & Portal",
     summary:
       "A governed way for teams to connect AI agents to internal systems and data: a server is approved into the registry before any agent can reach it, and every call is signed in with OAuth.",
-    period: "2021 to now",
+    period: "2025 to now",
     result: "About 20 MCP servers, each approved into the registry, behind OAuth",
   },
   {
     title: "AI chat platform & agents",
     summary: "An internal AI chat platform and agents grounded in company knowledge, built in Python, TypeScript and Go.",
-    period: "2021 to now",
+    period: "2025 to now",
     result: "About 30 agents grounded in company knowledge, 400 users across 14 teams",
   },
   {
     title: "On-prem Kubernetes platform",
     summary: "Talos Linux clusters run with GitOps (Flux and Argo CD), Cilium networking, and External Secrets Operator backed by Secret Server.",
-    period: "2021 to now",
-    result: "Talos Linux, Flux and Argo CD, Cilium, External Secrets backed by Secret Server",
+    period: "2024 to now",
+    result: "Runs the AI Gateway and the MCP platform, managed through GitOps",
   },
   {
     title: "SD-WAN for every store",
@@ -232,9 +232,9 @@ export const career: Role[] = [
     title: "Call Center & Quality Assurance",
     start: "Nov 2006",
     end: "Nov 2009",
-    highlights: ["Started in the call center and quality assurance before moving into IT infrastructure"],
+    highlights: ["Started in the IT call center and quality assurance before moving into infrastructure"],
     heading: "First, the customers",
-    summary: "Started in the call center and quality assurance, then moved into IT infrastructure.",
+    summary: "Started in the IT call center and quality assurance, then moved into infrastructure.",
   },
 ];
 
