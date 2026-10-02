@@ -17,7 +17,7 @@ if (Astro.locals.user) return Astro.redirect("/account");
     </label>
     <label class={label}>
       Password
-      <input name="password" type="password" required minlength="8" autocomplete="new-password" class={field} />
+      <input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password" class={field} />
     </label>
     <button class={primary}>Sign up</button>
   </form>

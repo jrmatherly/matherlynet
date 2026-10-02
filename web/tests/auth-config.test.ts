@@ -11,3 +11,10 @@ describe("rate limiting", () => {
     expect(options.rateLimit?.customRules?.["/ok"]).toBe(false);
   });
 });
+
+describe("password length", () => {
+  it("requires 12 to 128 characters (the hook applies the same rule to /admin/create-user)", () => {
+    expect(options.emailAndPassword?.minPasswordLength).toBe(12);
+    expect(options.emailAndPassword?.maxPasswordLength ?? 128).toBe(128);
+  });
+});
