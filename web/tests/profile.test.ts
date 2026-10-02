@@ -36,7 +36,7 @@ describe("profile data", () => {
   });
 
   it("lists the recruiter screening facts", () => {
-    expect(recruiterFacts.map((f) => f.term)).toEqual(["Current title", "Team", "Built", "Location", "Education", "Writes code in"]);
+    expect(recruiterFacts.map((f) => f.term)).toEqual(["Current title", "Reports to", "Team", "Built", "Location", "Education", "Writes code in"]);
   });
 
   it("lists the same-period items the changelog shows under the gateway", () => {

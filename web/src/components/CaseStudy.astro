@@ -5,7 +5,7 @@ import { gateway } from "../data/profile";
 <section aria-labelledby="case-title" class="grid gap-7">
   <div class="grid gap-2">
     <h2 id="case-title" class="display text-3xl sm:text-4xl">One gateway, three generations</h2>
-    <p class="max-w-2xl text-lg text-muted">Every model call at the company goes through it. I've rebuilt it twice.</p>
+    <p class="max-w-2xl text-lg text-muted">Every model call at the company goes through it. I built it alone and rebuilt it twice in eighteen months.</p>
   </div>
   <div class="overflow-hidden rounded-2xl border border-border bg-surface">
     <div class="grid gap-2 border-b border-border p-7">
@@ -16,7 +16,7 @@ import { gateway } from "../data/profile";
       {
         gateway.generations.map((g, i) => (
           <li class:list={["grid content-start gap-2 border-t border-border p-6 md:border-t-0 md:border-l first:border-t-0 md:first:border-l-0", g.current && "bg-accent-soft"]}>
-            <span class="text-sm font-bold text-accent tabular-nums">{g.current ? `Generation ${i + 1}, today` : `Generation ${i + 1}`}</span>
+            <span class="text-sm font-bold text-accent tabular-nums">{g.current ? `Generation ${i + 1}, since ${g.since}` : `Generation ${i + 1}, ${g.since}`}</span>
             <h4 class="font-bold">{g.name}</h4>
             <p class="text-sm text-muted">{g.note}</p>
           </li>

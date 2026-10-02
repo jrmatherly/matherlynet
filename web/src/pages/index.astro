@@ -16,7 +16,7 @@ import { person } from "../lib/site";
   <div class="mx-auto grid max-w-6xl gap-14 px-4 sm:px-6">
     <section class="grid items-center gap-12 pt-16 pb-6 lg:grid-cols-[1.05fr_1fr] lg:pt-20">
       <div class="grid gap-5">
-        <h1 class="display text-5xl sm:text-6xl lg:text-7xl">{headline}</h1>
+        <h1 class="display text-5xl sm:text-6xl">{headline}</h1>
         <p class="font-medium">{person.jobTitle}. {career[0].title} at {employer.name}.</p>
         <div class="grid max-w-xl gap-3 text-lg text-muted">
           {intro.map((paragraph) => <p>{paragraph.split("*").map((part, i) => (i % 2 ? <strong class="font-medium text-foreground">{part}</strong> : part))}</p>)}

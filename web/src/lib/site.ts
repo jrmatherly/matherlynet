@@ -12,7 +12,8 @@ export const person = {
   worksFor: "The Aaron's Company",
   // Read by search engines and sourcing tools (JSON-LD), not shown on the page.
   knowsAbout: ["AI platform engineering", "AI gateways", "Model Context Protocol", "AI governance", "Kubernetes", "Enterprise infrastructure", "Data centers", "SD-WAN"],
-  sameAs: ["https://www.linkedin.com/in/jason-matherly", "https://github.com/jrmatherly"],
+  // No GitHub: its public repos are archived and don't represent current work.
+  sameAs: ["https://www.linkedin.com/in/jason-matherly"],
 } as const;
 
 // Public, indexable routes: the header nav and sitemap both read this list.

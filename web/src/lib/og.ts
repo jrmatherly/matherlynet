@@ -4,7 +4,8 @@ import { BRAND_PALETTE, type SiteThemeDefaults } from "../theme/palettes";
 // Share cards served by /og/[slug].png. Pages reference them with ogImage(slug, site).
 export const ogCards = {
   home: {
-    title: headline,
+    // The card font has no non-breaking hyphen glyph (the page uses one to keep "15,000-person" together).
+    title: headline.replaceAll("‑", "-"),
     subtitle: "AI platform & infrastructure leader · Atlanta, GA",
   },
   work: { title: "Platforms that run in production, not in slides.", subtitle: "AI gateways, MCP, Kubernetes and enterprise infrastructure" },

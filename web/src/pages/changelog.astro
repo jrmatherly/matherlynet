@@ -89,7 +89,9 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
           {
             gateway.generations.map((g) => (
               <div class="grid gap-1 border-b border-border py-3 text-sm sm:grid-cols-[9rem_1fr] sm:gap-4">
-                <dt class:list={["font-semibold", g.current && "text-accent"]}>{g.name}</dt>
+                <dt class:list={["font-semibold", g.current && "text-accent"]}>
+                  {g.name} <span class="block font-normal text-muted">{g.since}</span>
+                </dt>
                 <dd class="text-muted">{g.note}</dd>
               </div>
             ))
