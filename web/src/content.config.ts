@@ -2,9 +2,10 @@ import { defineCollection } from "astro:content";
 import { glob } from "astro/loaders";
 import { z } from "astro/zod";
 
-// Posts live in src/content/writing/<slug>.md. `draft: true` keeps a post off the site and out of the feed.
+// Posts live in src/content/writing/<slug>.md, or .mdx when a post embeds a component. `draft: true` keeps a post off
+// the site and out of the feed.
 const writing = defineCollection({
-  loader: glob({ pattern: "**/*.md", base: "./src/content/writing" }),
+  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/writing" }),
   schema: z.object({
     title: z.string(),
     description: z.string(),

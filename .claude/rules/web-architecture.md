@@ -9,7 +9,7 @@ The Astro app, file by file (moved out of AGENTS.md to keep it short; AGENTS.md'
 
 ```text
 web/
-  astro.config.mjs     output: 'server', @astrojs/node standalone, Tailwind 4 (Vite plugin), fonts (Geist Latin and
+  astro.config.mjs     output: 'server', @astrojs/node standalone, MDX, Tailwind 4 (Vite plugin), fonts (Geist Latin and
                        Newsreader normal + italic via the local provider, Geist Mono via npm), CSP directives,
                        security.allowedDomains (trust X-Forwarded-Proto behind Cloudflare)
   migrate.mjs          applies web/drizzle/ on start (retry + Postgres advisory lock)
@@ -41,7 +41,8 @@ web/
                        cookie) and syncThemeColor() (rebuilds the theme-color tags after a switch)
   src/data/profile.ts  all résumé-derived copy (headline, intro, availability, contact, gateway case study,
                        perspectives, recruiterFacts, work, career, bio, skills); edit facts here
-  src/content/writing/  Markdown posts (schema in src/content.config.ts; `draft: true` hides a post everywhere)
+  src/content/writing/  posts: .md, or .mdx to embed a component (schema in src/content.config.ts; `draft: true`
+                       hides a post everywhere)
   src/db/              Drizzle client (`APPDB_URI`, pool timeouts), generated auth-schema.ts, app tables in schema.ts
   src/middleware.ts    session, siteSettings and theme into Astro.locals; Sentry error capture; security headers
   src/theme/palettes.ts  palette keys, typefaces, cookie names, resolveTheme() (cookies -> theme, mode, palette,
