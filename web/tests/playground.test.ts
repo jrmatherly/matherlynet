@@ -7,10 +7,10 @@ import {
   createConsole,
   decide,
   detect,
+  literal,
   mask,
   parsePrompt,
   parseScenarioId,
-  type PromptText,
   RECORDED_TOUR,
   replay,
   SCENARIO_IDS,
@@ -20,11 +20,6 @@ import {
   type Step,
 } from "../src/lib/playground";
 
-const ok = (text: string): PromptText => {
-  const parsed = parsePrompt(text);
-  if (!parsed.ok) throw new Error(parsed.error);
-  return parsed.value;
-};
 const rateLimit = (entry: AuditEntry) => entry.steps.find((s) => s.gate === "Rate limits");
 
 describe("parsing the untrusted inputs", () => {
@@ -62,16 +57,16 @@ describe("guardrail detectors", () => {
     ["best casino odds", "restricted topics", "gambling", "ca••no"],
     ["nsfw pictures", "restricted topics", "explicit content", "••••"],
   ])("%s", (text, category, looksLike, masked) => {
-    expect(detect(ok(text))).toEqual({ category, looksLike, masked });
+    expect(detect(literal(text))).toEqual({ category, looksLike, masked });
   });
 
   it("names a card number only when it passes Luhn", () => {
-    expect(detect(ok("my card is 4111111111111111"))?.looksLike).toBe("a card number");
-    expect(detect(ok("my card is 4111111111111112"))).toBeNull();
+    expect(detect(literal("my card is 4111111111111111"))?.looksLike).toBe("a card number");
+    expect(detect(literal("my card is 4111111111111112"))).toBeNull();
   });
 
   it("passes everyday text", () => {
-    expect(detect(ok("Explain this stack trace in plain words."))).toBeNull();
+    expect(detect(literal("Explain this stack trace in plain words."))).toBeNull();
   });
 
   it("mask keeps two characters at each end", () => {
@@ -85,7 +80,7 @@ describe("send", () => {
   const s0 = createConsole("visitor-test", 0);
 
   it("refuses a secret at Guardrails and never shows it", () => {
-    const { entry } = send(s0, { lane: "model", caller: "End users", text: ok("my key is AKIAABCDEFGHIJKLMNOP") }, 0);
+    const { entry } = send(s0, { lane: "model", caller: "End users", text: literal("my key is AKIAABCDEFGHIJKLMNOP") }, 0);
     expect(entry.decision).toEqual({ verdict: "refused", at: "Guardrails" });
     expect(entry.steps.map((s) => s.verdict)).toEqual(["signed in", "passed", "refused"]);
     expect(entry.summary).toBe("my key is AK••••••••••••••••OP");
@@ -93,8 +88,8 @@ describe("send", () => {
   });
 
   it("a prompt refused at Guardrails spent its rate-limit token but never enters the cache", () => {
-    const secret = send(s0, { lane: "model", caller: "End users", text: ok("my key is AKIAABCDEFGHIJKLMNOP") }, 0);
-    const everyday = send(secret.state, { lane: "model", caller: "Claude Code", text: ok("Explain this stack trace.") }, 0);
+    const secret = send(s0, { lane: "model", caller: "End users", text: literal("my key is AKIAABCDEFGHIJKLMNOP") }, 0);
+    const everyday = send(secret.state, { lane: "model", caller: "Claude Code", text: literal("Explain this stack trace.") }, 0);
     expect(rateLimit(secret.entry)).toEqual({ gate: "Rate limits", verdict: "passed", left: 4 });
     expect(rateLimit(everyday.entry)).toEqual({ gate: "Rate limits", verdict: "passed", left: 3 });
     expect(secret.state.cache.size).toBe(0);
@@ -102,22 +97,22 @@ describe("send", () => {
   });
 
   it("forwards an everyday prompt and alternates the model", () => {
-    const first = send(s0, { lane: "model", caller: "Claude Code", text: ok("one") }, 0);
-    const second = send(first.state, { lane: "model", caller: "Claude Code", text: ok("two") }, 0);
+    const first = send(s0, { lane: "model", caller: "Claude Code", text: literal("one") }, 0);
+    const second = send(first.state, { lane: "model", caller: "Claude Code", text: literal("two") }, 0);
     expect(first.entry.decision).toEqual({ verdict: "forwarded", to: "Azure AI Foundry" });
     expect(second.entry.decision).toEqual({ verdict: "forwarded", to: "Anthropic" });
   });
 
   it("masks a secret in a row refused at Rate limits, before Guardrails ran", () => {
     let state = s0;
-    for (let i = 0; i < 5; i++) state = send(state, { lane: "model", caller: "Agents", text: ok(`ticket ${i}`) }, 0).state;
-    const { entry } = send(state, { lane: "model", caller: "Agents", text: ok("AKIAABCDEFGHIJKLMNOP") }, 1_000);
+    for (let i = 0; i < 5; i++) state = send(state, { lane: "model", caller: "Agents", text: literal(`ticket ${i}`) }, 0).state;
+    const { entry } = send(state, { lane: "model", caller: "Agents", text: literal("AKIAABCDEFGHIJKLMNOP") }, 1_000);
     expect(entry.steps.at(-1)).toEqual({ gate: "Rate limits", verdict: "refused", retryMs: 3_000 });
     expect(entry.summary).toBe("AK••••••••••••••••OP");
   });
 
   it("cuts a long summary to 60 characters", () => {
-    const { entry } = send(s0, { lane: "model", caller: "Claude Code", text: ok("x".repeat(70)) }, 0);
+    const { entry } = send(s0, { lane: "model", caller: "Claude Code", text: literal("x".repeat(70)) }, 0);
     expect(entry.summary).toBe(`${"x".repeat(59)}…`);
   });
 
@@ -177,8 +172,12 @@ describe("replay", () => {
 });
 
 it("scenarioCss displays the picked panel, for every scenario and yours", () => {
-  const picked = (id: string) => `[data-console]:has(input[value="${id}"]:checked) [data-panel="${id}"]`;
-  expect(scenarioCss()).toBe(`${[...SCENARIO_IDS, "yours"].map(picked).join(",")}{display:grid}`);
+  const css = scenarioCss();
+  for (const id of [...SCENARIO_IDS, "yours"]) {
+    expect(css).toContain(`input[value="${id}"]:checked`);
+    expect(css).toContain(`[data-panel="${id}"]`);
+  }
+  expect(css.endsWith("{display:grid}")).toBe(true);
 });
 
 describe("GatewayConsole", () => {

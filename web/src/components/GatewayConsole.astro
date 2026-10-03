@@ -21,7 +21,7 @@ Astro.csp?.insertStyleHash(`sha256-${createHash("sha256").update(css).digest("ba
 const rate = SIM["Rate limits"];
 const sim = (gate: Gate, value: string, label: string = gate) => ({ label, value, tag: SIM[gate].tag });
 const simulated = [
-  sim("SSO", `a random visitor handle for this tab, team ${SIM.SSO.team}`),
+  sim("SSO", "a random visitor handle for this tab"),
   sim("Rate limits", `${rate.capacity} requests, one back every ${rate.refillMs / 1000} s`),
   ...GUARDRAIL_CATEGORIES.map((category) =>
     sim("Guardrails", SIM.Guardrails.detectors[category].map((d) => d.looksLike).join(", "), `Guardrails: ${category}`),
@@ -65,12 +65,12 @@ const panel = "hidden min-w-0 gap-3";
     </fieldset>
 
     <div class="grid min-w-0 gap-4">
-      <div class="min-w-0 rounded-xl border border-border bg-surface-2 p-4" aria-live="polite">
+      <div class="min-w-0 rounded-xl border border-border bg-surface-2 p-4">
         {
           panels.map((p) => (
             <article data-panel={p.id} class={panel}>
               <p class="text-sm text-muted">{p.teaches}</p>
-              <ol class="grid gap-2" data-rows data-many={p.entries.length > 2 ? "" : undefined}>
+              <ol class="grid gap-2" aria-live="polite" data-rows data-many={p.entries.length > 2 ? "" : undefined}>
                 {p.entries.map((entry) => (
                   <TraceRow entry={entry} />
                 ))}
@@ -101,7 +101,7 @@ const panel = "hidden min-w-0 gap-3";
             </div>
             <p class="text-xs text-muted">Try an email address, a card number, a key that starts with sk- or ghp_, or telling it to ignore its instructions.</p>
           </form>
-          <ol class="grid gap-2" data-rows data-yours></ol>
+          <ol class="grid gap-2" aria-live="polite" data-rows data-yours></ol>
         </article>
       </div>
       <noscript><p class="text-sm text-muted">Showing recorded runs. Turn on JavaScript to send your own.</p></noscript>
@@ -149,6 +149,7 @@ const panel = "hidden min-w-0 gap-3";
     parseScenarioId,
     type PlayRequest,
     PROMPT_MAX,
+    refill,
     SCENARIOS,
     send,
     SIM,
@@ -178,7 +179,7 @@ const panel = "hidden min-w-0 gap-3";
     const yours = root.querySelector<HTMLOListElement>("[data-yours]")!;
 
     const updateGauge = () => {
-      const left = Math.floor(state.bucket.tokens);
+      const left = Math.floor(refill(state.bucket, performance.now()).tokens);
       slot(gauge, "dots").textContent = "●".repeat(left) + "○".repeat(SIM["Rate limits"].capacity - left);
       slot(gauge, "count").textContent = `${left}/${SIM["Rate limits"].capacity}, ${SIM["Rate limits"].tag}`;
     };
@@ -204,7 +205,7 @@ const panel = "hidden min-w-0 gap-3";
       pill.hidden = false;
     };
 
-    // One step at a time: each pill lands as its gate decides, then the rest read "not reached" and the row is logged.
+    // One step at a time: each pill lands as its gate decides, then the rest read "not reached".
     const paint = async (entry: AuditEntry, row: HTMLElement) => {
       const gates = GATES[entry.lane];
       const pills = [...row.querySelectorAll<HTMLElement>("[data-step]")];
@@ -220,13 +221,14 @@ const panel = "hidden min-w-0 gap-3";
       const end = slot(row, "closing");
       end.textContent = closing(entry);
       end.hidden = false;
-      log.prepend(logRow(entry));
     };
 
     const run = (request: PlayRequest, list: HTMLOListElement) => {
       const result = send(state, request, performance.now());
       state = result.state;
       updateGauge();
+      // Logged at send, not when the trace finishes painting: traces differ in length, so a burst would land out of order.
+      log.prepend(logRow(result.entry));
       const row = clone(rowTemplate);
       slot(row, "from").textContent = result.entry.from;
       slot(row, "summary").textContent = result.entry.summary;
@@ -236,14 +238,19 @@ const panel = "hidden min-w-0 gap-3";
 
     root.querySelectorAll<HTMLElement>("[data-js]").forEach((el) => (el.hidden = false));
     updateGauge();
+    setInterval(updateGauge, 1000);
 
+    // A re-pick cancels the previous pick's requests still waiting, so none lands in a panel that was just cleared.
+    let pending: ReturnType<typeof setTimeout>[] = [];
     root.querySelector("[data-chips]")!.addEventListener("change", (event) => {
       if (!(event.target instanceof HTMLInputElement)) return;
+      pending.forEach(clearTimeout);
+      pending = [];
       const id = parseScenarioId(event.target.value);
       if (!id) return text.focus();
       const list = root.querySelector<HTMLOListElement>(`[data-panel="${id}"] [data-rows]`)!;
       list.replaceChildren();
-      for (const { offsetMs, request } of SCENARIOS[id].requests) setTimeout(() => run(request, list), offsetMs);
+      pending = SCENARIOS[id].requests.map(({ offsetMs, request }) => setTimeout(() => run(request, list), offsetMs));
     });
 
     form.addEventListener("submit", (event) => {

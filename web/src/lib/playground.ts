@@ -135,7 +135,7 @@ const cardNumber = (match: string) => {
 // Every invented value, one entry per gate: the page's "Simulated values" and each step's tag render from this, and the
 // checks read it, so the page cannot describe a rule the engine doesn't run.
 export const SIM = {
-  SSO: { tag: "demo identity", team: "Visitors" },
+  SSO: { tag: "demo identity" },
   "Rate limits": { tag: "demo limit", capacity: 5, refillMs: 4_000 },
   Guardrails: {
     tag: "demo checks",
@@ -243,7 +243,7 @@ export function decide(steps: readonly Step[]): Decision<Gate, Target> {
   throw new Error(`walk stopped without deciding: ${last?.gate ?? "no steps"}`);
 }
 
-const refill = ({ tokens, at }: Bucket, now: number): Bucket => {
+export const refill = ({ tokens, at }: Bucket, now: number): Bucket => {
   const { capacity, refillMs } = SIM["Rate limits"];
   return { tokens: Math.min(capacity, tokens + (now - at) / refillMs), at: now };
 };
@@ -312,7 +312,7 @@ interface Scenario {
   requests: readonly Timed[];
 }
 
-const literal = (text: string): PromptText => {
+export const literal = (text: string): PromptText => {
   const parsed = parsePrompt(text);
   if (!parsed.ok) throw new Error(`scenario prompt is ${parsed.error}: ${text}`);
   return parsed.value;
