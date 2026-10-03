@@ -61,7 +61,7 @@ web/
                        header/footer (chrome full|minimal)
   src/components/       Seo (canonical, OG, Person JSON-LD, noindex, theme-color), SiteHeader (nav, ModeToggle,
                         Let's talk), SiteFooter (ThemeControls: Brand/Pro + Sans/Serif, page links from publicRoutes,
-                        LinkedIn, RSS once /writing is in the nav, sign in), Logo (monogram at header size;
+                        LinkedIn, RSS, sign in), Logo (monogram at header size;
                         `decorative` hides it beside the name), Telemetry (Umami tag + lazy @sentry/browser, both from
                         site settings); home: GatewayPath (SVG request path), Perspectives (no-JS radio switcher),
                         CaseStudy, PlatformList, AboutStrip, Cta, Availability (renders only when set);

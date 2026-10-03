@@ -117,9 +117,8 @@ out/                   aspire publish output (gitignored)
   palette it names (so a replica with older cached settings can't cache the wrong card under it). `Seo.astro` takes
   `themeColor` (a string for a forced mode, a light/dark pair when following the system; `themeColorFor()` decides)
   and emits `theme-color` meta tags.
-- Nav visibility is the `nav` flag in `publicRoutes`: `/writing` is `nav: false` until the first post (page, feed and
-  sitemap stay live). The same flag drives the footer's page links, its RSS link and the 404 page's links. The
-  header's "Let's talk" button links to `person.sameAs[0]`; Account/Sign in live in the footer.
+- Nav visibility is the `nav` flag in `publicRoutes`; the same flag drives the footer's page links and the 404 page's
+  links. The header's "Let's talk" button links to `person.sameAs[0]`; RSS and Account/Sign in live in the footer.
 - Each page has one job, so facts aren't retold across pages: home is the overview (perspectives, case study),
   /changelog the timeline (recruiter facts, roles with highlights), /work the platforms (gateway generations),
   /about the person. Every inner page links to another from its body (`pages.test.ts`).
