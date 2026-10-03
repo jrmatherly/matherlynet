@@ -59,7 +59,13 @@ if [ "${1:-}" != "--no-stack" ]; then
   step "Aspire smoke test"  smoke
   step "Web E2E"            e2e
   if [ -e "$e2e_first_log.retried" ]; then
-    results+=("NOTE  Web E2E passed only after restarting web (stale Vite deps?); first run: $e2e_first_log")
+    results+=("NOTE  Web E2E passed only after restarting web; first run: $e2e_first_log")
+    # Stale deps fail whatever runs first; a test that keeps failing first across runs is a race to fix. Count the
+    # kept first-run logs (this one included) where each of this run's failures also failed.
+    while read -r t; do
+      seen=$(grep -l "✘.*$t" "$(dirname "$e2e_first_log")"/verify-e2e.* 2>/dev/null | wc -l | tr -d ' ')
+      results+=("      first-run failure: $t (failed first in $seen kept logs)")
+    done < <(grep -oE '✘.*› e2e/[^ ]+' "$e2e_first_log" | grep -oE 'e2e/[^ ]+' | sort -u)
   fi
   [ "$started" = 1 ] && aspire stop --non-interactive --nologo >/dev/null
 fi
