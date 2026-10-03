@@ -101,7 +101,8 @@ out/                   aspire publish output (gitignored)
   row with `readSiteSettings()`, which throws on a database error: `getSiteSettings()` falls back to defaults, and a
   form filled from those would save them over the real row.
 - The display typeface is `data-type` on `<html>` (set in `Base.astro`); page and section titles use the `.display`
-  class, which reads `--display-face` (small card and list headings stay Geist bold). Newsreader goes through Astro's
+  class, which reads `--display-face` (small card and list headings stay Geist bold; Markdown post h2s in
+  `.prose-content` read the same variables, h3 stays Geist). Newsreader goes through Astro's
   local font provider on the `@fontsource-variable/newsreader` files (the npm provider parses one CSS file per family,
   and none declares both normal and italic) and is preloaded only when serif is active.
   Cross-document view transitions are on (`@view-transition` in `global.css`); the header keeps its own
