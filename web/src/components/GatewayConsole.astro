@@ -1,7 +1,7 @@
 ---
 import { createHash } from "node:crypto";
 import { AUDIT_RETENTION, CALLERS, type Gate, GUARDRAIL_CATEGORIES, MODEL_TARGETS } from "../data/gateway";
-import { field, primary } from "../lib/form";
+import { badge, choice, field, primary } from "../lib/form";
 import { PROMPT_MAX, RECORDED_TOUR, replay, SCENARIO_IDS, SCENARIOS, type ScenarioId, scenarioCss, SIM } from "../lib/playground";
 import FlowTable from "./FlowTable.astro";
 import TraceRow from "./TraceRow.astro";
@@ -12,10 +12,10 @@ interface Props {
 }
 const { picked } = Astro.props;
 
-const panels = SCENARIO_IDS.map((id) => ({ ...SCENARIOS[id], entries: replay([id]) }));
+const panels = SCENARIO_IDS.map((id) => ({ id, ...SCENARIOS[id], entries: replay([id]) }));
 const recorded = replay(RECORDED_TOUR);
 // define:vars would write a style attribute, which the CSP forbids; an inline <style> with its hash registered passes.
-const css = scenarioCss(SCENARIO_IDS);
+const css = scenarioCss();
 Astro.csp?.insertStyleHash(`sha256-${createHash("sha256").update(css).digest("base64")}`);
 
 const rate = SIM["Rate limits"];
@@ -37,11 +37,8 @@ const simulated = [
   ),
 ];
 
-// Perspectives.astro's radio labels, with the padding set per use.
-const choice =
-  "cursor-pointer rounded-lg border border-border/60 font-medium text-muted transition-[color,background-color] hover:text-foreground has-checked:border-border has-checked:bg-surface has-checked:text-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent";
 const chip = `${choice} px-3.5 py-2.5`;
-const panel = "hidden min-w-0 content-start gap-3";
+const panel = "hidden min-w-0 gap-3";
 ---
 
 <div data-console class="grid min-w-0 gap-6">
@@ -68,7 +65,7 @@ const panel = "hidden min-w-0 content-start gap-3";
     </fieldset>
 
     <div class="grid min-w-0 gap-4">
-      <div class="grid min-w-0 rounded-xl border border-border bg-surface-2 p-4" aria-live="polite">
+      <div class="min-w-0 rounded-xl border border-border bg-surface-2 p-4" aria-live="polite">
         {
           panels.map((p) => (
             <article data-panel={p.id} class={panel}>
@@ -81,7 +78,7 @@ const panel = "hidden min-w-0 content-start gap-3";
             </article>
           ))
         }
-        <article data-panel="yours" class={panel} data-js hidden>
+        <article data-panel="yours" class={panel}>
           <form method="post" class="grid min-w-0 gap-2.5 rounded-xl border border-border bg-surface p-3" data-form>
             <label for="pg-text" class="sr-only">Your request</label>
             <textarea id="pg-text" name="text" maxlength={PROMPT_MAX} rows="3" placeholder="Ask the gateway anything…" class={`${field} min-h-21 resize-y`}></textarea>
@@ -117,7 +114,7 @@ const panel = "hidden min-w-0 content-start gap-3";
               <>
                 <dt class="mt-1.5 text-muted sm:mt-0">{row.label}</dt>
                 <dd>
-                  {row.value} <em class="ms-1 inline-block rounded-full border border-border px-1.5 text-[10px] font-medium whitespace-nowrap not-italic">{row.tag}</em>
+                  {row.value} <em class={badge}>{row.tag}</em>
                 </dd>
               </>
             ))
@@ -156,7 +153,6 @@ const panel = "hidden min-w-0 content-start gap-3";
     send,
     SIM,
     stepView,
-    toEvents,
   } from "../lib/playground";
 
   const STEP_MS = 180;
@@ -200,36 +196,31 @@ const panel = "hidden min-w-0 content-start gap-3";
       return row;
     };
 
-    // One ConsoleEvent at a time: each pill lands as its gate decides.
+    const fill = (pill: HTMLElement, view: ReturnType<typeof stepView>) => {
+      pill.dataset.kind = view.kind;
+      slot(pill, "verdict").textContent = view.verdict;
+      slot(pill, "detail").textContent = view.detail;
+      slot(pill, "tag").textContent = view.tag;
+      pill.hidden = false;
+    };
+
+    // One step at a time: each pill lands as its gate decides, then the rest read "not reached" and the row is logged.
     const paint = async (entry: AuditEntry, row: HTMLElement) => {
       const gates = GATES[entry.lane];
       const pills = [...row.querySelectorAll<HTMLElement>("[data-step]")];
       for (const pill of pills.slice(gates.length)) pill.remove();
       gates.forEach((gate, i) => (slot(pills[i], "gate").textContent = gate));
-      let next = 0;
-      for (const event of toEvents(entry)) {
+      for (const [i, step] of entry.steps.entries()) {
         if (!reduced.matches) await sleep(STEP_MS);
-        if (event.type === "step") {
-          const pill = pills[next++];
-          const view = stepView(event.step);
-          pill.dataset.kind = view.kind;
-          slot(pill, "verdict").textContent = event.step.verdict;
-          slot(pill, "detail").textContent = view.detail;
-          slot(pill, "tag").textContent = view.tag;
-          pill.hidden = false;
-          continue;
-        }
-        for (const pill of pills.slice(next, gates.length)) {
-          pill.dataset.kind = "skip";
-          slot(pill, "verdict").textContent = "not reached";
-          pill.hidden = false;
-        }
-        row.querySelector<HTMLElement>("[data-logged]")!.hidden = false;
-        const end = slot(row, "closing");
-        end.textContent = closing(entry);
-        end.hidden = false;
-        log.prepend(logRow(entry));
+        fill(pills[i], stepView(step));
       }
+      if (!reduced.matches) await sleep(STEP_MS);
+      for (const pill of pills.slice(entry.steps.length, gates.length)) fill(pill, stepView(undefined));
+      row.querySelector<HTMLElement>("[data-logged]")!.hidden = false;
+      const end = slot(row, "closing");
+      end.textContent = closing(entry);
+      end.hidden = false;
+      log.prepend(logRow(entry));
     };
 
     const run = (request: PlayRequest, list: HTMLOListElement) => {

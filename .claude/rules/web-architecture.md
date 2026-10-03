@@ -67,7 +67,8 @@ web/
                         CaseStudy, PlatformList, AboutStrip, Cta, Availability (renders only when set);
                         changelog: RailEntry; work: WorkCard (a row, slot for extra detail);
                         playground: GatewayConsole (chips, panels, form, page script), TraceRow (one request's gates;
-                        `entry={null}` is the script's template), FlowTable (the audit log table)
+                        `entry={null}` is the script's template), FlowTable (the audit log table), LogRow (one log
+                        row; `row={null}` is the script's template)
   src/pages/           one job each: index (overview, perspectives), changelog (timeline: recruiter facts, roles with
                         highlights), work (platforms, gateway generations), about (person: skills, education,
                         volunteering), playground (the gateway simulation, `?try=<scenario>`), writing/ (+[slug]),

@@ -8,6 +8,7 @@ import Perspectives from "../components/Perspectives.astro";
 import PlatformList from "../components/PlatformList.astro";
 import { availability, career, contact, employer, headline, intro, resumeUrl } from "../data/profile";
 import Base from "../layouts/Base.astro";
+import { inlineLink } from "../lib/form";
 import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 ---
@@ -29,7 +30,7 @@ import { person } from "../lib/site";
       </div>
       <div class="grid gap-3">
         <GatewayPath />
-        <p class="text-sm text-muted">Try it: <a href="/playground" class="text-foreground underline decoration-accent decoration-2 underline-offset-4">send a request through the gateway</a>.</p>
+        <p class="text-sm text-muted">Try it: <a href="/playground" class={inlineLink}>send a request through the gateway</a>.</p>
       </div>
     </section>
     <div class="border-t border-border pt-14"><Perspectives /></div>

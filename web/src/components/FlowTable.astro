@@ -1,5 +1,6 @@
 ---
-import { clock, endpoint, type FlowRow, GLYPH } from "../lib/playground";
+import type { FlowRow } from "../lib/playground";
+import LogRow from "./LogRow.astro";
 
 interface Props {
   rows: readonly FlowRow[];
@@ -7,8 +8,7 @@ interface Props {
 const { rows } = Astro.props;
 // Newest first, as the script prepends.
 const shown = [...rows].reverse();
-const cell = "px-3 py-2 align-top";
-const glyph = "text-success group-data-[v=cached]:text-info group-data-[v=refused]:text-danger";
+const head = "px-3 py-2 align-top font-medium";
 ---
 
 <div class="overflow-x-auto rounded-xl border border-border bg-surface">
@@ -16,42 +16,16 @@ const glyph = "text-success group-data-[v=cached]:text-info group-data-[v=refuse
     <caption class="px-3 pt-3 pb-1 text-left font-semibold">Audit log</caption>
     <thead>
       <tr class="border-b border-border text-xs text-muted">
-        <th scope="col" class={`${cell} font-medium`}>Time</th>
-        <th scope="col" class={`${cell} font-medium`}>Who</th>
-        <th scope="col" class={`${cell} font-medium`}>Request</th>
-        <th scope="col" class={`${cell} font-medium`}>Verdict</th>
-        <th scope="col" class={`${cell} font-medium`}>To / stopped at</th>
+        <th scope="col" class={head}>Time</th>
+        <th scope="col" class={head}>Who</th>
+        <th scope="col" class={head}>Request</th>
+        <th scope="col" class={head}>Verdict</th>
+        <th scope="col" class={head}>To / stopped at</th>
       </tr>
     </thead>
     <tbody data-log>
-      {
-        shown.map((r) => (
-          <tr class="group border-b border-border last:border-b-0" data-v={r.decision.verdict}>
-            <td class={`${cell} font-mono text-xs text-muted tabular-nums`}>{clock(r.at)}</td>
-            <td class={`${cell} whitespace-nowrap`}>
-              {r.from}
-              {r.provenance === "you" && <span class="ms-1 rounded-full border border-border px-1.5 text-[10px] font-medium">you</span>}
-            </td>
-            <td class={cell}>{r.summary}</td>
-            <td class={`${cell} whitespace-nowrap`}>
-              <span class={glyph} aria-hidden="true">{GLYPH[r.decision.verdict]}</span> {r.decision.verdict}
-            </td>
-            <td class={`${cell} whitespace-nowrap`}>{endpoint(r.decision)}</td>
-          </tr>
-        ))
-      }
+      {shown.map((r) => <LogRow row={r} />)}
     </tbody>
   </table>
 </div>
-<template data-logrow>
-  <tr class="group border-b border-border last:border-b-0">
-    <td class={`${cell} font-mono text-xs text-muted tabular-nums`} data-slot="time"></td>
-    <td class={`${cell} whitespace-nowrap`}>
-      <span data-slot="from"></span>
-      <span class="ms-1 rounded-full border border-border px-1.5 text-[10px] font-medium" data-you hidden>you</span>
-    </td>
-    <td class={cell} data-slot="summary"></td>
-    <td class={`${cell} whitespace-nowrap`}><span class={glyph} aria-hidden="true" data-slot="glyph"></span> <span data-slot="verdict"></span></td>
-    <td class={`${cell} whitespace-nowrap`} data-slot="endpoint"></td>
-  </tr>
-</template>
+<template data-logrow><LogRow row={null} /></template>

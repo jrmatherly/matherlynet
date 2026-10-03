@@ -3,6 +3,7 @@ import Cta from "../components/Cta.astro";
 import WorkCard from "../components/WorkCard.astro";
 import { gateway, work } from "../data/profile";
 import Base from "../layouts/Base.astro";
+import { inlineLink } from "../lib/form";
 import { ogImage } from "../lib/og";
 
 // The platforms still running ("to now") are the AI platform; the finished ones, the infrastructure under it.
@@ -17,7 +18,7 @@ const groups = [
     <header class="grid max-w-3xl gap-3">
       <h1 class="display text-4xl sm:text-5xl">Platforms that run in production, not in slides.</h1>
       <p class="text-lg text-muted">
-        The systems I've designed, built and operated at <a href="/changelog" class="text-foreground underline decoration-accent decoration-2 underline-offset-4">The Aaron's Company</a>, from the AI platform down to the store network.
+        The systems I've designed, built and operated at <a href="/changelog" class={inlineLink}>The Aaron's Company</a>, from the AI platform down to the store network.
       </p>
     </header>
     {
