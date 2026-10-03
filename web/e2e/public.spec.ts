@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("public pages render and the nav links work", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/Jason Matherly/);
-  for (const label of ["Work", "Changelog", "About"]) {
+  for (const label of ["Work", "Changelog", "Playground", "About"]) {
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label }).click();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
@@ -18,6 +18,22 @@ test("each perspective's panel shows when it is picked", async ({ page }) => {
     await page.locator(`label:has(input[value="${id}"])`).click();
     await expect(page.locator(`[data-panel="${id}"]`)).toBeVisible();
   }
+});
+
+test("the playground refuses personal data and logs every request", async ({ page }) => {
+  await page.goto("/playground?try=secret");
+  await expect(page.locator('[data-panel="secret"]')).toBeVisible();
+  const yours = page.locator("label", { hasText: "Your own request" });
+  await expect(yours).toBeVisible();
+  await yours.click();
+  await page.getByRole("textbox", { name: "Your request" }).fill("my email is a@b.co");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator("[data-yours] li", { hasText: "personal data" }).first()).toBeVisible();
+  const rows = page.locator("[data-log] tr");
+  await expect(rows.first()).toContainText("refused");
+  const before = await rows.count();
+  await page.locator("label", { hasText: "Send 10 at once" }).click();
+  await expect(rows).toHaveCount(before + 10);
 });
 
 test("the theme choice survives a reload", async ({ page }) => {
