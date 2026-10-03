@@ -12,14 +12,19 @@ Run the project's checks and report the result.
 1. Run `.claude/skills/verify/scripts/verify.sh $ARGUMENTS` from the repo root. Pass `--no-stack` to skip the
    Aspire smoke test and Playwright E2E (for docs-only or workflow-only changes).
 2. Report the PASS/FAIL table. For each FAIL, show the excerpt the script printed and fix the cause; rerun
-   until everything passes or the cause is outside your change.
+   until everything passes or the cause is outside your change. Excerpts print before the table, so save the full
+   output to a file (`| tee`) rather than `| tail` it away. While fixing, rerun only the failed step's command
+   (E2E: `cd web && env -u NODE_ENV pnpm e2e`), then one final full run.
 
 ## Gotchas
 
 - The stack steps reuse a running AppHost and leave it running; otherwise they start the stack and stop it after.
 - A page's form doing nothing in E2E (native POST, `504 Outdated Optimize Dep` on a `.vite/deps` chunk) is a stale
   Vite dev cache. On a reused stack the script restarts `web` and retries E2E once by itself; a FAIL that survives
-  the retry is real. The script unsets `NODE_ENV` (Aspire's `npm install` would prune dev dependencies under
+  the retry is real. A NOTE (passed only after the restart) is a flake report, not proof of stale deps: it lists each
+  first-run failure and how many kept first-run logs it also failed in. A test that keeps failing first is a race to
+  fix on the branch (confirm with `pnpm exec playwright test <spec>:<line> --repeat-each=15`).
+- The script unsets `NODE_ENV` (Aspire's `npm install` would prune dev dependencies under
   `NODE_ENV=production`); run other `aspire`/`npm` commands with `env -u NODE_ENV` too. Playwright needs Chromium once:
   `pnpm --dir web exec playwright install chromium`. Failure traces land in `web/test-results/`.
 - A FAIL on "Aspire smoke test" with certificate errors in `aspire logs` means the dev certificate isn't

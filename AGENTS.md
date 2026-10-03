@@ -193,7 +193,9 @@ out/                   aspire publish output (gitignored)
 
 - NEVER guess. NEVER assume. ALWAYS research. ALWAYS validate. ALWAYS confirm. ASK questions when something is
   unclear or ambiguous. For a third-party library or service, read its official documentation before changing how
-  the project uses it, and validate the change empirically before calling it done.
+  the project uses it, and validate the change empirically before calling it done. When the installed version
+  behaves differently from its docs, read its source under `node_modules` and name the package and version in the
+  comment, so the workaround can be retired when the library changes.
 - Run the app only through Aspire. Never run `astro dev` or `pnpm dev` directly: they start without
   the database, secrets, or the fixed port 4321 that auth callbacks depend on.
 - After editing `web/astro.config.mjs` or web dependencies, run `aspire resource web restart`: the in-process
