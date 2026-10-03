@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig, fontProviders } from "astro/config";
 import node from "@astrojs/node";
+import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
 import { sentryVitePlugin } from "@sentry/bundler-plugins/vite";
 
@@ -16,6 +17,8 @@ export default defineConfig({
   // Prism, not the default Shiki: Shiki highlights with inline styles, which the CSP blocks. Prism emits
   // token classes, colored from the palette in global.css.
   markdown: { syntaxHighlight: "prism" },
+  // MDX inherits the markdown config (Prism included); it lets a post embed a component such as GatewayPath.
+  integrations: [mdx()],
   // Content Security Policy, sent as a response header for on-demand pages. `astro dev` doesn't apply it:
   // check against a build. Astro hashes its own scripts and styles; Telemetry.astro adds the Umami/Sentry
   // origins configured on /admin per request.

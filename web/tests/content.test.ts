@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import Perspectives from "../src/components/Perspectives.astro";
@@ -35,6 +36,13 @@ describe("feeds", () => {
     const xml = await res.text();
     expect(xml).toContain('<rss version="2.0">');
     expect(xml).toContain(`<link>${ORIGIN}/writing</link>`);
+  });
+
+  it("keeps column alignment out of post tables, which renders style attributes the CSP blocks", () => {
+    const dir = new URL("../src/content/writing/", import.meta.url);
+    for (const file of readdirSync(dir)) {
+      expect(readFileSync(new URL(file, dir), "utf8"), file).not.toMatch(/^\|.*:-{3,}|^\|.*-{3,}:/m);
+    }
   });
 
   it("lists every public section in the sitemap", async () => {

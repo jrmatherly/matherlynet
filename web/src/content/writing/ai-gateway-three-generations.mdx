@@ -6,8 +6,10 @@ tags: [ai, platforms, governance]
 draft: true
 ---
 
-<!-- Draft from the 2026-10-02 case-study pass. Every fact below was confirmed by Jason; check the wording is yours
-     before setting draft: false. IMAGE notes mark where a figure would help. -->
+import GatewayPath from "../../components/GatewayPath.astro";
+
+{/* Draft from the 2026-10-02 case-study pass. Every fact below was confirmed by Jason; check the wording is yours
+    before setting draft: false. */}
 
 Every model call at The Aaron's Company, a 15,000-person retailer, goes through one gateway. Claude Code, Claude
 Desktop, our agents and the people using our internal tools all reach Azure AI Foundry and Anthropic through it.
@@ -45,8 +47,7 @@ questions at a licensing cost close to zero.
 
 ## Generation 3: in-house (June 2026)
 
-<!-- IMAGE: the home page's gateway figure: callers on the left, the gateway's checks, models and MCP servers on the
-     right, the audit log underneath. -->
+<GatewayPath />
 
 The current gateway runs on our on-prem Kubernetes platform, managed through GitOps. Every request:
 
@@ -62,7 +63,7 @@ Tools sit behind a separate MCP Gateway, which reaches only the MCP servers appr
 ## Results
 
 | Metric | Before | Now |
-| :--- | :--- | :--- |
+| --- | --- | --- |
 | Tokens a month | about 15 million (launch) | about 2 billion |
 | Projected licensing | $100K+ a year (LiteLLM) | near zero |
 

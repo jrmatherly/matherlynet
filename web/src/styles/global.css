@@ -88,6 +88,11 @@
   & :where(code) { font-family: var(--font-mono); font-size: 0.9em; }
   & :where(pre) { overflow-x: auto; border: 1px solid var(--border); border-radius: 0.75rem; background: var(--surface); padding: 1rem; font-size: 0.9rem; }
   & :where(blockquote) { border-left: 3px solid var(--accent); padding-left: 1rem; color: var(--muted); }
+  & :where(table) { width: 100%; border-collapse: collapse; font-size: 1rem; }
+  & :where(th, td) { border-bottom: 1px solid var(--border); padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+  & :where(th:first-child, td:first-child) { padding-left: 0; }
+  & :where(th) { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+  & :where(td:first-child) { font-weight: 600; }
 }
 
 /* Prism token classes in code blocks, from the active palette (so every palette and mode has matching code). */

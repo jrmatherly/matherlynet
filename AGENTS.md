@@ -75,7 +75,8 @@ out/                   aspire publish output (gitignored)
 - CSP (`security.csp` in `astro.config.mjs`, sent as a header; `astro dev` skips it, so check a build): no inline
   `style` attributes, `on*=` handlers or unhashed inline scripts. Third-party origins are added per request with
   `Astro.csp` (see Telemetry.astro). Code blocks use Prism (token classes, colored from the palette in
-  global.css), not Shiki, whose inline styles the CSP blocks.
+  global.css), not Shiki, whose inline styles the CSP blocks. Post tables take no column alignment (`:---`
+  renders `style="text-align:…"`; `content.test.ts` enforces it). A post that embeds a component is `.mdx`.
 - Size images with classes (`w-28 h-auto aspect-square`), never a `style` attribute (string or object); give `<img>`
   its real `width`/`height` for layout shift and `h-auto` so they don't stretch it. SVG figures take color from
   `fill-*`/`stroke-*` token utilities, not `fill="#…"` or `style`.
