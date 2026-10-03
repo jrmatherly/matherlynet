@@ -450,12 +450,16 @@ export function clock(ms: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-/** Panel switching and the stagger trigger for each id, plus the JS-only "yours" panel. */
+/**
+ * Panel switching and the stagger trigger for each id, plus the JS-only "yours" panel. The picked panel is displayed
+ * (not merely made visible): four scenarios are one row and one is ten, so a shared cell would leave the short ones
+ * mostly empty.
+ */
 export function scenarioCss(ids: readonly string[]): string {
   const picked = (id: string) => `[data-console]:has(input[value="${id}"]:checked) [data-panel="${id}"]`;
   const all = [...ids, "yours"];
   return (
-    `${all.map(picked).join(",")}{visibility:visible}` +
+    `${all.map(picked).join(",")}{display:grid}` +
     `${all.map((id) => `${picked(id)} .step`).join(",")}{animation:land .3s both;animation-delay:calc(var(--i,0)*.18s)}`
   );
 }
