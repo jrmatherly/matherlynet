@@ -112,7 +112,7 @@ export function createConsole(identity: string, now: number): ConsoleState {
 
 interface Detector {
   looksLike: string;
-  // Every pattern is anchored by a literal prefix or a fixed length, with no nested quantifiers: no catastrophic backtracking.
+  // No nested quantifiers, so no catastrophic backtracking; PROMPT_MAX caps the input.
   test: RegExp;
   accept?: (match: string) => boolean;
 }
@@ -150,7 +150,6 @@ export const SIM = {
         { looksLike: "an AWS access key", test: /AKIA[0-9A-Z]{16}/ },
         { looksLike: "a GitHub token", test: /ghp_[A-Za-z0-9]{36}/ },
         { looksLike: "an Anthropic API key", test: /sk-ant-[A-Za-z0-9_-]{20,}/ },
-        // After the Anthropic detector: an sk-ant- key would otherwise be named by this one's broader prefix.
         { looksLike: "an OpenAI-style API key", test: /sk-[A-Za-z0-9]{20,}/ },
         { looksLike: "a private key", test: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
       ] as readonly Detector[],
@@ -180,7 +179,7 @@ export const SIM = {
   },
 } as const satisfies Record<Gate, { tag: string; [value: string]: unknown }>;
 
-// Global copies, compiled once: matchAll and replace both reset lastIndex, so sharing them across calls is safe.
+// Global copies, compiled once: matchAll iterates a clone and replace leaves lastIndex at 0, so sharing them is safe.
 const detectors = GUARDRAIL_CATEGORIES.flatMap((category) =>
   SIM.Guardrails.detectors[category].map((d) => ({ category, ...d, test: new RegExp(d.test.source, `${d.test.flags}g`) })),
 );
@@ -430,7 +429,7 @@ export function clock(ms: number): string {
 
 /**
  * Panel switching for each scenario, plus the JS-only "yours" panel. The picked panel is displayed (not merely made
- * visible): four scenarios are one row and one is ten, so a shared cell would leave the short ones mostly empty. It
+ * visible): panels run from one row to ten, so a shared cell would leave the short ones mostly empty. It
  * also replays TraceRow's stagger, since a CSS animation starts when its element gets a box.
  */
 export function scenarioCss(): string {
