@@ -23,7 +23,7 @@ const head = "px-3 py-2 align-top font-medium";
         <th scope="col" class={head}>To / stopped at</th>
       </tr>
     </thead>
-    <tbody data-log>
+    <tbody data-log data-span={Math.max(0, ...rows.map((r) => r.at))}>
       {shown.map((r) => <LogRow row={r} />)}
     </tbody>
   </table>

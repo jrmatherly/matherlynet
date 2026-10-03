@@ -42,6 +42,7 @@ const pills = GATES[entry?.lane ?? "model"].map((gate, i) =>
   @media (prefers-reduced-motion: no-preference) {
     .step {
       animation: land 0.3s both;
+      /* Same pace as STEP_MS in GatewayConsole's script, which paints a live row one pill at a time. Change both. */
       animation-delay: calc(var(--i, 0) * 0.18s);
     }
   }
