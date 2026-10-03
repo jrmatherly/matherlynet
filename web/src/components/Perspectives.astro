@@ -22,7 +22,7 @@ import { perspectives, recruiterFacts } from "../data/profile";
     </fieldset>
     {
       perspectives.map((p) => (
-        <article data-panel={p.id} class="hidden max-w-2xl gap-3">
+        <article data-panel={p.id} class="invisible grid max-w-2xl content-start gap-3 [grid-area:2/1] md:[grid-area:1/2]">
           <h3 class="display text-2xl sm:text-3xl">{p.headline}</h3>
           <p class="text-lg text-muted">{p.body}</p>
           {p.id === "recruiters" ? (
@@ -50,10 +50,12 @@ import { perspectives, recruiterFacts } from "../data/profile";
   </div>
 </section>
 
+<!-- The panels share one grid cell and only the picked one is visible, so the cell is as tall as the tallest panel and
+     switching doesn't move the page below. visibility: hidden also keeps the others out of the accessibility tree. -->
 <style>
   .persp:has(input[value="recruiters"]:checked) [data-panel="recruiters"],
   .persp:has(input[value="leaders"]:checked) [data-panel="leaders"],
   .persp:has(input[value="security"]:checked) [data-panel="security"] {
-    display: grid;
+    visibility: visible;
   }
 </style>
