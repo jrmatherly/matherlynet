@@ -7,6 +7,9 @@ test.describe.configure({ mode: "serial" });
 const email = `e2e-${Date.now()}@example.test`;
 const password = `E2e-${crypto.randomUUID()}`;
 const newPassword = `E2e-${crypto.randomUUID()}`;
+// Setting a password waits on the breached-password lookup, which the server allows 5 s (pwnedPasswordCheck), so
+// the default 5 s expect could lose to a slow lookup the server would still accept.
+const passwordSet = { timeout: 15_000 };
 
 async function signIn(page: import("@playwright/test").Page, pass: string) {
   await page.goto("/sign-in");
@@ -21,7 +24,7 @@ test("sign-up asks the visitor to confirm their email", async ({ page }) => {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign up" }).click();
-  await expect(page.getByRole("status")).toHaveText(/Check your email/);
+  await expect(page.getByRole("status")).toHaveText(/Check your email/, passwordSet);
 });
 
 test("an unverified account can't sign in", async ({ page }) => {
@@ -61,7 +64,7 @@ test("a password reset by email replaces the old password", async ({ page }) => 
   await expect(page).toHaveURL(/\/reset-password$/);
   await page.getByLabel("New password").fill(newPassword);
   await page.getByRole("button", { name: "Set password" }).click();
-  await expect(page.getByRole("status")).toHaveText(/Password updated/);
+  await expect(page.getByRole("status")).toHaveText(/Password updated/, passwordSet);
 
   await signIn(page, password);
   await expect(page.getByRole("alert")).toHaveText(/Invalid email or password/);
