@@ -1,0 +1,277 @@
+---
+import { createHash } from "node:crypto";
+import { AUDIT_RETENTION, CALLERS, type Gate, GUARDRAIL_CATEGORIES, MODEL_TARGETS } from "../data/gateway";
+import { field, primary } from "../lib/form";
+import { PROMPT_MAX, RECORDED_TOUR, replay, SCENARIO_IDS, SCENARIOS, type ScenarioId, scenarioCss, SIM } from "../lib/playground";
+import FlowTable from "./FlowTable.astro";
+import TraceRow from "./TraceRow.astro";
+
+interface Props {
+  /** Which chip's radio is checked on the server (from ?try=, else the first). */
+  picked: ScenarioId;
+}
+const { picked } = Astro.props;
+
+const panels = SCENARIO_IDS.map((id) => ({ ...SCENARIOS[id], entries: replay([id]) }));
+const recorded = replay(RECORDED_TOUR);
+// define:vars would write a style attribute, which the CSP forbids; an inline <style> with its hash registered passes.
+const css = scenarioCss(SCENARIO_IDS);
+Astro.csp?.insertStyleHash(`sha256-${createHash("sha256").update(css).digest("base64")}`);
+
+const rate = SIM["Rate limits"];
+const sim = (gate: Gate, value: string, label: string = gate) => ({ label, value, tag: SIM[gate].tag });
+const simulated = [
+  sim("SSO", `a random visitor handle for this tab, team ${SIM.SSO.team}`),
+  sim("Rate limits", `${rate.capacity} requests, one back every ${rate.refillMs / 1000} s`),
+  ...GUARDRAIL_CATEGORIES.map((category) =>
+    sim("Guardrails", SIM.Guardrails.detectors[category].map((d) => d.looksLike).join(", "), `Guardrails: ${category}`),
+  ),
+  sim("Cache", "the same prompt already forwarded from this tab, ignoring case and extra spaces"),
+  sim("Routing", `alternates between ${MODEL_TARGETS.join(" and ")}`),
+  sim("OAuth", "every tool call is issued a token"),
+  sim(
+    "Registry",
+    Object.values(SIM.Registry.servers)
+      .map((s) => `${s.label}, ${s.approved ? "approved" : "not approved"}, tools: ${s.tools.join(", ")}`)
+      .join("; "),
+  ),
+];
+
+// Perspectives.astro's radio labels, with the padding set per use.
+const choice =
+  "cursor-pointer rounded-lg border border-border/60 font-medium text-muted transition-[color,background-color] hover:text-foreground has-checked:border-border has-checked:bg-surface has-checked:text-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent";
+const chip = `${choice} px-3.5 py-2.5`;
+const panel = "invisible grid min-w-0 content-start gap-3 [grid-area:1/1]";
+---
+
+<div data-console class="grid min-w-0 gap-6">
+  <style is:inline set:html={css} />
+  <p class="rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm">
+    <strong>SIMULATION.</strong> No model is called, and nothing you type leaves your browser. The checks and their order are the platform's; the values marked demo are not.
+  </p>
+
+  <section aria-label="Gateway console" class="grid min-w-0 gap-5 lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-8">
+    <fieldset class="flex flex-wrap gap-1 lg:grid lg:content-start" data-chips>
+      <legend class="sr-only">Choose a request</legend>
+      {
+        SCENARIO_IDS.map((id) => (
+          <label class={chip}>
+            <input type="radio" name="scenario" value={id} checked={id === picked} class="sr-only" />
+            {SCENARIOS[id].chip}
+          </label>
+        ))
+      }
+      <label class={`${chip} border-dashed`} data-js hidden>
+        <input type="radio" name="scenario" value="yours" class="sr-only" />
+        Your own request
+      </label>
+    </fieldset>
+
+    <div class="grid min-w-0 gap-4">
+      <div class="grid min-w-0 rounded-xl border border-border bg-surface-2 p-4" aria-live="polite">
+        {
+          panels.map((p) => (
+            <article data-panel={p.id} class={panel}>
+              <p class="text-sm text-muted">{p.teaches}</p>
+              <ol class="grid gap-2" data-rows data-many={p.entries.length > 2 ? "" : undefined}>
+                {p.entries.map((entry) => (
+                  <TraceRow entry={entry} />
+                ))}
+              </ol>
+            </article>
+          ))
+        }
+        <article data-panel="yours" class={panel} data-js hidden>
+          <form method="post" class="grid min-w-0 gap-2.5 rounded-xl border border-border bg-surface p-3" data-form>
+            <label for="pg-text" class="sr-only">Your request</label>
+            <textarea id="pg-text" name="text" maxlength={PROMPT_MAX} rows="3" placeholder="Ask the gateway anything…" class={`${field} min-h-21 resize-y`}></textarea>
+            <p role="alert" class="text-sm text-danger empty:hidden" data-msg></p>
+            <div class="flex flex-wrap items-center gap-2">
+              <fieldset class="flex flex-wrap items-center gap-1">
+                <legend class="sr-only">Send as</legend>
+                <span class="me-1 text-xs text-muted" aria-hidden="true">Send as</span>
+                {
+                  CALLERS.map((caller) => (
+                    <label class={`${choice} px-2.5 py-1.5 text-xs`}>
+                      <input type="radio" name="caller" value={caller} checked={caller === "End users"} class="sr-only" />
+                      {caller}
+                    </label>
+                  ))
+                }
+              </fieldset>
+              <span class="ms-auto font-mono text-xs text-muted tabular-nums" data-count>0/{PROMPT_MAX}</span>
+              <button type="submit" class={primary}>Send</button>
+            </div>
+            <p class="text-xs text-muted">Try an email address, a card number, a key that starts with sk- or ghp_, or telling it to ignore its instructions.</p>
+          </form>
+          <ol class="grid gap-2" data-rows data-yours></ol>
+        </article>
+      </div>
+      <noscript><p class="text-sm text-muted">Showing recorded runs. Turn on JavaScript to send your own.</p></noscript>
+
+      <details class="rounded-xl border border-border bg-surface px-4 text-sm">
+        <summary class="cursor-pointer py-3 font-semibold">Simulated values</summary>
+        <dl class="mb-4 grid gap-x-4 gap-y-1 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-y-2">
+          {
+            simulated.map((row) => (
+              <>
+                <dt class="mt-1.5 text-muted sm:mt-0">{row.label}</dt>
+                <dd>
+                  {row.value} <em class="ms-1 inline-block rounded-full border border-border px-1.5 text-[10px] font-medium whitespace-nowrap not-italic">{row.tag}</em>
+                </dd>
+              </>
+            ))
+          }
+        </dl>
+      </details>
+    </div>
+  </section>
+
+  <div class="grid min-w-0 gap-3">
+    <p class="text-sm text-muted tabular-nums" data-gauge data-js hidden>
+      Rate limit <span aria-hidden="true" data-slot="dots"></span> <span data-slot="count"></span>
+    </p>
+    <FlowTable rows={recorded} />
+    <p class="text-sm text-muted">Kept for this tab only. The real log is kept {AUDIT_RETENTION}.</p>
+  </div>
+
+  <template data-row><TraceRow entry={null} /></template>
+</div>
+
+<script>
+  import { CALLERS } from "../data/gateway";
+  import {
+    type AuditEntry,
+    clock,
+    closing,
+    createConsole,
+    endpoint,
+    GATES,
+    GLYPH,
+    parsePrompt,
+    parseScenarioId,
+    type PlayRequest,
+    PROMPT_MAX,
+    SCENARIOS,
+    send,
+    SIM,
+    stepView,
+    toEvents,
+  } from "../lib/playground";
+
+  const STEP_MS = 180;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+  const root = document.querySelector<HTMLElement>("[data-console]");
+
+  const randomHandle = () => `visitor-${[...crypto.getRandomValues(new Uint8Array(2))].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const slot = (el: ParentNode, name: string) => el.querySelector<HTMLElement>(`[data-slot="${name}"]`)!;
+  const clone = (template: HTMLTemplateElement) => template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+
+  if (root) {
+    const t0 = performance.now();
+    let state = createConsole(randomHandle(), t0);
+    const log = root.querySelector<HTMLElement>("[data-log]")!;
+    const rowTemplate = root.querySelector<HTMLTemplateElement>("template[data-row]")!;
+    const logTemplate = root.querySelector<HTMLTemplateElement>("template[data-logrow]")!;
+    const gauge = root.querySelector<HTMLElement>("[data-gauge]")!;
+    const form = root.querySelector<HTMLFormElement>("[data-form]")!;
+    const text = form.querySelector("textarea")!;
+    const message = form.querySelector<HTMLElement>("[data-msg]")!;
+    const count = form.querySelector<HTMLElement>("[data-count]")!;
+    const yours = root.querySelector<HTMLOListElement>("[data-yours]")!;
+
+    const updateGauge = () => {
+      const left = Math.floor(state.bucket.tokens);
+      slot(gauge, "dots").textContent = "●".repeat(left) + "○".repeat(SIM["Rate limits"].capacity - left);
+      slot(gauge, "count").textContent = `${left}/${SIM["Rate limits"].capacity}, ${SIM["Rate limits"].tag}`;
+    };
+
+    const logRow = (entry: AuditEntry) => {
+      const row = clone(logTemplate);
+      row.dataset.v = entry.decision.verdict;
+      slot(row, "time").textContent = clock(entry.at - t0);
+      slot(row, "from").textContent = entry.from;
+      row.querySelector<HTMLElement>("[data-you]")!.hidden = entry.provenance !== "you";
+      slot(row, "summary").textContent = entry.summary;
+      slot(row, "glyph").textContent = GLYPH[entry.decision.verdict];
+      slot(row, "verdict").textContent = entry.decision.verdict;
+      slot(row, "endpoint").textContent = endpoint(entry.decision);
+      return row;
+    };
+
+    // One ConsoleEvent at a time: each pill lands as its gate decides.
+    const paint = async (entry: AuditEntry, row: HTMLElement) => {
+      const gates = GATES[entry.lane];
+      const pills = [...row.querySelectorAll<HTMLElement>("[data-step]")];
+      for (const pill of pills.slice(gates.length)) pill.remove();
+      gates.forEach((gate, i) => (slot(pills[i], "gate").textContent = gate));
+      let next = 0;
+      for (const event of toEvents(entry)) {
+        if (!reduced.matches) await sleep(STEP_MS);
+        if (event.type === "step") {
+          const pill = pills[next++];
+          const view = stepView(event.step);
+          pill.dataset.kind = view.kind;
+          slot(pill, "verdict").textContent = event.step.verdict;
+          slot(pill, "detail").textContent = view.detail;
+          slot(pill, "tag").textContent = view.tag;
+          pill.hidden = false;
+          continue;
+        }
+        for (const pill of pills.slice(next, gates.length)) {
+          pill.dataset.kind = "skip";
+          slot(pill, "verdict").textContent = "not reached";
+          pill.hidden = false;
+        }
+        row.querySelector<HTMLElement>("[data-logged]")!.hidden = false;
+        const end = slot(row, "closing");
+        end.textContent = closing(entry);
+        end.hidden = false;
+        log.prepend(logRow(entry));
+      }
+    };
+
+    const run = (request: PlayRequest, list: HTMLOListElement) => {
+      const result = send(state, request, performance.now());
+      state = result.state;
+      updateGauge();
+      const row = clone(rowTemplate);
+      slot(row, "from").textContent = result.entry.from;
+      slot(row, "summary").textContent = result.entry.summary;
+      list.append(row);
+      void paint(result.entry, row);
+    };
+
+    root.querySelectorAll<HTMLElement>("[data-js]").forEach((el) => (el.hidden = false));
+    updateGauge();
+
+    root.querySelector("[data-chips]")!.addEventListener("change", (event) => {
+      if (!(event.target instanceof HTMLInputElement)) return;
+      const id = parseScenarioId(event.target.value);
+      if (!id) return text.focus();
+      const list = root.querySelector<HTMLOListElement>(`[data-panel="${id}"] [data-rows]`)!;
+      list.replaceChildren();
+      for (const { offsetMs, request } of SCENARIOS[id].requests) setTimeout(() => run(request, list), offsetMs);
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const parsed = parsePrompt(text.value);
+      if (!parsed.ok) {
+        message.textContent = parsed.error === "empty" ? "Type something first." : `Keep it to ${PROMPT_MAX} characters.`;
+        return;
+      }
+      message.textContent = "";
+      const picked = new FormData(form).get("caller");
+      const caller = CALLERS.find((c) => c === picked) ?? "End users";
+      yours.replaceChildren();
+      run({ lane: "model", caller, text: parsed.value }, yours);
+    });
+
+    text.addEventListener("input", () => {
+      count.textContent = `${text.value.length}/${PROMPT_MAX}`;
+      message.textContent = "";
+    });
+  }
+</script>

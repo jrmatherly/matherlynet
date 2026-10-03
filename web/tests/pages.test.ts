@@ -6,6 +6,7 @@ import { ogCards } from "../src/lib/og";
 import About from "../src/pages/about.astro";
 import Changelog from "../src/pages/changelog.astro";
 import Home from "../src/pages/index.astro";
+import Playground from "../src/pages/playground.astro";
 import Work from "../src/pages/work.astro";
 import { SITE_DEFAULTS, resolveTheme } from "../src/theme/palettes";
 
@@ -37,6 +38,7 @@ describe("inner pages", () => {
     expect(mainLinks(await page(About, "/about"))).toEqual(expect.arrayContaining(["/changelog", "/work"]));
     expect(mainLinks(await page(Changelog, "/changelog"))).toContain("/work");
     expect(mainLinks(await page(Work, "/work"))).toContain("/changelog");
+    expect(mainLinks(await page(Playground, "/playground"))).toContain("/work");
   });
 });
 
