@@ -106,8 +106,6 @@ describe("send", () => {
     const second = send(first.state, { lane: "model", caller: "Claude Code", text: ok("two") }, 0);
     expect(first.entry.decision).toEqual({ verdict: "forwarded", to: "Azure AI Foundry" });
     expect(second.entry.decision).toEqual({ verdict: "forwarded", to: "Anthropic" });
-    expect(second.state.log.map((e) => e.id)).toEqual([2, 1]);
-    expect(first.entry.tokensEstimate).toBe(1);
   });
 
   it("masks a secret in a row refused at Rate limits, before Guardrails ran", () => {
@@ -162,7 +160,6 @@ describe("replay", () => {
     const [entry] = replay(["unlisted-tool"]);
     expect(entry.decision).toEqual({ verdict: "refused", at: "Registry" });
     expect(entry.summary).toBe("tool call: unlisted-server (example)/export");
-    expect(entry.tokensEstimate).toBeNull();
   });
 
   it("the recorded tour shows every verdict and every refusing gate", () => {
@@ -172,17 +169,16 @@ describe("replay", () => {
     const outcomes = new Set(rows.map((e) => (e.decision.verdict === "refused" ? `refused at ${e.decision.at}` : e.decision.verdict)));
     expect([...outcomes].sort()).toEqual(["cached", "forwarded", "refused at Guardrails", "refused at Rate limits", "refused at Registry"]);
     expect(rows.filter((e) => e.decision.verdict === "forwarded")).toHaveLength(7);
-    expect(rows.every((e) => e.provenance === "recorded" && e.identity === "visitor-0000")).toBe(true);
+    expect(rows.every((e) => e.provenance === "recorded")).toBe(true);
+    const identities = new Set(rows.flatMap((e) => e.steps.flatMap((s) => (s.gate === "SSO" ? [s.identity] : []))));
+    expect([...identities]).toEqual(["visitor-0000"]);
     expect(rows.map((e) => e.at)).toEqual([...rows.map((e) => e.at)].sort((a, b) => a - b));
   });
 });
 
-it("scenarioCss names every panel id and yours", () => {
-  const css = scenarioCss(SCENARIO_IDS);
-  for (const id of [...SCENARIO_IDS, "yours"]) {
-    expect(css).toContain(`[value="${id}"]`);
-    expect(css).toContain(`[data-panel="${id}"]`);
-  }
+it("scenarioCss displays the picked panel, for every scenario and yours", () => {
+  const picked = (id: string) => `[data-console]:has(input[value="${id}"]:checked) [data-panel="${id}"]`;
+  expect(scenarioCss()).toBe(`${[...SCENARIO_IDS, "yours"].map(picked).join(",")}{display:grid}`);
 });
 
 describe("GatewayConsole", () => {

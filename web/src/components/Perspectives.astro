@@ -1,5 +1,6 @@
 ---
 import { perspectives, recruiterFacts } from "../data/profile";
+import { choice } from "../lib/form";
 // Native radios pick the panel: works without JavaScript, and keyboard focus behaves as expected.
 ---
 
@@ -13,7 +14,7 @@ import { perspectives, recruiterFacts } from "../data/profile";
       <legend class="sr-only">Choose a perspective</legend>
       {
         perspectives.map((p, i) => (
-          <label class="cursor-pointer rounded-lg border border-border/60 px-3.5 py-2.5 font-medium text-muted transition-[color,background-color] hover:text-foreground has-checked:border-border has-checked:bg-surface has-checked:text-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent">
+          <label class={`${choice} px-3.5 py-2.5`}>
             <input type="radio" name="perspective" value={p.id} checked={i === 0} class="sr-only" />
             {p.label}
           </label>

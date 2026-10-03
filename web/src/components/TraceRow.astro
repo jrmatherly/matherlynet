@@ -1,4 +1,5 @@
 ---
+import { badge } from "../lib/form";
 import { type AuditEntry, closing, GATES, stepView } from "../lib/playground";
 
 interface Props {
@@ -7,15 +8,12 @@ interface Props {
 }
 const { entry } = Astro.props;
 
-const pills = GATES[entry?.lane ?? "model"].map((gate, i) => {
-  if (!entry) return { gate: "", kind: undefined, verdict: "", detail: "", tag: "" };
-  const step = entry.steps[i];
-  if (!step) return { gate, kind: "skip", verdict: "not reached", detail: "", tag: "" };
-  return { gate, verdict: step.verdict, ...stepView(step) };
-});
+const pills = GATES[entry?.lane ?? "model"].map((gate, i) =>
+  entry ? { gate, ...stepView(entry.steps[i]) } : { gate: "", kind: undefined, verdict: "", detail: "", tag: "" },
+);
 ---
 
-<li class="row grid min-w-0 gap-2.5 rounded-xl border border-border bg-surface p-3" data-live={entry ? undefined : ""}>
+<li class="grid min-w-0 gap-2.5 rounded-xl border border-border bg-surface p-3" data-live={entry ? undefined : ""}>
   <p class="text-sm"><span class="font-semibold" data-slot="from">{entry?.from}</span> · <span class="text-muted" data-slot="summary">{entry?.summary}</span></p>
   <ol class="steps grid gap-2 lg:flex lg:items-start lg:gap-3">
     {
@@ -28,7 +26,7 @@ const pills = GATES[entry?.lane ?? "model"].map((gate, i) => {
           </span>
           <span class="detail text-xs text-muted">
             <span data-slot="detail">{p.detail}</span>
-            <em class="ms-1 inline-block rounded-full border border-border px-1.5 text-[10px] leading-normal font-medium whitespace-nowrap not-italic empty:hidden" data-slot="tag">{p.tag}</em>
+            <em class={`${badge} leading-normal empty:hidden`} data-slot="tag">{p.tag}</em>
           </span>
         </li>
       ))
@@ -39,8 +37,14 @@ const pills = GATES[entry?.lane ?? "model"].map((gate, i) => {
 </li>
 
 <style>
-  /* The stagger: scenarioCss() (rendered by GatewayConsole) starts the animation for the picked panel's .step
-     elements and delays each by --i. A live row is painted one step at a time by the script, so its delay is 0. */
+  /* The stagger: each .step lands when it gets a box (its panel is picked, or the script unhides it), delayed by --i.
+     A live row is painted one step at a time by the script, so its delay is 0. */
+  @media (prefers-reduced-motion: no-preference) {
+    .step {
+      animation: land 0.3s both;
+      animation-delay: calc(var(--i, 0) * 0.18s);
+    }
+  }
   @keyframes land {
     from {
       opacity: 0;
@@ -81,11 +85,5 @@ const pills = GATES[entry?.lane ?? "model"].map((gate, i) => {
   :global([data-many]) .detail,
   :global([data-many]) .closing {
     display: none;
-  }
-  /* !important: scenarioCss()'s rule is more specific and must lose to the visitor's setting. */
-  @media (prefers-reduced-motion: reduce) {
-    .step {
-      animation: none !important;
-    }
   }
 </style>

@@ -2,11 +2,11 @@
 import Cta from "../components/Cta.astro";
 import GatewayConsole from "../components/GatewayConsole.astro";
 import Base from "../layouts/Base.astro";
+import { inlineLink } from "../lib/form";
 import { ogImage } from "../lib/og";
 import { parseScenarioId, SCENARIO_IDS } from "../lib/playground";
 
 const tried = parseScenarioId(Astro.url.searchParams.get("try")) ?? SCENARIO_IDS[0];
-const link = "text-foreground underline decoration-accent decoration-2 underline-offset-4";
 ---
 
 <Base
@@ -20,7 +20,7 @@ const link = "text-foreground underline decoration-accent decoration-2 underline
       <p class="text-lg text-muted">The checks every model call meets at work, running on your text, in your browser.</p>
     </header>
     <GatewayConsole picked={tried} />
-    <p>How the real gateway was built: <a href="/work" class={link}>Work</a></p>
+    <p>How the real gateway was built: <a href="/work" class={inlineLink}>Work</a></p>
     <Cta title="If a platform has to work on Monday, let's talk." body="About the role, the stack, or how we went from LiteLLM to an in‑house gateway." />
   </div>
 </Base>

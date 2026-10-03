@@ -1,0 +1,26 @@
+---
+import { badge } from "../lib/form";
+import { clock, endpoint, type FlowRow, GLYPH } from "../lib/playground";
+
+interface Props {
+  /** null renders the row the page script clones: every text slot empty, the "you" badge hidden. */
+  row: FlowRow | null;
+}
+const { row } = Astro.props;
+const cell = "px-3 py-2 align-top";
+const glyph = "text-success group-data-[v=cached]:text-info group-data-[v=refused]:text-danger";
+---
+
+<tr class="group border-b border-border last:border-b-0" data-v={row?.decision.verdict}>
+  <td class={`${cell} font-mono text-xs text-muted tabular-nums`} data-slot="time">{row && clock(row.at)}</td>
+  <td class={`${cell} whitespace-nowrap`}>
+    <span data-slot="from">{row?.from}</span>
+    <span class={badge} data-you hidden={row?.provenance !== "you"}>you</span>
+  </td>
+  <td class={cell} data-slot="summary">{row?.summary}</td>
+  <td class={`${cell} whitespace-nowrap`}>
+    <span class={glyph} aria-hidden="true" data-slot="glyph">{row && GLYPH[row.decision.verdict]}</span>
+    <span data-slot="verdict">{row?.decision.verdict}</span>
+  </td>
+  <td class={`${cell} whitespace-nowrap`} data-slot="endpoint">{row && endpoint(row.decision)}</td>
+</tr>

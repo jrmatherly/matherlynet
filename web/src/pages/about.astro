@@ -2,10 +2,10 @@
 import Cta from "../components/Cta.astro";
 import { employer, resumeUrl, skills, volunteer, education } from "../data/profile";
 import Base from "../layouts/Base.astro";
+import { inlineLink } from "../lib/form";
 import { ogImage } from "../lib/og";
 
 // The person page: who, skills, education and volunteering. The roles are on /changelog, the platforms on /work.
-const link = "text-foreground underline decoration-accent decoration-2 underline-offset-4";
 ---
 
 <Base
@@ -18,8 +18,8 @@ const link = "text-foreground underline decoration-accent decoration-2 underline
     <header class="grid max-w-3xl gap-4">
       <h1 class="display text-4xl sm:text-5xl">About</h1>
       <p class="text-lg text-muted">
-        Twenty years at {employer.name}, <a href="/changelog" class={link}>from the IT call center to Manager of Infrastructure Services</a>. I lead its
-        company-wide AI strategy and adoption, and I designed <a href="/work" class={link}>the AI Gateway and MCP platform</a>, on top of the
+        Twenty years at {employer.name}, <a href="/changelog" class={inlineLink}>from the IT call center to Manager of Infrastructure Services</a>. I lead its
+        company-wide AI strategy and adoption, and I designed <a href="/work" class={inlineLink}>the AI Gateway and MCP platform</a>, on top of the
         networks, data centers and disaster recovery I built before them.
       </p>
       <p>
