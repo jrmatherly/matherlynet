@@ -80,30 +80,30 @@ type Provenance = "recorded" | "you";
 
 /** What FlowTable renders, and all it knows. */
 export interface FlowRow {
-  at: number; // the clock value send() was given (recorded rows: fixture offsets)
-  provenance: Provenance;
-  from: string; // caller label
-  decision: Decision;
-  summary: string; // masked, at most 60 chars: never the raw secret
+  readonly at: number; // the clock value send() was given (recorded rows: fixture offsets)
+  readonly provenance: Provenance;
+  readonly from: string; // caller label
+  readonly decision: Decision;
+  readonly summary: string; // masked, at most 60 chars: never the raw secret
 }
 
 /** The gateway's own row: a FlowRow plus the trace the panel shows. */
 export interface AuditEntry extends FlowRow {
   lane: Lane;
   steps: readonly Step[]; // a prefix of GATES[lane], in order, ending at the deciding step
-  decision: Decision<Gate, Target>;
+  readonly decision: Decision<Gate, Target>;
 }
 
 interface Bucket {
-  tokens: number; // fractional, refilled lazily from `at`
-  at: number;
+  readonly tokens: number; // fractional, refilled lazily from `at`
+  readonly at: number;
 }
 
 interface ConsoleState {
-  identity: string;
-  bucket: Bucket;
-  cache: ReadonlySet<string>; // normalised prompt keys; only forwarded model prompts enter it
-  nextTarget: 0 | 1; // demo routing rule: alternate MODEL_TARGETS
+  readonly identity: string;
+  readonly bucket: Bucket;
+  readonly cache: ReadonlySet<string>; // normalised prompt keys; only forwarded model prompts enter it
+  readonly nextTarget: 0 | 1; // demo routing rule: alternate MODEL_TARGETS
 }
 
 export function createConsole(identity: string, now: number): ConsoleState {
@@ -132,8 +132,9 @@ const cardNumber = (match: string) => {
   return digits.length >= 13 && digits.length <= 19 && luhn(digits);
 };
 
-// Every invented value, one entry per gate: the page's "Simulated values" and each step's tag render from this, and the
-// checks read it, so the page cannot describe a rule the engine doesn't run.
+// Every invented value, one entry per gate, and the checks read it. Each step's tag and the page's "Simulated values"
+// tags, numbers, detectors and example servers render from it; the SSO, Cache and OAuth sentences there are prose in
+// GatewayConsole.astro.
 export const SIM = {
   SSO: { tag: "demo identity" },
   "Rate limits": { tag: "demo limit", capacity: 5, refillMs: 4_000 },
@@ -232,7 +233,7 @@ function walk<G extends Gate>(gates: readonly G[], checks: Checks<G>): Step[] {
   return steps;
 }
 
-/** Derived from the last step, never stored separately. */
+/** Derived from the last step; `walk` never tracks it. */
 export function decide(steps: readonly Step[]): Decision<Gate, Target> {
   const last = steps.at(-1);
   if (last?.verdict === "refused") return { verdict: "refused", at: last.gate };

@@ -36,6 +36,15 @@ test("the playground refuses personal data and logs every request", async ({ pag
   const before = await rows.count();
   await page.locator("label", { hasText: "Send 10 at once" }).click();
   await expect(rows).toHaveCount(before + 10);
+  await expect(page.locator("[data-log] tr", { hasText: "Rate limits" }).first()).toBeVisible();
+  await page.locator("label", { hasText: "Call an unlisted tool" }).click();
+  const tool = page.locator('[data-panel="unlisted-tool"]');
+  await expect(tool.locator("[data-live] [data-step]")).toHaveCount(2);
+  await expect(tool).toContainText("Refused at Registry");
+  await yours.click();
+  await page.getByRole("textbox", { name: "Your request" }).clear();
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Type something first." })).toBeVisible();
 });
 
 test("the theme choice survives a reload", async ({ page }) => {

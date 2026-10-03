@@ -17,6 +17,7 @@ import {
   SCENARIOS,
   scenarioCss,
   send,
+  SIM,
   type Step,
 } from "../src/lib/playground";
 
@@ -111,6 +112,38 @@ describe("send", () => {
     expect(entry.summary).toBe("AK••••••••••••••••OP");
   });
 
+  it("a request refused at Rate limits takes no token, and refill caps at capacity", () => {
+    const ask = (text: string) => ({ lane: "model", caller: "Agents", text: literal(text) }) as const;
+    let empty = s0;
+    for (let i = 0; i < 5; i++) empty = send(empty, ask(`ticket ${i}`), 0).state;
+    const refused = send(empty, ask("ticket 5"), 0);
+    expect(refused.entry.decision).toEqual({ verdict: "refused", at: "Rate limits" });
+    const { refillMs } = SIM["Rate limits"];
+    expect(rateLimit(send(refused.state, ask("ticket 6"), refillMs).entry)).toEqual({ gate: "Rate limits", verdict: "passed", left: 0 });
+    expect(rateLimit(send(empty, ask("ticket 7"), 10 * refillMs).entry)).toEqual({ gate: "Rate limits", verdict: "passed", left: 4 });
+  });
+
+  it("the cache ignores case and extra spaces, and a hit leaves the routing turn alone", () => {
+    const ask = (text: string) => ({ lane: "model", caller: "Claude Desktop", text: literal(text) }) as const;
+    const first = send(s0, ask("What does the audit log keep?"), 0);
+    const again = send(first.state, ask("  what DOES the audit   log keep? "), 0);
+    const next = send(again.state, ask("Who can call tools?"), 0);
+    expect(first.entry.decision).toEqual({ verdict: "forwarded", to: "Azure AI Foundry" });
+    expect(again.entry.decision).toEqual({ verdict: "cached" });
+    expect(next.entry.decision).toEqual({ verdict: "forwarded", to: "Anthropic" });
+  });
+
+  it("refuses an email and a key at Guardrails for personal data and masks both in the summary", () => {
+    const { entry } = send(s0, { lane: "model", caller: "End users", text: literal("mail a@b.co key AKIAABCDEFGHIJKLMNOP") }, 0);
+    expect(entry.decision).toEqual({ verdict: "refused", at: "Guardrails" });
+    expect(entry.steps.at(-1)).toEqual({
+      gate: "Guardrails",
+      verdict: "refused",
+      finding: { category: "personal data", looksLike: "an email address", masked: "a@••co" },
+    });
+    expect(entry.summary).toBe("mail a@••co key AK••••••••••••••••OP");
+  });
+
   it("cuts a long summary to 60 characters", () => {
     const { entry } = send(s0, { lane: "model", caller: "Claude Code", text: literal("x".repeat(70)) }, 0);
     expect(entry.summary).toBe(`${"x".repeat(59)}…`);
@@ -183,7 +216,7 @@ it("scenarioCss displays the picked panel, for every scenario and yours", () => 
 describe("GatewayConsole", () => {
   it("its script makes no network calls, as the banner says", () => {
     const source = readFileSync(new URL("../src/components/GatewayConsole.astro", import.meta.url), "utf8");
-    const script = source.match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? "";
+    const script = source.slice(source.indexOf("<script>"), source.lastIndexOf("</script>"));
     expect(script).toContain("createConsole(");
     for (const call of ["fetch(", "XMLHttpRequest", "sendBeacon", "WebSocket"]) expect(script).not.toContain(call);
   });

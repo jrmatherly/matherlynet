@@ -156,6 +156,8 @@ const panel = "hidden min-w-0 gap-3";
     stepView,
   } from "../lib/playground";
 
+  // Same pace as TraceRow's 0.18s stagger: live rows paint one pill per STEP_MS, recorded rows stagger by that delay in
+  // CSS. Change both together.
   const STEP_MS = 180;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const root = document.querySelector<HTMLElement>("[data-console]");
@@ -166,9 +168,10 @@ const panel = "hidden min-w-0 gap-3";
   const clone = (template: HTMLTemplateElement) => template.content.firstElementChild!.cloneNode(true) as HTMLElement;
 
   if (root) {
-    const t0 = performance.now();
-    let state = createConsole(randomHandle(), t0);
     const log = root.querySelector<HTMLElement>("[data-log]")!;
+    // The live clock starts after the recorded tour, so the time column stays in order top to bottom.
+    const t0 = performance.now() - Number(log.dataset.span ?? 0);
+    let state = createConsole(randomHandle(), performance.now());
     const rowTemplate = root.querySelector<HTMLTemplateElement>("template[data-row]")!;
     const logTemplate = root.querySelector<HTMLTemplateElement>("template[data-logrow]")!;
     const gauge = root.querySelector<HTMLElement>("[data-gauge]")!;

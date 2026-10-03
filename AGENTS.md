@@ -138,7 +138,7 @@ out/                   aspire publish output (gitignored)
   that every `keyTimes` list runs 0 to 1 in order (a bad list makes the browser drop the animation).
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
 - /playground is a browser simulation of the gateway. `lib/playground.ts` is pure and shared by the SSR replay, the
-  page script and the tests; every invented value lives in its `SIM` and is labelled demo on the page.
+  page script and the tests; every invented value lives in its `SIM` and is labelled demo or example on the page.
   `data/gateway.ts` is the one list of gates, callers and targets that the home figure and the playground share.
   The scenario chips switch panels with generated CSS (`scenarioCss()`, an inline `<style>` whose hash
   `GatewayConsole.astro` registers with `Astro.csp`). Without script each panel shows its scenario's `replay()`
