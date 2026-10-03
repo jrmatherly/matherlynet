@@ -45,12 +45,14 @@ export default defineConfig({
   },
   fonts: [
     {
-      provider: npmFonts,
+      // Latin only, through the local provider: the npm provider reads every @font-face in the package (unifont
+      // 0.7.5 ignores `subsets` there), so Cyrillic, Greek and Latin Extended were preloaded on every page too.
+      provider: fontProviders.local(),
       name: "Geist Variable",
       cssVariable: "--font-geist",
-      weights: ["100 900"],
-      styles: ["normal"],
-      options: { package: "@fontsource-variable/geist" },
+      options: {
+        variants: [{ weight: "100 900", style: "normal", src: ["@fontsource-variable/geist/files/geist-latin-wght-normal.woff2"] }],
+      },
     },
     {
       provider: npmFonts,

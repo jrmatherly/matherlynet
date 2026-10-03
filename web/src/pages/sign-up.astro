@@ -1,6 +1,6 @@
 ---
 import AuthCard from "../components/AuthCard.astro";
-import { field, label, primary, textLink } from "../lib/form";
+import { field, hint, label, primary, textLink } from "../lib/form";
 
 if (Astro.locals.user) return Astro.redirect("/account");
 ---
@@ -17,7 +17,8 @@ if (Astro.locals.user) return Astro.redirect("/account");
     </label>
     <label class={label}>
       Password
-      <input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password" class={field} />
+      <input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password" aria-describedby="password-hint" class={field} />
+      <span id="password-hint" class={hint}>At least 12 characters.</span>
     </label>
     <button class={primary}>Sign up</button>
   </form>
@@ -27,6 +28,7 @@ if (Astro.locals.user) return Astro.redirect("/account");
 
 <script>
   import { authClient } from "../lib/auth-client";
+  import { whileBusy } from "../lib/form";
 
   const message = document.querySelector<HTMLElement>("#message")!;
 
@@ -34,12 +36,16 @@ if (Astro.locals.user) return Astro.redirect("/account");
     e.preventDefault();
     const formEl = e.currentTarget as HTMLFormElement;
     const form = new FormData(formEl);
-    const { error } = await authClient.signUp.email({
-      name: String(form.get("name")),
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-      callbackURL: "/account",
-    });
+    const { error } = await whileBusy(formEl, () =>
+      authClient.signUp.email({
+        name: String(form.get("name")),
+        email: String(form.get("email")),
+        password: String(form.get("password")),
+        callbackURL: "/account",
+      }),
+    );
+    // An error interrupts (alert); the confirmation waits its turn (status).
+    message.setAttribute("role", error ? "alert" : "status");
     message.classList.toggle("text-danger", Boolean(error));
     // The same answer for new and already-registered emails (no account enumeration).
     message.textContent = error

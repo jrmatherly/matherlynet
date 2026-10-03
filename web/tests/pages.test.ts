@@ -6,6 +6,7 @@ import { ogCards } from "../src/lib/og";
 import About from "../src/pages/about.astro";
 import Changelog from "../src/pages/changelog.astro";
 import Home from "../src/pages/index.astro";
+import Work from "../src/pages/work.astro";
 import { SITE_DEFAULTS, resolveTheme } from "../src/theme/palettes";
 
 const { work } = profile;
@@ -21,11 +22,21 @@ const page = async (Page: Parameters<AstroContainer["renderToString"]>[0], path:
   (await AstroContainer.create()).renderToString(Page, { locals: { ...locals, theme }, request: new Request(`http://localhost${path}`) });
 
 describe("About", () => {
-  it("shows year-only role dates on one line, opens the résumé in a new tab, and has no mono eyebrows", async () => {
+  it("opens the résumé in a new tab and has no mono eyebrows", async () => {
     const html = await page(About, "/about");
-    expect(html).toMatch(/whitespace-nowrap[^>]*>\s*2015 to 2021\s*</);
     expect(html).toMatch(/<a[^>]*href="https:\/\/resume\.matherly\.net[^"]*"[^>]*target="_blank"[^>]*rel="noopener"/);
     expect(html).not.toMatch(/font-mono[^"]*uppercase|uppercase[^"]*font-mono/);
+  });
+});
+
+describe("inner pages", () => {
+  // Only the page body counts: the header and footer link everywhere, so they can't show a dead end.
+  const mainLinks = (html: string) => [...(html.match(/<main[\s\S]*<\/main>/)?.[0] ?? "").matchAll(/href="(\/[a-z]+)"/g)].map((m) => m[1]);
+
+  it("each link to another page from their body", async () => {
+    expect(mainLinks(await page(About, "/about"))).toEqual(expect.arrayContaining(["/changelog", "/work"]));
+    expect(mainLinks(await page(Changelog, "/changelog"))).toContain("/work");
+    expect(mainLinks(await page(Work, "/work"))).toContain("/changelog");
   });
 });
 

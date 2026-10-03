@@ -1,7 +1,7 @@
 ---
 // How requests move through the AI Gateway and the MCP Gateway: drawn, not a screenshot, so it follows the palette.
-// Below the sm breakpoint (640px) the SVG keeps its 520px drawing width and scrolls inside the card: shrinking it
-// makes the labels unreadable.
+// Below the sm breakpoint (640px) the SVG keeps its 520px drawing width and scrolls inside the card (with an edge
+// fade and a caption saying so): shrinking it makes the labels unreadable.
 // The motion is SMIL (no script, no inline style, so the CSP holds): one loop in which seven model requests cross
 // the AI Gateway's checks (one is refused at the guardrails, one is answered from the cache), three tool calls
 // cross the MCP Gateway, and each leaves a mark in the audit log.
@@ -166,7 +166,10 @@ const box = "fill-accent-soft stroke-accent stroke-[1.5]";
 const ring = "fill-surface stroke-accent stroke-[1.5]";
 ---
 
-<figure class="m-0 overflow-x-auto rounded-2xl border border-border bg-surface p-5">
+<figure class="m-0 grid gap-2 rounded-2xl border border-border bg-surface p-5">
+  <!-- Phones: the right edge fades and a caption says the drawing scrolls. The end padding matches the fade, so once
+       scrolled to the end the fade covers padding, not the drawing. -->
+  <div class="overflow-x-auto pr-6 [mask-image:linear-gradient(to_left,transparent,#000_1.5rem)] sm:overflow-visible sm:pr-0 sm:[mask-image:none]">
   <svg viewBox="0 0 520 308" role="img" aria-labelledby="path-title path-desc" class="block h-auto w-full min-w-[520px] font-sans sm:min-w-0">
     <title id="path-title">How a request moves through the AI Gateway</title>
     <desc id="path-desc">Claude Code, Claude Desktop, agents and end users call models through the AI Gateway and tools through the MCP Gateway. A model request passes SSO, rate limits, guardrails, the cache and routing, then goes to Azure AI Foundry or Anthropic; a request that fails the guardrails goes no further, and one the cache can answer never reaches a model. Tool calls pass OAuth and the registry of approved servers on the MCP Gateway, then reach the MCP servers. Every call through either gateway, passed or refused, is written to the audit log.</desc>
@@ -256,7 +259,8 @@ const ring = "fill-surface stroke-accent stroke-[1.5]";
                 </g>
               ))}
             </g>
-            <rect class={p.kind === "refused" ? "fill-danger" : "fill-accent"} x={mark(p).x} y={BASELINE - mark(p).h} width="3" height={mark(p).h} rx="1" opacity="0">
+            {/* Hollow, not just red: in red-accent palettes danger and accent are close hues. */}
+            <rect class={p.kind === "refused" ? "fill-none stroke-danger" : "fill-accent"} x={mark(p).x} y={BASELINE - mark(p).h} width="3" height={mark(p).h} rx="1" opacity="0">
               <animate {...loop} attributeName="opacity" values="0;0;1;1;0" keyTimes={times([p.end, p.end + 0.1, LOOP - 0.1])} />
             </rect>
           </>
@@ -276,4 +280,6 @@ const ring = "fill-surface stroke-accent stroke-[1.5]";
       </g>
     </g>
   </svg>
+  </div>
+  <figcaption class="text-xs text-muted sm:hidden">Swipe to see where requests go.</figcaption>
 </figure>

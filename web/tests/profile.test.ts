@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availability, career, gateway, headline, recruiterFacts, samePeriod, work } from "../src/data/profile";
+import { availability, career, gateway, headline, recruiterFacts, work } from "../src/data/profile";
 
 describe("profile data", () => {
   it("has a headline and no placeholder availability copy", () => {
@@ -7,14 +7,15 @@ describe("profile data", () => {
     if (availability !== null) expect(availability).not.toMatch(/confirm|placeholder|TBD/i);
   });
 
-  it("gives every role a heading and summary for the changelog", () => {
+  it("gives every role a heading and highlights for the changelog, and only the current role a summary", () => {
     for (const role of career) {
       expect(role.heading.length).toBeGreaterThan(0);
-      expect(role.summary.length).toBeGreaterThan(0);
+      expect(role.highlights.length).toBeGreaterThan(0);
+      expect(Boolean(role.summary)).toBe(!role.end);
     }
   });
 
-  it("keeps the five roles the changelog binds by position, newest first, with \"Mon YYYY\" dates", () => {
+  it("keeps the five roles newest first, with \"Mon YYYY\" dates", () => {
     expect(career).toHaveLength(5);
     career.forEach((role, i) => {
       expect(role.start).toMatch(/^[A-Z][a-z]{2} \d{4}$/);
@@ -37,9 +38,5 @@ describe("profile data", () => {
 
   it("lists the recruiter screening facts", () => {
     expect(recruiterFacts.map((f) => f.term)).toEqual(["Current title", "Reports to", "Team", "Built", "Location", "Education", "Writes code in"]);
-  });
-
-  it("lists the same-period items the changelog shows under the gateway", () => {
-    expect(samePeriod.map((s) => s.term)).toEqual(["MCP", "Agents", "Kubernetes", "Rollouts", "Data center", "Team"]);
   });
 });

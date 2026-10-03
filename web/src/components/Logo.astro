@@ -4,16 +4,18 @@ import proMark from "../../public/pro/logo-mark.svg?raw";
 interface Props {
   // Tailwind size utility for the mark, e.g. "size-8" (header) or "size-20" (auth card).
   size?: string;
+  // Hidden from assistive tech where the name is already read beside it (header link, auth card under the header).
+  decorative?: boolean;
 }
 
-const { size = "size-8" } = Astro.props;
+const { size = "size-8", decorative = false } = Astro.props;
 // At header size the illustrated brand M turns to mud, so every theme shows the vector monogram there.
 const header = size === "size-8";
 ---
 
 <!-- Larger sizes render both marks; global.css shows the brand raster under Signal and the monogram otherwise,
      so the Brand/Pro control swaps logos without touching this markup. -->
-<span class="inline-flex" role="img" aria-label="Matherly">
+<span class="inline-flex" {...decorative ? { "aria-hidden": "true" } : { role: "img", "aria-label": "Matherly" }}>
   {!header && <img src="/m-logo.png" alt="" width="140" height="140" class:list={["logo-brand", size]} />}
   <span class:list={[!header && "logo-pro", "text-foreground [&>svg]:size-full", size]} set:html={proMark} />
 </span>

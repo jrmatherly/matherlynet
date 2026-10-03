@@ -1,6 +1,6 @@
 {
-  "name": "Matherly",
-  "short_name": "M",
+  "name": "Jason Matherly",
+  "short_name": "Matherly",
   "icons": [
     {
       "src": "/pwa-192x192.png",
@@ -29,7 +29,7 @@
   ],
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "description": "MatherlyNet"
+  "background_color": "#0f0d0d",
+  "theme_color": "#0f0d0d",
+  "description": "Jason Matherly: AI platform and infrastructure"
 }

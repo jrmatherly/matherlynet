@@ -30,9 +30,10 @@ const themeColor = themeColorFor(mode, (side) => paletteColors(palette, side).bg
     <link rel="icon" type="image/png" sizes="16x16" href={`${icons}favicon-16x16.png`} data-icon="favicon-16x16.png" />
     <link rel="apple-touch-icon" href={`${icons}apple-touch-icon.png`} data-icon="apple-touch-icon.png" />
     <link rel="manifest" href={`${icons}site.webmanifest`} data-icon="site.webmanifest" />
+    <!-- Newsreader's italic isn't preloaded: it appears once (an <em> on /changelog). -->
     <Font cssVariable="--font-geist" preload />
     <Font cssVariable="--font-geist-mono" />
-    <Font cssVariable="--font-newsreader" preload={typeface === "serif"} />
+    <Font cssVariable="--font-newsreader" preload={typeface === "serif" && [{ style: "normal" }]} />
     <Telemetry />
   </head>
   <body class="flex min-h-dvh flex-col bg-background text-foreground">

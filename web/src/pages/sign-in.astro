@@ -40,18 +40,22 @@ const providerLabel = { github: "GitHub", google: "Google" } as const;
 
 <script>
   import { authClient } from "../lib/auth-client";
+  import { whileBusy } from "../lib/form";
 
   const message = document.querySelector("#message")!;
 
   document.querySelector<HTMLFormElement>("#sign-in-form")!.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const form = new FormData(e.currentTarget as HTMLFormElement);
-    const { error } = await authClient.signIn.email({
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-      // Also where the re-sent verification link lands for an unverified account.
-      callbackURL: "/account",
-    });
+    const formEl = e.currentTarget as HTMLFormElement;
+    const form = new FormData(formEl);
+    const { error } = await whileBusy(formEl, () =>
+      authClient.signIn.email({
+        email: String(form.get("email")),
+        password: String(form.get("password")),
+        // Also where the re-sent verification link lands for an unverified account.
+        callbackURL: "/account",
+      }),
+    );
     if (!error) return location.assign("/account");
     // 403: the email isn't verified yet; better-auth has just sent a fresh link.
     message.textContent =

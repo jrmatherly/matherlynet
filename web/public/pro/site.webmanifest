@@ -9,7 +9,7 @@
   ],
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#111113",
-  "theme_color": "#111113",
+  "background_color": "#0c0c0b",
+  "theme_color": "#0c0c0b",
   "description": "Jason Matherly: AI platform and infrastructure"
 }

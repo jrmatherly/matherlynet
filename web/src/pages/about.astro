@@ -1,53 +1,34 @@
 ---
-import { career, education, employer, resumeUrl, skills, volunteer } from "../data/profile";
+import Cta from "../components/Cta.astro";
+import { employer, resumeUrl, skills, volunteer, education } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
-import { person } from "../lib/site";
+
+// The person page: who, skills, education and volunteering. The roles are on /changelog, the platforms on /work.
+const link = "text-foreground underline decoration-accent decoration-2 underline-offset-4";
 ---
 
-<Base title="About" description={person.description} image={ogImage("about", Astro.locals.siteSettings)} type="profile">
-  <div class="mx-auto grid max-w-6xl gap-16 px-4 py-16 sm:px-6 sm:py-20">
+<Base
+  title="About"
+  description={`Twenty years at ${employer.name}, from the IT call center to Manager of Infrastructure Services: skills, education and volunteer work.`}
+  image={ogImage("about", Astro.locals.siteSettings)}
+  type="profile"
+>
+  <div class="mx-auto grid max-w-6xl gap-16 px-4 pt-16 sm:px-6 sm:pt-20">
     <header class="grid max-w-3xl gap-4">
       <h1 class="display text-4xl sm:text-5xl">About</h1>
       <p class="text-lg text-muted">
-        Twenty years at {employer.name}, from the IT call center to Manager of Infrastructure Services. I lead its
-        company-wide AI strategy and adoption, and I designed the AI Gateway and MCP platform, on top of the
+        Twenty years at {employer.name}, <a href="/changelog" class={link}>from the IT call center to Manager of Infrastructure Services</a>. I lead its
+        company-wide AI strategy and adoption, and I designed <a href="/work" class={link}>the AI Gateway and MCP platform</a>, on top of the
         networks, data centers and disaster recovery I built before them.
       </p>
       <p>
-        <a href={resumeUrl} target="_blank" rel="noopener" class="inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground">View full résumé</a>
+        <a href={resumeUrl} target="_blank" rel="noopener" class="inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground">Read the résumé</a>
       </p>
     </header>
 
-    <section aria-labelledby="changelog" class="grid gap-6 lg:grid-cols-[1fr_2fr]">
-      <div class="grid content-start gap-2">
-        <p class="text-sm text-muted">Career</p>
-        <h2 id="changelog" class="display text-3xl">Twenty years, one company, four promotions.</h2>
-        <p class="text-muted">{employer.name}, {employer.location}, since {employer.since}</p>
-      </div>
-      <ol class="grid">
-        {
-          career.map((role, i) => (
-            <li class="grid gap-2 border-t border-border py-5 sm:grid-cols-[8.5rem_1fr] sm:gap-4">
-              <span class:list={["text-sm whitespace-nowrap tabular-nums", i === 0 ? "text-foreground" : "text-muted"]}>
-                {role.start.slice(-4)} to {role.end?.slice(-4) ?? "now"}
-              </span>
-              <div class="grid gap-2">
-                <h3 class="text-lg font-bold">{role.title}</h3>
-                <ul class="grid gap-1.5 text-muted">
-                  {role.highlights.map((h) => (
-                    <li>{h}</li>
-                  ))}
-                </ul>
-              </div>
-            </li>
-          ))
-        }
-      </ol>
-    </section>
-
     <section aria-labelledby="skills" class="grid gap-6">
-      <h2 id="skills" class="display text-3xl">Skills</h2>
+      <h2 id="skills" class="display text-3xl sm:text-4xl">Skills</h2>
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {
           skills.map((s) => (
@@ -64,17 +45,22 @@ import { person } from "../lib/site";
       </div>
     </section>
 
-    <section aria-label="Education and volunteering" class="grid gap-4 sm:grid-cols-2">
-      <div class="grid content-start gap-1 rounded-2xl border border-border p-5">
-        <p class="text-sm text-muted">Education</p>
-        <h2 class="text-lg font-bold">{education.degree}</h2>
-        <p class="text-muted">{education.school}, {education.years}</p>
-      </div>
-      <div class="grid content-start gap-1 rounded-2xl border border-border p-5">
-        <p class="text-sm text-muted">Volunteer</p>
-        <h2 class="text-lg font-bold">{volunteer.org} <span class="font-normal text-muted">{volunteer.years}</span></h2>
-        <p class="text-muted">{volunteer.summary}</p>
+    <section aria-labelledby="beyond" class="grid gap-6">
+      <h2 id="beyond" class="display text-3xl sm:text-4xl">Education and volunteering</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid content-start gap-1 rounded-2xl border border-border p-5">
+          <p class="text-sm text-muted">Education</p>
+          <h3 class="text-lg font-bold">{education.degree}</h3>
+          <p class="text-muted">{education.school}, {education.years}</p>
+        </div>
+        <div class="grid content-start gap-1 rounded-2xl border border-border p-5">
+          <p class="text-sm text-muted">Volunteer</p>
+          <h3 class="text-lg font-bold">{volunteer.org} <span class="font-normal text-muted">{volunteer.years}</span></h3>
+          <p class="text-muted">{volunteer.summary}</p>
+        </div>
       </div>
     </section>
+
+    <Cta title="Hiring for a platform that has to work on Monday?" body="I'm happy to talk about the role, the stack, or how we moved from LiteLLM to an in‑house gateway." />
   </div>
 </Base>

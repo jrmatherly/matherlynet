@@ -14,7 +14,7 @@ const { title, description, wide = false } = Astro.props;
 
 <Base title={title} description={description} chrome="minimal" noindex>
   <div class:list={["mx-auto grid gap-6 px-4 py-16 sm:px-6", wide ? "max-w-2xl" : "max-w-md"]}>
-    <div class="mx-auto"><Logo size="size-20" /></div>
+    <div class="mx-auto"><Logo size="size-20" decorative /></div>
     <section class="grid gap-4 rounded-2xl border border-border bg-surface p-6">
       <h1 class="display text-2xl">{title}</h1>
       <slot />

@@ -12,14 +12,18 @@ const { minimal = false } = Astro.props;
 const { theme } = Astro.locals;
 const path = Astro.url.pathname;
 const nav = minimal ? [] : publicRoutes.filter((r) => r.nav);
-const link = "rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-foreground aria-[current=page]:text-foreground";
+// transition-[color], not transition-colors: that also fades outline-color, so the focus ring would start muted.
+const link =
+  "rounded-md px-2 py-2 text-sm text-muted transition-[color] hover:text-foreground aria-[current=page]:text-foreground aria-[current=page]:underline aria-[current=page]:decoration-accent aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8";
 ---
 
 <!-- view-transition-name keeps the header still while the page body cross-fades (global.css). -->
 <header class="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur [view-transition-name:site-header]">
   <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
     <a href="/" class="inline-flex items-center gap-2.5 font-extrabold tracking-tight">
-      <Logo />{person.name}
+      <Logo decorative />
+      <!-- Phones show only the mark, so the controls fit on the first row (two header rows, not three). -->
+      <span class="sr-only sm:not-sr-only">{person.name}</span>
     </a>
     {
       nav.length > 0 && (
@@ -36,8 +40,8 @@ const link = "rounded-md px-2 py-1 text-sm text-muted transition-colors hover:te
       <ModeToggle mode={theme.mode} />
       {
         !minimal && (
-          <a href={person.sameAs[0]} rel="me noopener" class="rounded-full bg-accent px-3.5 py-1.5 text-sm font-semibold text-accent-foreground">
-            Let's talk
+          <a href={person.sameAs[0]} rel="me noopener" class="rounded-full bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground">
+            Let's talk<span class="sr-only"> on LinkedIn</span>
           </a>
         )
       }

@@ -7,12 +7,12 @@ interface Props {
 
 const { mode } = Astro.props;
 const modes = [
-  { value: "light", label: "Light", icon: "M8 3.2a4.8 4.8 0 1 0 0 9.6 4.8 4.8 0 0 0 0-9.6Z" },
+  { value: "light", label: "Light", icon: "M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3 3l1 1M12 12l1 1M3 13l1-1M12 4l1-1" },
   { value: "dark", label: "Dark", icon: "M6 1a7 7 0 1 0 9 9A6 6 0 0 1 6 1Z" },
   { value: "system", label: "Match system", icon: "M2 3h12v8H2zM6 13h4" },
 ] as const;
 const option =
-  "inline-flex items-center rounded-full px-2.5 py-1.5 text-muted transition-colors hover:text-foreground aria-pressed:bg-surface-2 aria-pressed:text-foreground aria-pressed:shadow-[inset_0_0_0_1px_var(--border)]";
+  "inline-flex items-center rounded-full px-2.5 py-2 text-muted transition-[color,background-color] hover:text-foreground aria-pressed:bg-surface-2 aria-pressed:text-foreground aria-pressed:shadow-[inset_0_0_0_1px_var(--border)]";
 ---
 
 <div role="group" aria-label="Color mode" class="inline-flex rounded-full border border-border bg-surface p-0.5" data-mode-toggle>
