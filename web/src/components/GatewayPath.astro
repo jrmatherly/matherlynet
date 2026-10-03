@@ -1,4 +1,5 @@
 ---
+import { AI_GATES, CALLERS, MCP_GATES, MODEL_TARGETS, TOOL_TARGET } from "../data/gateway";
 // How requests move through the AI Gateway and the MCP Gateway: drawn, not a screenshot, so it follows the palette.
 // Below the sm breakpoint (640px) the SVG keeps its 520px drawing width and scrolls inside the card (with an edge
 // fade and a caption saying so): shrinking it makes the labels unreadable.
@@ -20,38 +21,24 @@ const AI = {
   y: 110,
   from: 176,
   to: 344,
-  gates: [
-    { label: "SSO", x: 196, above: true },
-    { label: "Rate limits", x: 228 },
-    { label: "Guardrails", x: 260, above: true },
-    { label: "Cache", x: 292 },
-    { label: "Routing", x: 324, above: true },
-  ] as Gate[],
+  gates: AI_GATES.map((label, i) => ({ label, x: 196 + 32 * i, above: i % 2 === 0 })) as Gate[],
 };
 // The registry check: only servers approved into the registry are reachable.
 const MCP = {
   y: 222,
   from: 170,
   to: 318,
-  gates: [
-    { label: "OAuth", x: 212 },
-    { label: "Registry", x: 276 },
-  ] as Gate[],
+  gates: MCP_GATES.map((label, i) => ({ label, x: [212, 276][i] })) as Gate[],
 };
 const GUARDRAILS = AI.gates[2].x;
 const CACHE = AI.gates[3].x;
 const CACHE_HOLD = 0.4; // seconds a cache hit rests on the gate before the answer heads back
 
-const callers = [
-  { label: "Claude Code", y: 44 },
-  { label: "Claude Desktop", y: 92 },
-  { label: "Agents", y: 140 },
-  { label: "End users", y: 188 },
-];
+const callers = CALLERS.map((label, i) => ({ label, y: 44 + 48 * i }));
 const targets = [
-  { label: "Azure AI Foundry", y: 70 },
-  { label: "Anthropic", y: 130 },
-  { label: "MCP servers", y: MCP.y },
+  { label: MODEL_TARGETS[0], y: 70 },
+  { label: MODEL_TARGETS[1], y: 130 },
+  { label: TOOL_TARGET, y: MCP.y },
 ];
 const TOOLS = 2; // index of the MCP target
 // caller index; target index, or how the AI Gateway ends it early; start second.
