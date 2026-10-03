@@ -168,8 +168,10 @@ const ring = "fill-surface stroke-accent stroke-[1.5]";
 
 <figure class="m-0 grid gap-2 rounded-2xl border border-border bg-surface p-5">
   <!-- Phones: the right edge fades and a caption says the drawing scrolls. The end padding matches the fade, so once
-       scrolled to the end the fade covers padding, not the drawing. -->
-  <div class="overflow-x-auto pr-6 [mask-image:linear-gradient(to_left,transparent,#000_1.5rem)] sm:overflow-visible sm:pr-0 sm:[mask-image:none]">
+       scrolled to the end the fade covers padding, not the drawing. A named, focusable region so a keyboard can
+       scroll it too (Safari doesn't make scrollers focusable on its own). -->
+  {/* eslint-disable-next-line astro/jsx-a11y/no-noninteractive-tabindex -- a scrollable region must take focus (axe scrollable-region-focusable) */}
+  <div role="region" aria-label="Request path diagram" tabindex="0" class="overflow-x-auto pr-6 [mask-image:linear-gradient(to_left,transparent,#000_1.5rem)] sm:overflow-visible sm:pr-0 sm:[mask-image:none]">
   <svg viewBox="0 0 520 308" role="img" aria-labelledby="path-title path-desc" class="block h-auto w-full min-w-[520px] font-sans sm:min-w-0">
     <title id="path-title">How a request moves through the AI Gateway</title>
     <desc id="path-desc">Claude Code, Claude Desktop, agents and end users call models through the AI Gateway and tools through the MCP Gateway. A model request passes SSO, rate limits, guardrails, the cache and routing, then goes to Azure AI Foundry or Anthropic; a request that fails the guardrails goes no further, and one the cache can answer never reaches a model. Tool calls pass OAuth and the registry of approved servers on the MCP Gateway, then reach the MCP servers. Every call through either gateway, passed or refused, is written to the audit log.</desc>
