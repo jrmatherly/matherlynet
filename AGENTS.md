@@ -119,6 +119,9 @@ out/                   aspire publish output (gitignored)
 - Each page has one job, so facts aren't retold across pages: home is the overview (perspectives, case study),
   /changelog the timeline (recruiter facts, roles with highlights), /work the platforms (gateway generations),
   /about the person. Every inner page links to another from its body (`pages.test.ts`).
+- The home perspective panels share one grid cell and switch with `visibility` (not `display`), so the block keeps the
+  tallest panel's height and the page below doesn't jump; the radio `:has()` rules in `Perspectives.astro` only flip
+  visibility. The hero grid is `1fr / 1.15fr` so the figure draws near full size.
 - Owner-supplied wording stays `null` in `profile.ts` until the owner provides it, and the page renders it only when
   set; don't write placeholder copy. `availability` is the owner's own sentence, also on his LinkedIn summary.
 - `person` in `lib/site.ts` feeds the Person JSON-LD in `Seo.astro` (`jobTitle`, `worksFor`, `knowsAbout`; only
