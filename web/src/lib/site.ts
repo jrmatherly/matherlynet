@@ -21,6 +21,7 @@ export const publicRoutes: { path: string; label: string; nav: boolean }[] = [
   { path: "/", label: "Home", nav: false },
   { path: "/work", label: "Work", nav: true },
   { path: "/changelog", label: "Changelog", nav: true },
+  { path: "/playground", label: "Playground", nav: true },
   // Hidden from the nav until the first post is published (the page, feed and sitemap stay live).
   { path: "/writing", label: "Writing", nav: false },
   { path: "/about", label: "About", nav: true },

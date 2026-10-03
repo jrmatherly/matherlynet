@@ -403,6 +403,53 @@ export function toEvents(entry: AuditEntry): ConsoleEvent[] {
   return [...entry.steps.map((step): ConsoleEvent => ({ type: "step", step })), { type: "end", entry }];
 }
 
+// Wording shared by the server-rendered rows and the page script, so a recorded row and a live one read the same.
+
+export type StepKind = "ok" | "bad" | "info";
+
+export function stepView(step: Step): { kind: StepKind; detail: string; tag: string } {
+  const kind = step.verdict === "refused" ? "bad" : step.verdict === "hit" ? "info" : "ok";
+  return { kind, detail: stepDetail(step), tag: SIM[step.gate].tag };
+}
+
+function stepDetail(step: Step): string {
+  switch (step.gate) {
+    case "SSO":
+      return step.identity;
+    case "Rate limits":
+      return step.verdict === "passed" ? `${step.left} left` : `one back in ${Math.ceil(step.retryMs / 1000)} s`;
+    case "Guardrails":
+      return step.verdict === "refused" ? `${step.finding.category}: ${step.finding.masked}, shaped like ${step.finding.looksLike}` : "";
+    case "Routing":
+      return `→ ${step.to}`;
+    case "Registry":
+      return SIM.Registry.servers[step.server].label;
+    default:
+      return "";
+  }
+}
+
+export function closing({ lane, decision }: AuditEntry): string {
+  if (decision.verdict === "cached") return "Answered from the cache. No model would be called.";
+  if (decision.verdict === "refused") return `Refused at ${decision.at}. Nothing reached ${lane === "tool" ? "a server" : "a model"}.`;
+  return lane === "tool"
+    ? "Forwarded to MCP servers. This page stops here: no tool is called."
+    : `Forwarded to ${decision.to}. This page stops here: no model is called, and nothing you type leaves your browser.`;
+}
+
+export const GLYPH: Record<Decision["verdict"], string> = { forwarded: "✓", cached: "↺", refused: "✕" };
+
+/** The log's "To / stopped at" column: the target when forwarded, the gate when refused, nothing when cached. */
+export function endpoint(decision: Decision): string {
+  return decision.verdict === "forwarded" ? decision.to : decision.verdict === "refused" ? decision.at : "";
+}
+
+/** mm:ss of a millisecond offset. */
+export function clock(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
 /** Panel switching and the stagger trigger for each id, plus the JS-only "yours" panel. */
 export function scenarioCss(ids: readonly string[]): string {
   const picked = (id: string) => `[data-console]:has(input[value="${id}"]:checked) [data-panel="${id}"]`;

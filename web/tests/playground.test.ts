@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { describe, expect, it } from "vitest";
+import GatewayConsole from "../src/components/GatewayConsole.astro";
 import {
   type AuditEntry,
   createConsole,
@@ -180,4 +183,29 @@ it("scenarioCss names every panel id and yours", () => {
     expect(css).toContain(`[value="${id}"]`);
     expect(css).toContain(`[data-panel="${id}"]`);
   }
+});
+
+describe("GatewayConsole", () => {
+  it("its script makes no network calls, as the banner says", () => {
+    const source = readFileSync(new URL("../src/components/GatewayConsole.astro", import.meta.url), "utf8");
+    const script = source.match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? "";
+    expect(script).toContain("createConsole(");
+    for (const call of ["fetch(", "XMLHttpRequest", "sendBeacon", "WebSocket"]) expect(script).not.toContain(call);
+  });
+
+  it("renders the picked scenario, every panel and the recorded runs with the secret masked", async () => {
+    const html = await (await AstroContainer.create()).renderToString(GatewayConsole, { props: { picked: "secret" } });
+    expect(html).toMatch(/<input[^>]*value="secret"[^>]*\schecked[\s>]/);
+    expect(html.match(/<input[^>]*\schecked[\s>]/g)).toHaveLength(2); // the scenario and the Send-as default
+    for (const id of SCENARIO_IDS) expect(html).toContain(`data-panel="${id}"`);
+    expect(html).not.toContain("AKIAABCDEFGHIJKLMNOP");
+    expect(html).toContain("AK••••••••••••••••OP");
+    expect(html).toContain("secrets: AK••••••••••••••••OP, shaped like an AWS access key");
+    expect(html).toContain("Refused at Guardrails. Nothing reached a model.");
+    expect(html).toContain("not reached");
+    expect(html).toContain(
+      "No model is called, and nothing you type leaves your browser. The checks and their order are the platform's; the values marked demo are not.",
+    );
+    expect(html).toContain("The real log is kept at least 90 days.");
+  });
 });

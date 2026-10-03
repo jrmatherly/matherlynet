@@ -27,7 +27,10 @@ import { person } from "../lib/site";
           <a href={resumeUrl} target="_blank" rel="noopener" class="rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-semibold">Read the résumé</a>
         </div>
       </div>
-      <GatewayPath />
+      <div class="grid gap-3">
+        <GatewayPath />
+        <p class="text-sm text-muted">Try it: <a href="/playground" class="text-foreground underline decoration-accent decoration-2 underline-offset-4">send a request through the gateway</a>.</p>
+      </div>
     </section>
     <div class="border-t border-border pt-14"><Perspectives /></div>
     <div class="grid gap-8 border-t border-border pt-14"><CaseStudy /><PlatformList /></div>

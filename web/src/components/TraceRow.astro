@@ -1,0 +1,91 @@
+---
+import { type AuditEntry, closing, GATES, stepView } from "../lib/playground";
+
+interface Props {
+  /** null renders the skeleton the page script clones: the model lane's gates, every text slot empty, pills hidden. */
+  entry: AuditEntry | null;
+}
+const { entry } = Astro.props;
+
+const pills = GATES[entry?.lane ?? "model"].map((gate, i) => {
+  if (!entry) return { gate: "", kind: undefined, verdict: "", detail: "", tag: "" };
+  const step = entry.steps[i];
+  if (!step) return { gate, kind: "skip", verdict: "not reached", detail: "", tag: "" };
+  return { gate, verdict: step.verdict, ...stepView(step) };
+});
+---
+
+<li class="row grid min-w-0 gap-2.5 rounded-xl border border-border bg-surface p-3" data-live={entry ? undefined : ""}>
+  <p class="text-sm"><span class="font-semibold" data-slot="from">{entry?.from}</span> · <span class="text-muted" data-slot="summary">{entry?.summary}</span></p>
+  <ol class="steps grid gap-2 lg:flex lg:items-start lg:gap-3">
+    {
+      pills.map((p) => (
+        <li class="step group grid min-w-0 gap-px border-l-2 border-success pl-3 data-[kind=bad]:border-danger data-[kind=info]:border-info data-[kind=skip]:border-dotted data-[kind=skip]:border-border lg:flex-1 lg:border-t-2 lg:border-l-0 lg:pt-1.5 lg:pl-0" data-step data-kind={p.kind} hidden={!entry}>
+          <span class="text-[11px] font-semibold tracking-wide text-muted uppercase" data-slot="gate">{p.gate}</span>
+          <span class="inline-flex items-center gap-1.5 text-sm font-semibold group-data-[kind=skip]:font-normal group-data-[kind=skip]:text-muted">
+            <i class="size-2 flex-none rounded-full bg-success group-data-[kind=bad]:bg-danger group-data-[kind=info]:bg-info group-data-[kind=skip]:border group-data-[kind=skip]:border-muted group-data-[kind=skip]:bg-transparent" aria-hidden="true" />
+            <span data-slot="verdict">{p.verdict}</span>
+          </span>
+          <span class="detail text-xs text-muted">
+            <span data-slot="detail">{p.detail}</span>
+            <em class="ms-1 inline-block rounded-full border border-border px-1.5 text-[10px] leading-normal font-medium whitespace-nowrap not-italic empty:hidden" data-slot="tag">{p.tag}</em>
+          </span>
+        </li>
+      ))
+    }
+    <li class="step self-start rounded-md bg-surface-2 px-2 py-0.5 text-xs font-medium lg:mt-2 lg:ms-auto lg:flex-none" data-logged hidden={!entry}><span aria-hidden="true">■</span> logged</li>
+  </ol>
+  <p class="closing step text-[13px] text-muted" data-slot="closing" hidden={!entry}>{entry && closing(entry)}</p>
+</li>
+
+<style>
+  /* The stagger: scenarioCss() (rendered by GatewayConsole) starts the animation for the picked panel's .step
+     elements and delays each by --i. A live row is painted one step at a time by the script, so its delay is 0. */
+  @keyframes land {
+    from {
+      opacity: 0;
+      transform: translateX(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .step:nth-child(2) {
+    --i: 1;
+  }
+  .step:nth-child(3) {
+    --i: 2;
+  }
+  .step:nth-child(4) {
+    --i: 3;
+  }
+  .step:nth-child(5) {
+    --i: 4;
+  }
+  .step:nth-child(6) {
+    --i: 5;
+  }
+  .closing {
+    --i: 6;
+  }
+  [data-live] .step {
+    --i: 0;
+  }
+  /* A panel with many rows reads as a list of verdicts: the pills wrap on one line, without detail. */
+  :global([data-many]) .steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.875rem;
+  }
+  :global([data-many]) .detail,
+  :global([data-many]) .closing {
+    display: none;
+  }
+  /* !important: scenarioCss()'s rule is more specific and must lose to the visitor's setting. */
+  @media (prefers-reduced-motion: reduce) {
+    .step {
+      animation: none !important;
+    }
+  }
+</style>
