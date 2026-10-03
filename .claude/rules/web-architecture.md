@@ -9,8 +9,8 @@ The Astro app, file by file (moved out of AGENTS.md to keep it short; AGENTS.md'
 
 ```text
 web/
-  astro.config.mjs     output: 'server', @astrojs/node standalone, Tailwind 4 (Vite plugin), fonts (Geist via the npm
-                       provider; Newsreader normal + italic via the local provider), CSP directives,
+  astro.config.mjs     output: 'server', @astrojs/node standalone, Tailwind 4 (Vite plugin), fonts (Geist Latin and
+                       Newsreader normal + italic via the local provider, Geist Mono via npm), CSP directives,
                        security.allowedDomains (trust X-Forwarded-Proto behind Cloudflare)
   migrate.mjs          applies web/drizzle/ on start (retry + Postgres advisory lock)
   server.mjs           production entry (`start`): startServer() from dist/server/entry.mjs, graceful shutdown
@@ -40,7 +40,7 @@ web/
   src/lib/theme-cookie.ts  browser helpers for ModeToggle and ThemeControls: remember() (one-year visitor theme
                        cookie) and syncThemeColor() (rebuilds the theme-color tags after a switch)
   src/data/profile.ts  all résumé-derived copy (headline, intro, availability, contact, gateway case study,
-                       perspectives, recruiterFacts, samePeriod, work, career, bio, facts, skills); edit facts here
+                       perspectives, recruiterFacts, work, career, bio, skills); edit facts here
   src/content/writing/  Markdown posts (schema in src/content.config.ts; `draft: true` hides a post everywhere)
   src/db/              Drizzle client (`APPDB_URI`, pool timeouts), generated auth-schema.ts, app tables in schema.ts
   src/middleware.ts    session, siteSettings and theme into Astro.locals; Sentry error capture; security headers
@@ -55,14 +55,17 @@ web/
   src/layouts/Base.astro  <html data-palette data-mode data-type>, Seo (+ theme-color), favicons, fonts,
                        header/footer (chrome full|minimal)
   src/components/       Seo (canonical, OG, Person JSON-LD, noindex, theme-color), SiteHeader (nav, ModeToggle,
-                        Let's talk), SiteFooter (ThemeControls: Brand/Pro + Sans/Serif, links, sign in), Logo
-                        (monogram at header size), Telemetry (Umami tag + lazy @sentry/browser, both from site
-                        settings); home: GatewayPath (SVG request path), Perspectives (no-JS radio switcher),
+                        Let's talk), SiteFooter (ThemeControls: Brand/Pro + Sans/Serif, page links from publicRoutes,
+                        LinkedIn, RSS once /writing is in the nav, sign in), Logo (monogram at header size;
+                        `decorative` hides it beside the name), Telemetry (Umami tag + lazy @sentry/browser, both from
+                        site settings); home: GatewayPath (SVG request path), Perspectives (no-JS radio switcher),
                         CaseStudy, PlatformList, AboutStrip, Cta, Availability (renders only when set);
-                        changelog: RailEntry; work: WorkCard (a row)
-  src/pages/           index, changelog, work, about, writing/ (+[slug]), 404; robots/sitemap/rss built per request
+                        changelog: RailEntry; work: WorkCard (a row, slot for extra detail)
+  src/pages/           one job each: index (overview, perspectives), changelog (timeline: recruiter facts, roles with
+                        highlights), work (platforms, gateway generations), about (person: skills, education,
+                        volunteering), writing/ (+[slug]), 404 (links the nav pages); robots/sitemap/rss per request
   src/pages/ (account)  sign-in, sign-up, forgot/reset-password, account (sessions), admin (role-gated, 404
-                       otherwise); all noindex, AuthCard shell, form classes in src/lib/form.ts
+                       otherwise); all noindex, AuthCard shell, form classes and whileBusy() in src/lib/form.ts
   src/pages/og/[slug].png.ts  share cards rendered on demand by Takumi (cards in src/lib/og.ts, colors from
                        palettes.css in the palette ?v= names, else the /admin theme's palette)
   src/pages/api/auth/[...all].ts  better-auth request handler
@@ -70,5 +73,6 @@ web/
   scripts/social-preview.mts  renders .github/social-preview.png (GitHub social preview, 1280x640) with Takumi
   e2e/                 Playwright against the Aspire stack: public pages, headers, sign-up -> verify (Mailpit)
                        -> sign-out -> password reset; each run creates an e2e-*@example.test user
-  public/              brand favicons, web manifest, brand raster logo, portrait.jpg (648x648); public/pro/ = Pro monogram set
+  public/              brand favicons, web manifest, brand raster logo, portrait.jpg (648x648) and
+                       portrait-320.jpg (srcset for 2x screens); public/pro/ = Pro monogram set
 ```

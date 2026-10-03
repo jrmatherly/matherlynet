@@ -2,13 +2,13 @@
 import Availability from "../components/Availability.astro";
 import Cta from "../components/Cta.astro";
 import RailEntry from "../components/RailEntry.astro";
-import { availability, career, contact, facts, gateway, perspectives, recruiterFacts, resumeUrl, samePeriod } from "../data/profile";
+import { availability, career, contact, recruiterFacts, resumeUrl } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 
-// Bound by position, newest first; profile.test.ts pins the five roles so an added one can't shift these silently.
-const [manager, senior, engineer, analyst, support] = career;
+// The timeline page: roles, years, scope and results, newest first. The perspectives live on the home page and the
+// gateway's generations on /work.
 const year = (role: (typeof career)[number]) => role.start.slice(-4);
 const period = (role: (typeof career)[number]) => `${role.title}, ${year(role)} to ${role.end?.slice(-4) ?? "now"}`;
 const link = "font-semibold underline decoration-accent decoration-2 underline-offset-4";
@@ -16,11 +16,11 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
 
 <Base title="Changelog" description="Twenty years at The Aaron's Company, newest first: roles, platforms and what each one changed." image={ogImage("changelog", Astro.locals.siteSettings)} type="profile">
   <div class="mx-auto max-w-6xl px-4 sm:px-6">
-    <div class="grid grid-cols-[4.2rem_1fr] pt-10 sm:grid-cols-[7rem_1fr]">
-      <RailEntry year="2026" now>
+    <div class="grid grid-cols-[3rem_1fr] pt-10 sm:grid-cols-[7rem_1fr]">
+      <RailEntry year="">
         <div class="grid gap-8 md:grid-cols-[minmax(0,46rem)_132px] md:justify-start md:gap-10">
           <div class="grid gap-5">
-            <h1 class="display max-w-[14ch] text-5xl sm:text-6xl lg:text-7xl">
+            <h1 class="display max-w-[18ch] text-4xl sm:text-5xl lg:text-6xl">
               Twenty years keeping a 1,200&#8209;store company running. <em class="text-accent">Now it's AI, too.</em>
             </h1>
             <p class="max-w-[52ch] text-xl">
@@ -32,116 +32,44 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
               <a href={resumeUrl} target="_blank" rel="noopener" class="font-medium text-muted underline decoration-border decoration-2 underline-offset-4">Read the résumé</a>
             </div>
           </div>
-          <img src="/portrait.jpg" width="648" height="648" alt={`Portrait of ${person.name}`} class="aspect-square h-auto w-28 object-cover md:w-[132px]" />
+          <!-- The home page shows the portrait on phones; here it would sit alone under the links. -->
+          <img src="/portrait.jpg" srcset="/portrait-320.jpg 320w, /portrait.jpg 648w" sizes="132px" width="648" height="648" alt={`Portrait of ${person.name}`} class="hidden aspect-square h-auto w-[132px] object-cover md:block" />
         </div>
-        <dl class="mt-4 grid grid-cols-2 gap-x-10 gap-y-3 text-sm sm:grid-cols-3">
+        <dl class="mt-4 grid max-w-3xl grid-cols-[max-content_1fr] gap-x-5 gap-y-1.5 text-sm">
           {
-            facts.map((f) => (
-              <div>
-                <dt class="display text-2xl font-normal">{f.title}</dt>
-                <dd class="text-muted">{f.detail}</dd>
-              </div>
+            recruiterFacts.map((f) => (
+              <>
+                <dt class="text-muted">{f.term}</dt>
+                <dd>{f.detail}</dd>
+              </>
             ))
           }
         </dl>
       </RailEntry>
 
-      <RailEntry year="" id="for-you">
-        <!-- Keeps the heading outline h1 → h2 → h3 (Lighthouse heading-order); the visible label is the legend. -->
-        <h2 class="sr-only">Read this from your team's side</h2>
-        <div class="persp grid max-w-2xl gap-3">
-          <fieldset class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
-            <legend class="float-left mr-1 text-muted">Read this as a</legend>
-            {
-              perspectives.map((p, i) => (
-                <label class="cursor-pointer border-b-2 border-transparent pb-0.5 text-muted has-checked:border-accent has-checked:text-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent">
-                  <input type="radio" name="read-as" value={p.id} checked={i === 0} class="sr-only" />
-                  {p.label.toLowerCase()}
-                </label>
-              ))
-            }
-          </fieldset>
-          {
-            perspectives.map((p) => (
-              <article data-panel={p.id} class="hidden gap-2.5">
-                <h3 class="display text-2xl">{p.headline}</h3>
-                <p class="text-muted">{p.body}</p>
-                {p.id === "recruiters" && (
-                  <dl class="grid grid-cols-[max-content_1fr] gap-x-5 gap-y-1.5 text-sm">
-                    {recruiterFacts.map((f) => (
-                      <>
-                        <dt class="text-muted">{f.term}</dt>
-                        <dd>{f.detail}</dd>
-                      </>
-                    ))}
-                  </dl>
-                )}
-              </article>
-            ))
-          }
-        </div>
-      </RailEntry>
-
-      <RailEntry year={`${year(manager)} to now`} now meta={period(manager)} id="work">
-        <h2 class="display text-3xl">{manager.heading}</h2>
-        <p class="max-w-[62ch]">{manager.summary}</p>
-        <dl class="grid max-w-[62ch] border-t border-border">
-          {
-            gateway.generations.map((g) => (
-              <div class="grid gap-1 border-b border-border py-3 text-sm sm:grid-cols-[9rem_1fr] sm:gap-4">
-                <dt class:list={["font-semibold", g.current && "text-accent"]}>
-                  {g.name} <span class="block font-normal text-muted">{g.since}</span>
-                </dt>
-                <dd class="text-muted">{g.note}</dd>
-              </div>
-            ))
-          }
-        </dl>
-        <h3 class="display mt-2 text-xl">In the same period</h3>
-        <dl class="grid gap-1.5 text-sm">
-          {
-            samePeriod.map((item) => (
-              <div class="grid gap-1 sm:grid-cols-[9rem_1fr] sm:gap-3">
-                <dt class="text-muted">{item.term}</dt>
-                <dd>{item.detail}</dd>
-              </div>
-            ))
-          }
-        </dl>
-      </RailEntry>
-
-      <RailEntry year={year(senior)} meta={period(senior)} id="career">
-        <h2 class="display text-3xl">{senior.heading}</h2>
-        <p class="max-w-[62ch]">{senior.summary}</p>
-      </RailEntry>
-
-      <RailEntry year={year(engineer)} meta={period(engineer)}>
-        <h2 class="display text-3xl">{engineer.heading}</h2>
-        <p class="max-w-[62ch]">{engineer.summary}</p>
-      </RailEntry>
-
-      <RailEntry year={year(analyst)} meta={period(analyst)}>
-        <h2 class="display text-3xl">{analyst.heading}</h2>
-        <p class="max-w-[62ch]">{analyst.summary}</p>
-      </RailEntry>
-
-      <RailEntry year={year(support)} meta={period(support)}>
-        <h2 class="display text-3xl">{support.heading}</h2>
-        <p class="max-w-[62ch] text-muted">{support.summary}</p>
-      </RailEntry>
+      {
+        career.map((role, i) => (
+          <RailEntry year={year(role)} now={!role.end} meta={period(role)} id={i === 0 ? "work" : i === 1 ? "career" : undefined}>
+            <h2 class="display text-3xl">{role.heading}</h2>
+            {role.summary && <p class="max-w-[62ch]">{role.summary}</p>}
+            <ul class="grid max-w-[62ch] list-disc gap-1.5 pl-5 text-muted marker:text-border">
+              {role.highlights.map((h) => (
+                <li>{h}</li>
+              ))}
+            </ul>
+            {!role.end && (
+              <p class="text-sm">
+                <a href="/work" class={link}>The platforms in detail</a>
+              </p>
+            )}
+          </RailEntry>
+        ))
+      }
     </div>
 
     <!-- The closing entry keeps the rail's text column so the grid holds after the rail ends. -->
-    <div class="border-t border-foreground pl-[calc(4.2rem+1.25rem)] sm:pl-[calc(7rem+2.5rem)]">
+    <div class="border-t border-foreground pl-[calc(3rem+1.25rem)] sm:pl-[calc(7rem+2.5rem)]">
       <Cta title="If a platform has to work on Monday, let's talk." body="About the role, the stack, or how we went from LiteLLM to an in‑house gateway." />
     </div>
   </div>
 </Base>
-
-<style>
-  .persp:has(input[value="recruiters"]:checked) [data-panel="recruiters"],
-  .persp:has(input[value="leaders"]:checked) [data-panel="leaders"],
-  .persp:has(input[value="security"]:checked) [data-panel="security"] {
-    display: grid;
-  }
-</style>

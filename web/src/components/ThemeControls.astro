@@ -10,14 +10,16 @@ interface Props {
 const { theme, typeface, proPalette } = Astro.props;
 const segment = "inline-flex rounded-full border border-border bg-surface p-0.5";
 const option =
-  "inline-flex items-center rounded-full px-2.5 py-1.5 text-xs font-semibold text-muted transition-colors hover:text-foreground aria-pressed:bg-surface-2 aria-pressed:text-foreground aria-pressed:shadow-[inset_0_0_0_1px_var(--border)]";
+  "inline-flex items-center rounded-full px-3 py-2 text-xs font-semibold text-muted transition-[color,background-color] hover:text-foreground aria-pressed:bg-surface-2 aria-pressed:text-foreground aria-pressed:shadow-[inset_0_0_0_1px_var(--border)]";
 ---
 
 <div class="flex flex-wrap items-center gap-2" data-theme-controls data-pro-palette={proPalette}>
+  <span class="text-xs">Theme</span>
   <div role="group" aria-label="Theme" class={segment}>
     <button type="button" class={option} data-set-theme="brand" aria-pressed={theme === "brand"}>Brand</button>
     <button type="button" class={option} data-set-theme="pro" aria-pressed={theme === "pro"} title={PRO_PALETTES[proPalette]}>Pro</button>
   </div>
+  <span class="ml-2 text-xs">Type</span>
   <div role="group" aria-label="Display typeface" class={segment}>
     {
       (Object.keys(TYPEFACES) as (keyof typeof TYPEFACES)[]).map((key) => (

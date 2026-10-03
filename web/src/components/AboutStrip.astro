@@ -1,5 +1,5 @@
 ---
-import { bio, facts, resumeUrl } from "../data/profile";
+import { bio, resumeUrl } from "../data/profile";
 import { person } from "../lib/site";
 
 const btn = "rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold";
@@ -10,6 +10,8 @@ const btn = "rounded-full border border-border bg-surface px-4 py-2 text-sm font
        Below the fold, so lazy. -->
   <img
     src="/portrait.jpg"
+    srcset="/portrait-320.jpg 320w, /portrait.jpg 648w"
+    sizes="160px"
     width="648"
     height="648"
     alt={`Portrait of ${person.name}`}
@@ -18,19 +20,11 @@ const btn = "rounded-full border border-border bg-surface px-4 py-2 text-sm font
     class="aspect-square h-auto w-40 rounded-xl border border-border object-cover"
   />
   <div class="grid gap-4">
-    <h2 id="about-title" class="display text-3xl">About</h2>
+    <h2 id="about-title" class="display text-3xl sm:text-4xl">About</h2>
     <p class="max-w-2xl text-lg">{bio}</p>
-    <dl class="flex flex-wrap gap-6 text-sm text-muted">
-      {
-        facts.map((f) => (
-          <div>
-            <dt class="font-semibold text-foreground">{f.title}</dt>
-            <dd>{f.detail}</dd>
-          </div>
-        ))
-      }
-    </dl>
     <div class="flex flex-wrap gap-2.5">
-      <a href={resumeUrl} target="_blank" rel="noopener" class={btn}>Full résumé</a>    </div>
+      <a href="/about" class={btn}>More about me</a>
+      <a href={resumeUrl} target="_blank" rel="noopener" class={btn}>Read the résumé</a>
+    </div>
   </div>
 </section>

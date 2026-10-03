@@ -1,5 +1,9 @@
 ---
 import Base from "../layouts/Base.astro";
+import { publicRoutes } from "../lib/site";
+
+// Minimal chrome has no nav, so an old link that lands here gets the main pages as well as home.
+const pages = publicRoutes.filter((r) => r.nav);
 ---
 
 <Base title="Page not found" description="This page doesn't exist." chrome="minimal" noindex>
@@ -8,5 +12,14 @@ import Base from "../layouts/Base.astro";
     <h1 class="display text-4xl">That page doesn't exist.</h1>
     <p class="text-muted">The link may be old, or the address may have a typo.</p>
     <a href="/" class="mx-auto rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground">Go to the home page</a>
+    <nav aria-label="Pages" class="flex justify-center gap-4 text-sm text-muted">
+      {
+        pages.map((r) => (
+          <a href={r.path} class="inline-block py-2 hover:text-foreground">
+            {r.label}
+          </a>
+        ))
+      }
+    </nav>
   </section>
 </Base>

@@ -12,6 +12,13 @@ describe("Logo", () => {
     expect(html).not.toContain("logo-pro");
   });
 
+  it("is named for assistive tech unless it sits beside the name already", async () => {
+    expect(await render({})).toContain('aria-label="Matherly"');
+    const decorative = await render({ decorative: true });
+    expect(decorative).toContain('aria-hidden="true"');
+    expect(decorative).not.toContain("aria-label");
+  });
+
   it("keeps the brand raster beside the monogram at larger sizes (CSS picks one per theme)", async () => {
     const html = await render({ size: "size-24" });
     expect(html).toContain("m-logo.png");

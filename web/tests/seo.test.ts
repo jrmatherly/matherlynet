@@ -53,11 +53,11 @@ describe("robots.txt and sitemap.xml", () => {
   // Neither endpoint reads its context, so call the handlers directly.
   const get = async (endpoint: typeof robots | typeof sitemap) => endpoint.GET({} as Parameters<typeof endpoint.GET>[0]);
 
-  it("point crawlers at the sitemap on the public origin and away from private routes", async () => {
+  it("point crawlers at the sitemap on the public origin, away from the API, and let them read the account pages' noindex", async () => {
     const text = await (await get(robots)).text();
     expect(text).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`);
     expect(text).toContain("Disallow: /api/");
-    expect(text).toContain("Disallow: /sign-in");
+    expect(text).not.toContain("Disallow: /sign-in");
   });
 
   it("list public pages with absolute URLs", async () => {

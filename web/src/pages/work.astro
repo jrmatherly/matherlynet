@@ -1,18 +1,50 @@
 ---
+import Cta from "../components/Cta.astro";
 import WorkCard from "../components/WorkCard.astro";
-import { work } from "../data/profile";
+import { gateway, work } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
+
+// The platforms still running ("to now") are the AI platform; the finished ones, the infrastructure under it.
+const groups = [
+  { title: "AI platform", items: work.filter((w) => w.period.endsWith("now")) },
+  { title: "Infrastructure", items: work.filter((w) => !w.period.endsWith("now")) },
+];
 ---
 
 <Base title="Work" description="AI gateways, MCP, Kubernetes and enterprise infrastructure built and run by Jason Matherly." image={ogImage("work", Astro.locals.siteSettings)}>
-  <section class="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 sm:py-20">
+  <div class="mx-auto grid max-w-6xl gap-14 px-4 pt-16 sm:px-6 sm:pt-20">
     <header class="grid max-w-3xl gap-3">
       <h1 class="display text-4xl sm:text-5xl">Platforms that run in production, not in slides.</h1>
-      <p class="text-lg text-muted">The systems I've designed, built and operated at The Aaron's Company, from the AI platform down to the store network.</p>
+      <p class="text-lg text-muted">
+        The systems I've designed, built and operated at <a href="/changelog" class="text-foreground underline decoration-accent decoration-2 underline-offset-4">The Aaron's Company</a>, from the AI platform down to the store network.
+      </p>
     </header>
-    <div class="grid border-b border-border">
-      {work.map((item) => <WorkCard item={item} />)}
-    </div>
-  </section>
+    {
+      groups.map((g) => (
+        <section aria-label={g.title} class="grid gap-2">
+          <h2 class="display text-3xl sm:text-4xl">{g.title}</h2>
+          <div class="grid border-b border-border">
+            {g.items.map((item) => (
+              <WorkCard item={item}>
+                {item.title === gateway.title && (
+                  <dl class="mt-2 grid max-w-[62ch] border-t border-border">
+                    {gateway.generations.map((gen) => (
+                      <div class="grid gap-1 border-b border-border py-3 text-sm sm:grid-cols-[9rem_1fr] sm:gap-4">
+                        <dt class:list={["font-semibold", gen.current && "text-accent"]}>
+                          {gen.name} <span class="block font-normal text-muted">{gen.since}</span>
+                        </dt>
+                        <dd class="text-muted">{gen.note}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </WorkCard>
+            ))}
+          </div>
+        </section>
+      ))
+    }
+    <Cta title="If a platform has to work on Monday, let's talk." body="About the role, the stack, or how we went from LiteLLM to an in‑house gateway." />
+  </div>
 </Base>

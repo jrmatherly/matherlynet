@@ -30,7 +30,7 @@ export const gateway = {
     },
   ],
   results: [
-    { value: "15M to ~2 billion", label: "tokens a month, launch to today" },
+    { value: "15M to about 2 billion", label: "tokens a month, launch to today" },
     { value: "$100K+ to near zero", label: "projected yearly licensing" },
     { value: "Every call", label: "attributed, limited, logged" },
   ],
@@ -46,27 +46,13 @@ export const recruiterFacts = [
   { term: "Writes code in", detail: "Python, TypeScript, Go" },
 ];
 
-// The changelog's "In the same period" list under the gateway generations.
-export const samePeriod = [
-  { term: "MCP", detail: "Gateway, Registry and Portal: about 20 servers, each approved into the registry, behind OAuth." },
-  { term: "Agents", detail: "Internal chat platform and about 30 agents, 400 users across 14 teams." },
-  { term: "Kubernetes", detail: "On-prem Talos clusters with Flux, Argo CD, Cilium and External Secrets." },
-  { term: "Rollouts", detail: "Microsoft Copilot and Copilot Studio for 600 users; managed Claude Code and Claude Desktop, packaged via Intune, for 400; a weekly AI community of practice." },
-  { term: "Data center", detail: "Designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime." },
-  { term: "Team", detail: "Led BrandsMart USA's infrastructure team after the acquisition, 2023 to 2026: a data center and 12 sites." },
-];
-
+// The home page says "three corporate offices" in the intro and the recruiters' facts, so the bio leaves it out.
 export const bio =
-  "I started in The Aaron's Company's IT call center in 2006 and moved into infrastructure as a Network Analyst in 2009. Since then I've designed and built the store network, two data centers, three corporate offices and the Azure footprint. Now I work on how a 15,000-person company adopts AI without losing control of cost, data or risk.";
-export const facts = [
-  { title: "Atlanta, GA", detail: "remote since 2020" },
-  { title: "Kennesaw State", detail: "B.S. Computer Science" },
-  { title: "Spoons of Salt", detail: "volunteer IT since 2023" },
-];
+  "I started in The Aaron's Company's IT call center in 2006 and moved into infrastructure as a Network Analyst in 2009. Since then I've designed and built the store network, two data centers and the Azure footprint. Now I work on how a 15,000-person company adopts AI without losing control of cost, data or risk.";
 
 export interface Perspective {
-  // Each id has a selector in the <style> of Perspectives.astro and changelog.astro: a new one needs a line in
-  // both, or its panel never shows.
+  // Each id has a selector in the <style> of Perspectives.astro: a new one needs a line there, or its panel never
+  // shows.
   id: "recruiters" | "leaders" | "security";
   label: string;
   headline: string;
@@ -171,12 +157,13 @@ export interface Role {
   start: string;
   end?: string;
   highlights: string[];
-  // Changelog entry: a heading and a short paragraph.
+  // Changelog entry: a heading over the highlights. Only the current role adds a paragraph: its heading (the
+  // gateway) needs one, and every other role's highlights already say what a paragraph would.
   heading: string;
-  summary: string;
+  summary?: string;
 }
 
-export const employer = { name: person.worksFor, location: "Atlanta, GA (remote since 2020)", since: "Nov 2006" };
+export const employer = { name: person.worksFor };
 
 export const career: Role[] = [
   {
@@ -206,8 +193,6 @@ export const career: Role[] = [
       "Led SD-WAN to every store (2,300+ at the time); had Always-On VPN ready the day the company went remote (about 1,200 users)",
     ],
     heading: "A new data center, three offices, and SD-WAN to every store",
-    summary:
-      "Designed and built the primary data center and moved 1,400+ VMs and hundreds of applications into it with zero unplanned downtime. Fitted out three corporate offices between 2015 and 2018. Established the Azure tenant and ExpressRoute. Rolled SD-WAN to 2,300+ stores, and had Always-On VPN ready the day the company went remote.",
   },
   {
     title: "Network Engineer",
@@ -218,8 +203,6 @@ export const career: Role[] = [
       "Led the firewall migrations (corporate offices and data centers to Palo Alto, stores from SonicWALL to Meraki) and the Secret Server PAM rollout, vaulting every organization service account and elevated-credential account with rotation",
     ],
     heading: "One addressing plan for 2,300 stores",
-    summary:
-      "Designed a standard IP plan and re-addressed every store network. Moved the offices and data centers to Palo Alto and the stores from SonicWALL to Meraki, and vaulted every service and elevated-credential account in Secret Server.",
   },
   {
     title: "Network Analyst",
@@ -227,8 +210,6 @@ export const career: Role[] = [
     end: "Aug 2012",
     highlights: ["Supported network connectivity and deployed SonicWALL firewalls for 2,300+ stores"],
     heading: "Started where the packets start",
-    summary:
-      "Supported network connectivity and deployed SonicWALL firewalls for 2,300+ stores, while finishing a Computer Science degree at Kennesaw State (Southern Polytechnic), 2008 to 2012.",
   },
   {
     title: "Call Center & Quality Assurance",
@@ -236,7 +217,6 @@ export const career: Role[] = [
     end: "Nov 2009",
     highlights: ["Started in the IT call center and quality assurance before moving into infrastructure"],
     heading: "First, the help desk",
-    summary: "Started in the IT call center, supporting the company's stores and employees, and in quality assurance, then moved into infrastructure.",
   },
 ];
 

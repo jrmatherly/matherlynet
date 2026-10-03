@@ -23,6 +23,9 @@ const ready = Promise.all([
 );
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+// A plain hyphen is a line-break opportunity, and the card font has no non-breaking hyphen (og.ts swaps it out), so
+// hyphenated words ("15,000-person") are kept on one line here instead.
+const keepHyphenated = (html: string) => html.replace(/\S+-\S+/g, (word) => `<span style="white-space:nowrap">${word}</span>`);
 
 export const GET: APIRoute = async ({ params, url }) => {
   const slug = params.slug ?? "";
@@ -45,7 +48,7 @@ export const GET: APIRoute = async ({ params, url }) => {
     <span style="font-size:30px;font-weight:700;letter-spacing:-0.02em">${esc(person.name)}</span>
   </div>
   <div style="display:flex;flex-direction:column;gap:28px;border-left:8px solid ${c.accent};padding-left:40px">
-    <div style="font-size:68px;font-weight:800;line-height:1.04;letter-spacing:-0.035em">${esc(card.title)}</div>
+    <div style="font-size:68px;font-weight:800;line-height:1.04;letter-spacing:-0.035em">${keepHyphenated(esc(card.title))}</div>
     <div style="font-size:30px;color:${c.muted}">${esc(card.subtitle)}</div>
   </div>
   <div style="display:flex;justify-content:flex-end;font-family:'Geist Mono';font-size:24px;color:${c.muted}">${esc(siteOrigin().host)}</div>
