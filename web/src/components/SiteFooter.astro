@@ -6,8 +6,6 @@ const year = new Date().getFullYear();
 const label: Record<string, string> = { "www.linkedin.com": "LinkedIn" };
 const { user, theme, siteSettings } = Astro.locals;
 const pages = publicRoutes.filter((r) => r.nav);
-// The feed is empty until /writing joins the nav (its first post), so its link waits for the same flag.
-const feed = pages.some((r) => r.path === "/writing");
 const quiet = "inline-block py-2 hover:text-foreground";
 ---
 
@@ -34,7 +32,7 @@ const quiet = "inline-block py-2 hover:text-foreground";
               </a>
             ))
           }
-          {feed && <a href="/rss.xml" class={quiet}>RSS</a>}
+          <a href="/rss.xml" class={quiet}>RSS</a>
           {user ? <a href="/account" class={quiet}>Account</a> : <a href="/sign-in" class={quiet}>Sign in</a>}
         </nav>
       </div>

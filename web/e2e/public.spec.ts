@@ -3,13 +3,23 @@ import { expect, test } from "@playwright/test";
 test("public pages render and the nav links work", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/Jason Matherly/);
-  for (const label of ["Work", "Changelog", "Playground", "About"]) {
+  for (const label of ["Work", "Changelog", "Playground", "Writing", "About"]) {
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label }).click();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
   }
-  // Writing stays out of the nav until the first post.
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Writing" })).toHaveCount(0);
+});
+
+test("the nav fits one row on a 360px phone", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/");
+  await page.evaluate(() => document.fonts.ready);
+  const tops = await page
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link")
+    .evaluateAll((links) => links.map((a) => a.getBoundingClientRect().top));
+  expect(new Set(tops).size).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
 });
 
 test("each perspective's panel shows when it is picked", async ({ page }) => {
