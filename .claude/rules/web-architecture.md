@@ -39,6 +39,10 @@ web/
   src/lib/og.ts        share-card copy (ogCards), cardPalette(), ogImage(slug, site) with a ?v=<palette> cache key
   src/lib/theme-cookie.ts  browser helpers for ModeToggle and ThemeControls: remember() (one-year visitor theme
                        cookie) and syncThemeColor() (rebuilds the theme-color tags after a switch)
+  src/lib/playground.ts  the playground's simulated gateway (pure: parsers, SIM, send(), scenarios, replay(),
+                       scenarioCss(), and the row wording shared by SSR and the page script)
+  src/data/gateway.ts  gates, callers, targets, guardrail categories, audit retention: shared by GatewayPath and the
+                       playground
   src/data/profile.ts  all résumé-derived copy (headline, intro, availability, contact, gateway case study,
                        perspectives, recruiterFacts, work, career, bio, skills); edit facts here
   src/content/writing/  posts: .md, or .mdx to embed a component (schema in src/content.config.ts; `draft: true`
@@ -61,10 +65,13 @@ web/
                         `decorative` hides it beside the name), Telemetry (Umami tag + lazy @sentry/browser, both from
                         site settings); home: GatewayPath (SVG request path), Perspectives (no-JS radio switcher),
                         CaseStudy, PlatformList, AboutStrip, Cta, Availability (renders only when set);
-                        changelog: RailEntry; work: WorkCard (a row, slot for extra detail)
+                        changelog: RailEntry; work: WorkCard (a row, slot for extra detail);
+                        playground: GatewayConsole (chips, panels, form, page script), TraceRow (one request's gates;
+                        `entry={null}` is the script's template), FlowTable (the audit log table)
   src/pages/           one job each: index (overview, perspectives), changelog (timeline: recruiter facts, roles with
                         highlights), work (platforms, gateway generations), about (person: skills, education,
-                        volunteering), writing/ (+[slug]), 404 (links the nav pages); robots/sitemap/rss per request
+                        volunteering), playground (the gateway simulation, `?try=<scenario>`), writing/ (+[slug]),
+                        404 (links the nav pages); robots/sitemap/rss per request
   src/pages/ (account)  sign-in, sign-up, forgot/reset-password, account (sessions), admin (role-gated, 404
                        otherwise); all noindex, AuthCard shell, form classes and whileBusy() in src/lib/form.ts
   src/pages/og/[slug].png.ts  share cards rendered on demand by Takumi (cards in src/lib/og.ts, colors from
