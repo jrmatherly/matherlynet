@@ -211,7 +211,7 @@ function normalise(text: PromptText): string {
 const SUMMARY_MAX = 60;
 const summarise = (text: PromptText) => {
   let shown: string = text;
-  for (const { test, accept } of detectors) shown = shown.replace(test,(m) => (!accept || accept(m) ? mask(m) : m));
+  for (const { test, accept } of detectors) shown = shown.replace(test, (m) => (!accept || accept(m) ? mask(m) : m));
   return shown.length > SUMMARY_MAX ? `${shown.slice(0, SUMMARY_MAX - 1)}…` : shown;
 };
 

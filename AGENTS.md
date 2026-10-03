@@ -80,6 +80,8 @@ out/                   aspire publish output (gitignored)
 - Size images with classes (`w-28 h-auto aspect-square`), never a `style` attribute (string or object); give `<img>`
   its real `width`/`height` for layout shift and `h-auto` so they don't stretch it. SVG figures take color from
   `fill-*`/`stroke-*` token utilities, not `fill="#…"` or `style`.
+- Shared Tailwind class strings live in `web/src/lib/form.ts` (`inlineLink` for prose links, `choice` for radio-chip
+  labels, `badge` for small tag pills); reuse them rather than copying the classes.
 
 <!-- END AUTO-MANAGED -->
 
