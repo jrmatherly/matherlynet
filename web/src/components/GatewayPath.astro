@@ -28,10 +28,11 @@ const MCP = {
   y: 222,
   from: 170,
   to: 318,
-  gates: MCP_GATES.map((label, i) => ({ label, x: [212, 276][i] })) as Gate[],
+  gates: MCP_GATES.map((label, i) => ({ label, x: 212 + 64 * i })) as Gate[],
 };
-const GUARDRAILS = AI.gates[2].x;
-const CACHE = AI.gates[3].x;
+const at = (label: string) => AI.gates.find((g) => g.label === label)!.x;
+const GUARDRAILS = at("Guardrails");
+const CACHE = at("Cache");
 const CACHE_HOLD = 0.4; // seconds a cache hit rests on the gate before the answer heads back
 
 const callers = CALLERS.map((label, i) => ({ label, y: 44 + 48 * i }));
