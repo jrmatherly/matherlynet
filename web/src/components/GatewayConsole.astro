@@ -205,7 +205,6 @@ const panel = "hidden min-w-0 gap-3";
       pill.hidden = false;
     };
 
-    // One step at a time: each pill lands as its gate decides, then the rest read "not reached".
     const paint = async (entry: AuditEntry, row: HTMLElement) => {
       const gates = GATES[entry.lane];
       const pills = [...row.querySelectorAll<HTMLElement>("[data-step]")];

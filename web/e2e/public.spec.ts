@@ -29,7 +29,7 @@ test("the playground refuses personal data and logs every request", async ({ pag
   await page.getByRole("textbox", { name: "Your request" }).fill("my email is a@b.co");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.locator("[data-yours] li", { hasText: "personal data" }).first()).toBeVisible();
-  // The log row lands after the trace finishes painting; the masked email marks it as this request's.
+  // The masked email marks the newest log row as this request's, not a recorded one.
   const rows = page.locator("[data-log] tr");
   await expect(rows.first()).toContainText("a@••co");
   await expect(rows.first()).toContainText("refused");
