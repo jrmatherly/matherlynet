@@ -305,12 +305,11 @@ cannot take the connections sign-in uses. A call always ends inside the 7 s shut
 
 ### Check streaming through Cloudflare before announcing it
 
-Cloudflare does not buffer the stream. On 2026-10-04, through the tunnel, a call's `data:` lines arrived one at a
-time, about 17 ms apart, and the response was not compressed when the request sent a browser's `Accept-Encoding`.
-Check again after a Cloudflare change that touches responses (a compression rule, a Worker, a new tunnel).
-
-One behaviour is not verified: cloudflared may keep the origin connection open after the browser disconnects. The
-6 s deadline bounds it. Both checks use the same call:
+Both behaviours were checked through the tunnel on 2026-10-04. Cloudflare does not buffer the stream: a call's
+`data:` lines arrived one at a time, about 17 ms apart, and the response was not compressed when the request sent a
+browser's `Accept-Encoding`. A disconnect reaches web: a call hung up 0.6 s in closed its row as `cut` / `left`
+0.48 s after it started. The 6 s deadline bounds both if that changes. Check again after a Cloudflare change that
+touches responses or the tunnel (a compression rule, a Worker, a new tunnel):
 
 ```sh
 curl -N https://matherly.net/api/playground -H 'Origin: https://matherly.net' \
