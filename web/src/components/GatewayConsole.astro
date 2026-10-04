@@ -39,7 +39,8 @@ const simulated = [
   ),
 ];
 
-// Rendered from LIVE as "Simulated values" is from SIM, so the page cannot state a number the server does not use.
+// The numbers come from LIVE, as "Simulated values" reads SIM. The time windows ("every day", "an hour", "a day",
+// "midnight UTC") are written by hand to match the limiter's SQL and visitorKey() in playground-io.ts.
 const s = (ms: number) => ms / 1000;
 const liveValues = [
   {
@@ -71,10 +72,9 @@ const liveValues = [
   },
 ];
 
-// The console says its mode in data-mode, not data-live: TraceRow already puts data-live on script-cloned rows, and
-// E2E selects on it.
 const chip = `${choice} px-3.5 py-2.5`;
 const panel = "hidden min-w-0 gap-3";
+// data-mode below, not data-live: TraceRow already puts data-live on script-cloned rows, and E2E selects on it.
 ---
 
 <div data-console data-mode={live ? "live" : undefined} class="grid min-w-0 gap-6">
@@ -156,7 +156,7 @@ const panel = "hidden min-w-0 gap-3";
           <ol class="grid gap-2" aria-live="polite" data-rows data-yours></ol>
           {
             /* Its own live region: the rows list would announce every token. aria-busy holds the announcement until
-               the answer is whole. The script appends Text nodes only, so model output is never parsed as HTML. */
+               the answer is whole. */
             live && (
               <div class="grid gap-1 rounded-xl border border-border bg-surface p-3" data-answer-box hidden>
                 <p class="text-xs font-semibold tracking-wide text-muted uppercase">Answer from {LIVE.model}, unfiltered</p>
@@ -360,7 +360,7 @@ const panel = "hidden min-w-0 gap-3";
       void paint(result.entry, traceRow(result.entry, list));
     };
 
-    // Pills fill as the server's steps arrive, at the server's pace. The answer goes in as Text nodes only.
+    // Pills fill as the server's steps arrive, at the server's pace.
     const liveSend = async (caller: Caller, text: PromptText) => {
       const head = { at: performance.now(), provenance: "you", from: caller, summary: summarise(text), lane: "model" } as const;
       const logLine = logRow(head);
@@ -379,11 +379,18 @@ const panel = "hidden min-w-0 gap-3";
             if (event.type === "step") fill(pills[steps.push(event.step) - 1], stepView(event.step, "live"));
             else if (event.type === "text") {
               answerBox.hidden = false;
+              // append() adds a string as a Text node, so model output is never parsed as HTML.
               answer.append(event.text);
-            } else end = event;
+            } else if (event.type === "end") end = event;
           }
-      } catch {
-        // A dropped connection or an unreadable frame: the row ends as cut below.
+      } catch (error) {
+        // A dropped connection or an unreadable frame: the row ends as cut below. Logged, since the same catch would
+        // hide a rendering bug.
+        console.error("playground: the live stream failed", error);
+      }
+      // Not one event of ours: the request never left, or something else answered it (a proxy's page).
+      if (!end && !steps.length && !message.textContent) {
+        message.textContent = "The gateway could not be reached. Check your connection and try again.";
       }
       const entry: LiveEntry = {
         ...head,

@@ -97,6 +97,8 @@ jobs:
           aspire start --non-interactive --nologo
           aspire wait web --non-interactive --nologo
           curl -fsS --retry 10 --retry-delay 3 --retry-all-errors http://localhost:4321/api/auth/ok
+          # The model-on tests skip themselves on a page that isn't live, so a stack without the URL would pass.
+          curl -fsS http://localhost:4321/playground | grep 'data-mode="live"' > /dev/null
 
       # Only live.spec.ts depends on the model; the other specs already ran above.
       - name: 🎭 Run the playground E2E with the model on

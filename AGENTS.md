@@ -23,13 +23,13 @@ pushes it, with a Helm chart pinned to it, to `ghcr.io/jrmatherly/matherlynet`.
 | Lint Markdown | `markdownlint-cli2` (or `pre-commit run --all-files`) |
 | Check / lint / test / build the web app | `cd web && pnpm check` (astro check), `pnpm lint`, `pnpm test`, `pnpm build` |
 | Smoke test (stack running) | `curl -s http://localhost:4321/api/auth/ok` returns `{"ok":true}` |
-| E2E (stack running) | `cd web && pnpm e2e` (Playwright, Chromium; finds Mailpit via `aspire describe`) |
+| E2E (stack running) | `cd web && pnpm e2e` (Playwright, Chromium; finds Mailpit and the app database via `aspire describe`, or takes `MAILPIT_URL` and `APPDB_URI`) |
 | New auth schema / migration | `cd web && APPDB_URI=postgresql://unused pnpm db:generate` |
 | Deployment artifacts | `aspire publish -o out/compose`; `DEPLOY_TARGET=k8s aspire publish -o out/k8s` |
 | Compose web host port | `Web__HostPort=none` (default, cloudflared on the compose network) / `loopback` / `public` |
 | Enable Umami | `Umami__Enabled=true aspire start` (`Umami__Public=true` at publish time adds a Compose host port) |
 | Change Umami's admin password | `UMAMI_URL=<url> UMAMI_NEW_PASSWORD=<8+ chars> node scripts/umami-set-password.mjs` |
-| Live playground with a fake model | `node web/tests/fake-llama.ts 18080`, `aspire secret set Parameters:playground-model-url http://127.0.0.1:18080`, then `aspire stop && aspire start`. To turn it off, `aspire secret delete Parameters:playground-model-url` and restart. Each model-on E2E run seats about 15 calls, and the 300-a-day site cap persists in the local database, so more than about 20 runs in a day make the live tests fail with "site daily" |
+| Live playground with a fake model | `node web/tests/fake-llama.ts 18080`, `aspire secret set Parameters:playground-model-url http://127.0.0.1:18080`, then `aspire stop && aspire start`. To turn it off, `aspire secret delete Parameters:playground-model-url` and restart. A model-on E2E run reads and seeds `playground_call` through the stack's `APPDB_URI` and, when it ends, deletes every row created while it ran (any other live call on that stack included), so runs don't use up the 300-a-day site cap. A run killed midway leaves its rows: inside the site-daily test, 300 seeded seated rows that refuse every local live call until the next model-on run deletes them or you run `delete from playground_call where visitor = 'e2e-seed'` |
 | Push images (CI does this) | `aspire do push` after `docker login ghcr.io` |
 
 <!-- END AUTO-MANAGED -->
@@ -46,7 +46,8 @@ web/                   Astro SSR app (server.mjs entry, otel.mjs, migrate.mjs, s
                        attests the web image; a `chart` job pushes the Helm chart pinned to it, and a separate
                        no-permission job uploads Sentry source maps from the image
                        web-checks.yml: astro check, lint, test, build on PRs (web/** only) and when called
-                       e2e.yml: Playwright on `aspire start` + `aspire publish` check; PRs (web/** + AppHost), called
+                       e2e.yml: Playwright on `aspire start` + `aspire publish` check, then `live.spec.ts` again on
+                       a stack restarted with the fake model; PRs (web/** + AppHost), called
 .github/pull_request_template.md  PR body: summary, verification evidence, deployment impact, docs
 .github/renovate.json5 Renovate version updates: weekly, 7-day release age, exact pins, the version caps, and
                        pins outside package.json (Sentry CLI, Aspire packages and CLI); Dependabot security
@@ -145,8 +146,9 @@ out/                   aspire publish output (gitignored)
   page POSTs the visitor's own request to `/api/playground`, and the server checks it, sends it to a self-hosted
   model and streams the answer back. The scenario chips and the no-script replay stay simulated in both modes.
   `lib/playground.ts` is pure and shared by the SSR replay, the page script, the server and the tests; every invented
-  value lives in its `SIM` and is labelled demo or example on the page, and every real value of the live path lives
-  in its `LIVE`. `lib/playground-io.ts` is server-only (the `playground_call` row, the model fetch, the stream). The
+  value lives in its `SIM` and is labelled demo or example on the page. The live path's real values live in its
+  `LIVE`, except `PROMPT_MAX` beside it, and `BODY_MAX`, `BODY_MS`, `IN_FLIGHT_MAX` and the SQL's hour and day windows
+  in `lib/playground-io.ts`. That file is server-only (the `playground_call` row, the model fetch, the stream). The
   page script must not import it. Prompt text must never be bound to a query or logged (a failed query's error
   quotes its parameters).
   `data/gateway.ts` is the one list of gates, callers and targets that the home figure and the playground share.
@@ -164,10 +166,19 @@ out/                   aspire publish output (gitignored)
 - Astro sessions are disabled (`session: false` in `web/astro.config.mjs`, Astro 7.2+): the Node adapter's default
   filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
-- `web/src/db/index.ts` builds the `pg.Pool` itself and keeps its `pool.on("error")` listener: without it, a Postgres
-  restart or failover drops idle connections and the unhandled `error` event kills the web process. It also sets
-  connect (5 s), statement (10 s) and query (15 s) timeouts: node-postgres has none, and a stopped Postgres behind a
-  proxy that accepts TCP (Aspire's, locally) hung every request.
+- `astro check` and `astro sync` keep their Vite cache in `node_modules/.vite-sync` (check runs the config hook as
+  `sync`) and `astro build` in `node_modules/.vite-build` (an inline integration in `web/astro.config.mjs`). On the
+  default directory, which `astro dev` uses, a check run under a
+  running stack replaced the dev server's optimized client deps: page scripts answered `504 Outdated Optimize Dep`
+  and E2E form tests failed until `aspire resource web restart`.
+- `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
+  Postgres restart or failover drops idle connections and the unhandled `error` event kills the web process. Each
+  pool also puts an `error` listener on every client it connects: pg-pool removes its own from a client taken with
+  `pool.connect()`, and a socket that drops then would be an uncaught exception. It also
+  sets connect (5 s), statement (10 s) and query (15 s) timeouts: node-postgres has none, and a stopped Postgres behind
+  a proxy that accepts TCP (Aspire's, locally) hung every request. The live playground queries on its own pool of 6
+  connections (`playgroundDb`), one per call a process admits. A call that stops waiting for a query leaves the query
+  holding its connection, so on the pool auth uses a flood of calls could take the connections sign-in needs.
 - `security.allowedDomains` (`matherly.net`, https) in `web/astro.config.mjs` makes Astro trust `X-Forwarded-Proto`
   behind Cloudflare; without it form POSTs fail the origin check with 403. Don't use `Astro.clientAddress`: a client
   can spoof it through `X-Forwarded-Host`/`X-Forwarded-For`.
@@ -239,15 +250,22 @@ out/                   aspire publish output (gitignored)
 - Database: never edit migrations in `web/drizzle/` by hand. Change the better-auth config or
   `web/src/db/`, then run `pnpm db:generate` and commit the new SQL. `web/migrate.mjs` applies
   migrations on every start under a Postgres advisory lock.
-- `playground_call` (`web/src/db/schema.ts`) holds one row per live /playground call, written before any check and
-  closed with one decision (`forwarded`, `refused`, `cut`, `lost`). The same rows are the rate limiter and the seat
-  counter, so limits hold across replicas. A seat is claimed under a Postgres advisory lock, so exactly three are
-  seated at once. `routed_at` is never cleared: a row with it held a seat and counts toward the site's day. The table
-  never stores prompt text, answer text or an IP, only a visitor key, the caller, lengths, token counts, timestamps
-  and enum reasons. `visitorKey()` in `playground-io.ts` is the only code that reads `cf-connecting-ip`, and keys an
-  IPv6 visitor on their /64. The route takes an 8 KB form body. Each process holds at most 6 calls (`IN_FLIGHT_MAX`,
-  under the pool's 10 connections), and more answer 503. A model 400 is "model error" and is reported, like any
-  status but 503.
+- `playground_call` (`web/src/db/schema.ts`) holds one row per accepted live /playground call, written before any
+  gate and closed with one decision (`forwarded`, `refused`, `cut`, `lost`). No row is written for Astro's 403,
+  `parseCall()`'s 400, 408, 413 or 415, the per-process 503, or a failed insert. If the count after the insert fails,
+  `open()` returns the row's id with no load, so the call is refused at Rate limits ("unavailable") and `run()`
+  closes it like any other. The same rows are the rate limiter and the seat counter, so limits hold across replicas.
+  A seat is claimed under a Postgres advisory lock, so at most three are seated at once. `liveIo.claim` takes a pool
+  client and releases it itself rather than call `db.transaction()`: drizzle-orm 0.45.3 leaks the client when BEGIN
+  fails. `routed_at` is never cleared: a row with it held a seat and counts toward the site's day. The table never
+  stores prompt text, answer text or an IP, only a visitor key, the caller, lengths, token counts, timestamps and
+  enum reasons. `visitorKey()` in `playground-io.ts` is the only playground code that reads `cf-connecting-ip`
+  (`lib/auth.ts` gives better-auth the same header), and keys an IPv6 visitor on their /64. The route takes an 8 KB
+  form body. Each process holds at most 6 calls (`IN_FLIGHT_MAX`), and more answer 503. The playground queries on
+  its own pg pool (`playgroundDb` in `web/src/db/index.ts`), sized to that number. A model failure is reported to
+  the log and Sentry as a code: a connection failure (DNS, TLS, refused), any status but 503 (a 400 is "model
+  error"; a 2xx with no body too), an unreadable frame, or a 200 with no usable frame. A stream that drops
+  mid-answer is reported as `playground: stream failed (<code>)`. A 503 and an abort are not reported.
 - Dependencies: exact versions, latest stable. npm (`~/.npmrc`) and pnpm both enforce a minimum release
   age: pin a newer version explicitly (pnpm records `minimumReleaseAgeExclude`; npm needs
   `--min-release-age-exclude=<package-name>`). Known caps: `vscode-jsonrpc` 8.x (Aspire's generated

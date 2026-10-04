@@ -25,9 +25,9 @@ export const siteSettings = pgTable(
   (table) => [check("site_settings_single_row", sql`${table.id} = 1`)],
 );
 
-// One row per live /playground call (lib/playground-io.ts): the audit record, the limiter's counter and the seat. No
-// free text: the prompt and the answer are never stored, only their lengths. All times are Postgres's now(), so
-// replica clocks never enter a comparison.
+// One row per accepted live /playground call (lib/playground-io.ts): the audit record, the limiter's counter and the
+// seat. No free text: the prompt and the answer are never stored, only their lengths. All times are Postgres's now(),
+// so replica clocks never enter a comparison.
 export const playgroundCall = pgTable(
   "playground_call",
   {
@@ -53,7 +53,7 @@ export const playgroundCall = pgTable(
     check("playground_call_closed", sql`(${t.endedAt} is null) = (${t.decision} is null)`),
     check("playground_call_decision", sql`${t.decision} in ('forwarded', 'refused', 'cut', 'lost')`),
     index("playground_call_started_at").on(t.startedAt),
-    // The sweep reads open rows only; this keeps it off the 30-day table.
+    // The sweep reads open rows only; this keeps it off the closed rows.
     index("playground_call_open").on(t.startedAt).where(sql`${t.endedAt} is null`),
     // The per-visitor counts read one visitor's last hour.
     index("playground_call_visitor").on(t.visitor, t.startedAt),

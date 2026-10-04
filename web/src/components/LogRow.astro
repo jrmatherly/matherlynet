@@ -10,7 +10,7 @@ interface Props {
 const { row, live = false } = Astro.props;
 const cell = "px-3 py-2 align-top";
 const base = "text-success group-data-[v=cached]:text-info group-data-[v=refused]:text-danger";
-// Only a live page has cut and pending rows; the off page's HTML must not change, so it keeps the base classes.
+// The off page never renders a cut or pending row, so it keeps the base classes.
 const glyph = live ? `${base} group-data-[v=cut]:text-muted group-data-[v=pending]:text-muted` : base;
 ---
 
