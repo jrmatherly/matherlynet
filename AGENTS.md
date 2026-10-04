@@ -175,6 +175,9 @@ out/                   aspire publish output (gitignored)
   default directory, which `astro dev` uses, a check run under a
   running stack replaced the dev server's optimized client deps: page scripts answered `504 Outdated Optimize Dep`
   and E2E form tests failed until `aspire resource web restart`.
+- `web/e2e/global-setup.ts` opens Vite's HMR socket from Node and takes the `full-reload` Vite 8.3.1 keeps for the first
+  client: Astro 7.3.5 sends it when a dev start rewrites its content store (every `aspire start`, since the port is in
+  the store's config digest). A first test's browser would otherwise take it mid-test and reload the page.
 - `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
   Postgres restart or failover drops idle connections and the unhandled `error` event kills the web process. Each
   pool also puts an `error` listener on every client it connects: pg-pool removes its own from a client taken with
