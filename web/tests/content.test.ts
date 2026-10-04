@@ -27,6 +27,8 @@ describe("Perspectives", () => {
   });
 });
 
+// Which posts the feeds carry is checked in e2e/public.spec.ts: on a clean checkout Vitest sees an empty `writing`
+// collection (the content store only exists once a dev server or build has synced it).
 describe("feeds", () => {
   const get = async (endpoint: typeof rss | typeof sitemap) => endpoint.GET({} as Parameters<typeof endpoint.GET>[0]);
 
@@ -38,8 +40,6 @@ describe("feeds", () => {
     expect(xml).toContain(`<link>${ORIGIN}/writing</link>`);
   });
 
-  // Which posts the feeds carry is checked in e2e/public.spec.ts: on a clean checkout Vitest sees an empty
-  // `writing` collection (the content store only exists once a dev server or build has synced it).
   it("keeps column alignment out of post tables, which renders style attributes the CSP blocks", () => {
     const dir = new URL("../src/content/writing/", import.meta.url);
     for (const file of readdirSync(dir)) {

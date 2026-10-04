@@ -3,8 +3,9 @@ name: 📦 Publish images
 on:
   push:
     branches: [main]
-    # Build only when the image or the chart can change: the web app, the AppHost that generates the
-    # Dockerfile and the Helm chart, its dependencies/config, or this workflow. Docs and agent config don't.
+    # Build only when the image, the chart or the checks that gate them can change: the web app, the AppHost that
+    # generates the Dockerfile and the Helm chart, its dependencies/config, the chart check, or this workflow.
+    # Docs and agent config don't.
     # (paths-ignore can't take `!` exceptions, so this is an include list.)
     paths:
       - 'web/**'
@@ -108,7 +109,7 @@ jobs:
           name: helm-chart
           path: out/k8s
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7 # how long the chart job can be re-run by itself
 
       # Images go to ghcr.io/jrmatherly/matherlynet/<resource>:<commit sha> (see apphost.mts).
       - name: 🐳 Build & push images
@@ -161,11 +162,21 @@ jobs:
           CHART_VERSION: 0.${{ github.run_number }}.${{ github.run_attempt }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          [[ "$WEB_IMAGE" =~ @sha256:[0-9a-f]{64}$ ]] || { echo "::error::No image digest to pin (got '$WEB_IMAGE')"; exit 1; }
+          fail() { echo "::error::$*"; exit 1; }
+          package="$RUNNER_TEMP/matherlynet-$CHART_VERSION.tgz"
+          registry="oci://ghcr.io/$GITHUB_REPOSITORY/charts"
+          [[ "$WEB_IMAGE" =~ ^ghcr\.io/[^[:space:]@]+/web@sha256:[0-9a-f]{64}$ ]] || fail "No image digest to pin (got '$WEB_IMAGE')"
           yq -i '.parameters.web.web_image = strenv(WEB_IMAGE)' chart/values.yaml
           helm package chart --version "$CHART_VERSION" --app-version "$GITHUB_SHA" --destination "$RUNNER_TEMP"
+          # The packaged chart, not the directory: yq adds a key the templates don't read without complaint, and
+          # check-chart.sh names the value path separately from the line above.
+          helm template "$package" > "$RUNNER_TEMP/rendered.yaml"
+          grep -qF "image: \"$WEB_IMAGE\"" "$RUNNER_TEMP/rendered.yaml" || fail "The packaged chart does not deploy $WEB_IMAGE"
           echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
-          helm push "$RUNNER_TEMP/matherlynet-$CHART_VERSION.tgz" "oci://ghcr.io/$GITHUB_REPOSITORY/charts"
+          # helm push replaces an existing tag without complaint; a cluster may already run that version.
+          if helm show chart "$registry/matherlynet" --version "$CHART_VERSION" > /dev/null 2>&1; then fail "Chart $CHART_VERSION already exists"; fi
+          helm push "$package" "$registry"
+          echo "Chart \`$CHART_VERSION\` pins \`$WEB_IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
 
   # Separate job: the third-party CLI and SENTRY_AUTH_TOKEN never share a runner with packages: write or
   # id-token: write. No token scopes at all: the web image package is public, so the pull is anonymous.

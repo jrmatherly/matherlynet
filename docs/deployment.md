@@ -16,7 +16,8 @@ IMAGE_TAG=<commit sha> aspire publish -o out/compose          # Docker Compose
 IMAGE_TAG=<commit sha> DEPLOY_TARGET=k8s aspire publish -o out/k8s   # Helm chart (CI also pushes one: section 7)
 ```
 
-`IMAGE_TAG` also becomes `SENTRY_RELEASE`, so server and browser errors land in that commit's Sentry release.
+At publish time `IMAGE_TAG` only sets `SENTRY_RELEASE`, so server and browser errors land in that commit's Sentry
+release; the image itself is `WEB_IMAGE` (section 2) or `parameters.web.web_image` (section 7).
 Images are tagged only with commit SHAs; there is no `latest`.
 
 Compose settings, as environment variables (or `appsettings.json` keys) at publish time. The two Umami switches
@@ -136,14 +137,16 @@ server/browser switches are runtime settings on `/admin` (an https DSN on a publ
 
 CI pushes the chart with each image from `main`, to `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`.
 Chart versions are `0.<workflow run number>.<run attempt>`, `appVersion` is the commit SHA, and
-`parameters.web.web_image` is already pinned to that commit's image by digest, so a chart version names one image:
+`parameters.web.web_image` is already pinned to that commit's image by digest, so a chart version names one image.
+The `chart` job's run summary prints the version and the image it pins:
 
 ```sh
 helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet --version 0.<run>.<attempt>
 ```
 
-The chart deploys web, Postgres and the Aspire dashboard (an in-cluster Service, the OTLP receiver and trace UI).
-The chart package starts private on GHCR, like any new package: make it public once (README, Deploy) or give the
+The chart deploys web, Postgres and the Aspire dashboard (OTLP receiver and trace UI), each behind a ClusterIP
+Service only (`web-service:4321`, `pg-service:5432`, `k8s-dashboard-service:18888`); routing to web is yours to
+add. The chart package starts private on GHCR, like any new package: make it public once (README, Deploy) or give the
 cluster a pull secret.
 
 The chart holds no secret values, so an install has to supply them. `out/k8s` is the same chart built locally,
@@ -156,7 +159,8 @@ OAuth client secrets).
 
 Postgres data sits on an `emptyDir` (Aspire's Kubernetes publisher does not emit a volume claim for
 `withDataVolume()`), so the database is lost when the `pg` pod is deleted or rescheduled. The chart has no value
-for either fix: before a real deploy, patch the `pg` StatefulSet's volume to a claim (a Helm post-renderer or
+for either fix (`secrets.web.APPDB_URI` and `ConnectionStrings__appdb` are in `values.yaml`, but no template reads
+them): before a real deploy, patch the `pg` StatefulSet's volume to a claim (a Helm post-renderer or
 Kustomize) or point web at another Postgres the same way.
 
 web has three probes on `/api/auth/ok` (distinct query strings, one health check each): a startup probe (every 5 s,

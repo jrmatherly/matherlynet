@@ -180,16 +180,19 @@ out/                   aspire publish output (gitignored)
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
   Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
   -R jrmatherly/matherlynet`.
-- The workflow's `chart` job pushes the Helm chart to `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet` as
-  `0.<run number>.<run attempt>` (`appVersion` = commit SHA), from `main` only: a manual run on another branch must
-  not publish a higher version, and a re-run gets a new version instead of replacing a published one. The `push`
-  job generates the chart and runs `scripts/check-chart.sh` (also run on PRs by `e2e.yml`) before the image push,
-  so a chart that fails its checks publishes nothing; a failed chart push can't skip the source maps. CI writes the
-  pushed image (`web@<digest>`) into `parameters.web.web_image` before packaging: `aspire publish` leaves it as
-  `web:latest`. The chart name comes from `withChartName` in `apphost.mts`; the chart is not attested.
-- The image workflow runs only when the image or chart can change (`web/**` minus docs, AppHost files, root
-  `package*.json`, `scripts/check-chart.sh`, the workflow itself); `workflow_dispatch` bypasses the filter.
-  `paths-ignore` can't take `!` exceptions, so it is an include list.
+- `publish-images.yml`'s `chart` job pushes the Helm chart to
+  `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet` as `0.<run number>.<run attempt>` (`appVersion` =
+  commit SHA), from `main` only (a manual run on another branch must not publish a higher version). A re-run gets
+  a new version, and the job refuses to replace one that exists. The `push` job generates the chart and runs
+  `scripts/check-chart.sh` (also run on PRs by `e2e.yml`) before the image push, so a chart that fails its checks
+  publishes nothing; a failed chart push can't skip the source maps. CI writes the pushed image (`web@<digest>`)
+  into `parameters.web.web_image` and renders the packaged chart to confirm it: `aspire publish` leaves the value
+  as `web:latest`. The chart name comes from `withChartName` in `apphost.mts`; the chart is not attested.
+- The image workflow runs only when the image, the chart or their checks can change (`web/**` minus docs, AppHost
+  files, root `package*.json`, `scripts/check-chart.sh`, the workflow itself); `workflow_dispatch` bypasses the
+  filter. `paths-ignore` can't take `!` exceptions, so it is an include list.
+- Vitest sees an empty `writing` collection on a clean checkout (the content store exists only after a dev server
+  or build has synced it), so which posts the feed and sitemap carry is asserted in `e2e/public.spec.ts`.
 - Markdown is linted by markdownlint-cli2 via a pre-commit hook (staged files only).
 - `.gitignore` excludes local tooling state: `.codegraph/`, `.remember/`, `.serena/cache/`, `private/`,
   `.claude/settings.local.json`, `CLAUDE.local.md` and `.claude/auto-memory/dirty-files*`.
