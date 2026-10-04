@@ -4,7 +4,7 @@
 //                DEPLOY_TARGET=k8s aspire publish -o out/k8s
 // Push images:   aspire do push        (after `docker login ghcr.io`; CI does this)
 
-import { copyFile } from 'node:fs/promises';
+import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createBuilder, refExpr, ProbeType } from './.aspire/modules/aspire.mjs';
 
@@ -16,6 +16,8 @@ const target = k8s
   ? await builder.addKubernetesEnvironment('k8s')
       // CI pushes the chart under this name to oci://ghcr.io/jrmatherly/matherlynet/charts (publish-images.yml).
       .withHelm({ configure: async (helm) => { await helm.withNamespace('matherlynet').withChartName('matherlynet').withChartDescription('matherlynet: Astro web app and its backing services'); } })
+      // The cluster has its own telemetry; the dashboard stays local and in Compose.
+      .withDashboard({ enabled: false })
   : await builder.addDockerComposeEnvironment('compose');
 
 const ghcr = await builder.addContainerRegistry('ghcr', 'ghcr.io', { repository: 'jrmatherly/matherlynet' });
@@ -80,11 +82,14 @@ const smtpUrl = await builder.executionContext().isRunMode()
 const playgroundModelUrl = await optionalParameter('playground-model-url');
 const playgroundModelKey = await optionalParameter('playground-model-key', true);
 
-const pg = await builder.addPostgres('pg')
+// Kubernetes uses the cluster's existing Postgres: the chart takes its URI as one secret value at install time.
+const appdb = k8s ? undefined : await builder.addPostgres('pg')
   .withDataVolume()
-  // addDatabase() only creates the database under `aspire run`; published Compose/K8s rely on this.
-  .withEnvironment('POSTGRES_DB', 'appdb');
-const appdb = await pg.addDatabase('appdb');
+  // addDatabase() only creates the database under `aspire run`; published Compose relies on this.
+  .withEnvironment('POSTGRES_DB', 'appdb')
+  .addDatabase('appdb');
+// optionalParameter: a parameter with no value fails a non-interactive publish (CI).
+const appdbUri = appdb ? await appdb.uriExpression() : await optionalParameter('appdb-uri', true);
 
 // Self-hosted analytics, opt-in: Umami__Enabled=true (env) or "Umami": { "Enabled": true } (appsettings.json).
 // Browsers load its tracker, so production routes a public hostname to it: cloudflared on the compose network
@@ -98,8 +103,9 @@ const appdb = await pg.addDatabase('appdb');
 if (await flag('Umami:Enabled')) {
   const umamiSecret = await builder.addParameterWithGeneratedValue('umami-secret', { minLength: 32 }, { secret: true, persist: true });
   const umami = await builder.addUmami('umami', { secret: umamiSecret })
-    .withEnvironment('DATABASE_URL', refExpr`${await appdb.uriExpression()}?schema=umami`)
-    .waitFor(appdb);
+    // Appended as text: under K8s an `appdb-uri` with its own query string would get a second `?` here.
+    .withEnvironment('DATABASE_URL', refExpr`${appdbUri}?schema=umami`);
+  if (appdb) await umami.waitFor(appdb);
   if (await flag('Umami:Public')) await umami.withExternalHttpEndpoints();
   // Umami exits if Postgres isn't accepting connections yet, and Compose's depends_on doesn't wait for that.
   if (!k8s) await umami.publishAsDockerComposeService(async (_resource, service) => { await service.restart.set('unless-stopped'); });
@@ -111,8 +117,6 @@ const web = await builder
   .withEndpointCallback('http', async (endpoint) => { await endpoint.port.set(4321); })
   // Astro 7 detaches `astro dev` when it detects an AI agent; Aspire must own the process.
   .withEnvironment('ASTRO_DEV_BACKGROUND', '0')
-  .withReference(appdb)
-  .waitFor(appdb)
   .withEnvironment('BETTER_AUTH_URL', appUrl)
   .withEnvironment('BETTER_AUTH_SECRET', authSecret)
   .withEnvironment('GITHUB_CLIENT_ID', oauth['github-client-id'])
@@ -125,7 +129,9 @@ const web = await builder
   .withEnvironment('PLAYGROUND_MODEL_URL', playgroundModelUrl)
   .withEnvironment('PLAYGROUND_MODEL_KEY', playgroundModelKey)
   .withDockerfileBaseImage({ buildImage: 'node:24-slim', runtimeImage: 'node:24-alpine' })
-  .publishAsPackageScript({ scriptName: 'start' })
+  // Not publishAsPackageScript: `pnpm run` as a non-root user tries to reinstall into the root-owned node_modules
+  // and fails. This form also sets `USER node`. outputPath '.' keeps node_modules, which Astro's server imports.
+  .publishAsNodeServer('start.mjs', { outputPath: '.' })
   // CI sets IMAGE_TAG to the commit SHA; Aspire's default push tag is `latest`. Set it when publishing too: it
   // becomes SENTRY_RELEASE in the output. The image a deployment pulls is set separately (WEB_IMAGE in the
   // Compose .env, parameters.web.web_image in the chart).
@@ -139,6 +145,8 @@ const web = await builder
   .withHttpProbe(ProbeType.Readiness, { path: '/api/auth/ok' })
   .withHttpProbe(ProbeType.Liveness, { path: '/api/auth/ok?probe=liveness', periodSeconds: 30, timeoutSeconds: 3 })
   .withExternalHttpEndpoints();
+if (appdb) await web.withReference(appdb).waitFor(appdb);
+else await web.withEnvironment('APPDB_URI', appdbUri);
 
 // Compose: who can reach the web port on the host. The origin must be reachable only through Cloudflare
 // (rate limiting trusts cf-connecting-ip). none: no host port, cloudflared joins the compose network and
@@ -155,20 +163,36 @@ if (!k8s) {
   });
 }
 
-// Compose: Aspire 13.6's TS SDK can't set a healthcheck (.claude/rules/apphost.md), so web's lives in
-// deploy/docker-compose.override.yaml. Publishing copies it next to docker-compose.yaml, where Compose merges it.
-// The output directory is Aspire's Pipeline:OutputPath (`-o`; a relative one resolves against the directory
-// `aspire publish` ran in, checked from web/), else <AppHost dir>/aspire-output. Not in run mode: `aspire run`/`start`
-// have no publish-compose step, and depending on an unknown step fails the AppHost.
-if (!k8s && !(await builder.executionContext().isRunMode())) {
-  await builder.pipeline().addStep('copy-compose-override', async () => {
-    const output = await config.getConfigValue('Pipeline:OutputPath');
-    const appHostDir = await config.getConfigValue('AppHost:Directory');
-    // Guessing a directory could copy the healthcheck somewhere the published Compose file isn't.
-    if (!output && !appHostDir) throw new Error('copy-compose-override: neither Pipeline:OutputPath nor AppHost:Directory is set');
-    const dir = output ? resolve(output) : join(appHostDir!, 'aspire-output');
-    await copyFile(new URL('./deploy/docker-compose.override.yaml', import.meta.url), join(dir, 'docker-compose.override.yaml'));
-  }, { dependsOn: ['publish-compose'], requiredBy: ['publish'] });
+// Publish-time fixes to the generated output. The output directory is Aspire's Pipeline:OutputPath (`-o`; a relative
+// one resolves against the directory `aspire publish` ran in, checked from web/), else <AppHost dir>/aspire-output.
+// Not in run mode: `aspire run`/`start` have no publish-* steps, and depending on an unknown step fails the AppHost.
+const publishDir = async (step: string) => {
+  const output = await config.getConfigValue('Pipeline:OutputPath');
+  const appHostDir = await config.getConfigValue('AppHost:Directory');
+  // Guessing a directory could write somewhere the published files aren't.
+  if (!output && !appHostDir) throw new Error(`${step}: neither Pipeline:OutputPath nor AppHost:Directory is set`);
+  return output ? resolve(output) : join(appHostDir!, 'aspire-output');
+};
+if (!(await builder.executionContext().isRunMode())) {
+  if (k8s) {
+    // Aspire.Hosting.Kubernetes 13.6.0-preview writes probe schemes in lower case, and the API server accepts only
+    // HTTP or HTTPS: it rejects the Deployment at install. Throws when there is nothing to fix, so an Aspire that
+    // writes them correctly retires this step.
+    await builder.pipeline().addStep('fix-probe-scheme', async () => {
+      const file = join(await publishDir('fix-probe-scheme'), 'templates', 'web', 'deployment.yaml');
+      const text = await readFile(file, 'utf8');
+      const fixed = text.replace(/^(\s*scheme: "?)(https?)("?)$/gm, (_, before: string, scheme: string, after: string) => before + scheme.toUpperCase() + after);
+      if (fixed === text) throw new Error('fix-probe-scheme: no lower-case probe scheme in the web Deployment; remove this step');
+      await writeFile(file, fixed);
+    }, { dependsOn: ['publish-k8s'], requiredBy: ['publish'] });
+  } else {
+    // Aspire 13.6's TS SDK can't set a healthcheck (.claude/rules/apphost.md), so web's lives in
+    // deploy/docker-compose.override.yaml. Publishing copies it next to docker-compose.yaml, where Compose merges it.
+    await builder.pipeline().addStep('copy-compose-override', async () => {
+      const dir = await publishDir('copy-compose-override');
+      await copyFile(new URL('./deploy/docker-compose.override.yaml', import.meta.url), join(dir, 'docker-compose.override.yaml'));
+    }, { dependsOn: ['publish-compose'], requiredBy: ['publish'] });
+  }
 }
 
 await builder.build().run();

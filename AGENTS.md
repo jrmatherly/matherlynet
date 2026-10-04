@@ -7,8 +7,9 @@ This file provides guidance to AI coding agents when working with code in this r
 
 matherlynet: an Astro SSR web app (`web/`) with better-auth (email/password plus optional GitHub/Google OAuth)
 on Drizzle ORM and PostgreSQL, orchestrated by an Aspire TypeScript AppHost (`apphost.mts`). The same AppHost
-runs the stack locally and publishes Docker Compose or Kubernetes (Helm) artifacts; CI builds the web image and
-pushes it, with a Helm chart pinned to it, to `ghcr.io/jrmatherly/matherlynet`.
+runs the stack locally and publishes Docker Compose (with its own Postgres and the Aspire dashboard) or Kubernetes
+(Helm: web only, on an existing Postgres) artifacts; CI builds the web image and pushes it, with a Helm chart pinned
+to it, to `ghcr.io/jrmatherly/matherlynet`.
 
 <!-- END AUTO-MANAGED -->
 
@@ -38,9 +39,11 @@ pushes it, with a Helm chart pinned to it, to `ghcr.io/jrmatherly/matherlynet`.
 ## Architecture
 
 ```text
-apphost.mts            Aspire AppHost: Postgres (pg/appdb), Umami (opt-in), Mailpit (run mode only), web, parameters, GHCR
+apphost.mts            Aspire AppHost: Postgres (pg/appdb; K8s takes `appdb-uri` instead), Umami (opt-in), Mailpit
+                       (run mode only), web, parameters, GHCR
 .aspire/modules/       generated AppHost TypeScript SDK (gitignored; `aspire restore`)
-web/                   Astro SSR app (server.mjs entry, otel.mjs, migrate.mjs, src/lib, src/pages, tests, e2e);
+web/                   Astro SSR app (start.mjs entry, otel.mjs, migrate.mjs, server.mjs, src/lib, src/pages, tests,
+                       e2e);
                        file-by-file map: .claude/rules/web-architecture.md (also loads when you work in web/)
 .github/workflows/     publish-images.yml: on main (path-filtered) runs web-checks + e2e first, then builds, pushes and
                        attests the web image; a `chart` job pushes the Helm chart pinned to it, and a separate
@@ -182,7 +185,10 @@ out/                   aspire publish output (gitignored)
 - `security.allowedDomains` (`matherly.net`, https) in `web/astro.config.mjs` makes Astro trust `X-Forwarded-Proto`
   behind Cloudflare; without it form POSTs fail the origin check with 403. Don't use `Astro.clientAddress`: a client
   can spoof it through `X-Forwarded-Host`/`X-Forwarded-For`.
-- `start` is `node migrate.mjs && exec node --import ./otel.mjs ./server.mjs`. `server.mjs` sets
+- The image runs `node start.mjs` as the `node` user (`publishAsNodeServer`; `publishAsPackageScript`'s
+  `pnpm run start` fails as non-root: pnpm 12 tries to reinstall into the root-owned `node_modules`). `start.mjs`
+  dynamically imports `otel.mjs`, `migrate.mjs`, then `server.mjs` in one process: static imports would load pg and
+  Astro before OpenTelemetry's hook registers, and one process means SIGTERM reaches `server.mjs`. `server.mjs` sets
   `ASTRO_NODE_AUTOSTART=disabled`, calls `startServer()`, and on SIGTERM/SIGINT drains 7 s, flushes Sentry 1 s and
   OpenTelemetry 1.5 s, then exits 0, inside Docker's 10 s stop timeout. `otel.mjs` builds `NodeSDK` itself because
   `register.js`'s SIGTERM listener never exits.
@@ -286,7 +292,9 @@ out/                   aspire publish output (gitignored)
   the email becomes verified (not on every update, so demotions stick): set `admin-email` before that account's
   email is verified. Promotion failures are logged with the SQL to finish them; `/api/auth/*` errors go to Sentry
   through better-auth's `onAPIError` and an after-hook, not the Astro middleware.
-- Observability: OpenTelemetry is infrastructure (Aspire injects OTEL_*; local and published dashboards).
+- Observability: OpenTelemetry is infrastructure (Aspire injects OTEL_*; local and Compose dashboards). The
+  Kubernetes chart has no dashboard and no OTLP endpoint (`withDashboard({ enabled: false })`), so telemetry is off
+  there unless an install sets `OTEL_EXPORTER_OTLP_ENDPOINT`.
   Sentry DSN/switches and Umami script/website id are runtime settings on /admin, not Aspire parameters.
   Sentry is errors-only (`enableOpenTelemetrySetup` stays false); never add a second tracer provider.
 - Sentry stack traces: the build emits hidden source maps with debug IDs (`@sentry/bundler-plugins/vite`,

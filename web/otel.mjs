@@ -1,4 +1,4 @@
-// Preloaded with `node --import ./otel.mjs` (package.json scripts) so OpenTelemetry patches modules before
+// Loaded first (start.mjs in production, `node --import ./otel.mjs` in dev) so OpenTelemetry patches modules before
 // the app loads them. Aspire injects the OTEL_* settings (endpoint, protocol, headers, service name) under
 // `aspire run` and in published Compose/K8s output; without an endpoint (tests, builds) this does nothing.
 import { register } from "node:module";

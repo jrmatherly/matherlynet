@@ -21,6 +21,17 @@ paths:
     `withDockerfileBaseImage`. Changing `packageManager` requires `pnpm install` to refresh the lockfile.
   - `aspire deploy` to Kubernetes requires a container registry; `Aspire.Hosting.Kubernetes` is preview.
   - Kubernetes output has no Job support; migrations therefore run inside `web` on start.
+  - Under `DEPLOY_TARGET=k8s` there is no `pg`: web gets `APPDB_URI` from the `appdb-uri` parameter (chart value
+    `secrets.web.appdb_uri`; Umami's copy is `secrets.umami.appdb_uri`). It is an `optionalParameter` because a
+    parameter with no value fails a non-interactive publish. `withDashboard({ enabled: false })` drops the dashboard
+    and every OTEL_* value from the chart.
+  - `publishAsNodeServer('start.mjs', { outputPath: '.' })` emits `USER node` and `ENTRYPOINT ["node","start.mjs"]`
+    and copies the build stage's `/app` (node_modules included). `publishAsPackageScript` emits no `USER`, and its
+    `pnpm run` fails as a non-root user.
+  - The Kubernetes publisher writes probe schemes in lower case (`scheme: "http"`), which the API server rejects, and
+    `withHttpProbe` has no scheme option. The `fix-probe-scheme` pipeline step (after `publish-k8s`) rewrites them
+    and throws once there is nothing to rewrite. `helm lint` and `helm template` don't catch this kind of error:
+    check a chart change with `helm template out/k8s | kubectl apply --dry-run=server -f -` on a local cluster.
   - `withHttpProbe` also registers a health check keyed by path, so the startup, readiness and liveness probes
     use different query strings on `/api/auth/ok` and there is no separate `withHttpHealthCheck`.
   - A stopped resource's local port stays open (DCP proxy) and never answers: clients need connect timeouts.

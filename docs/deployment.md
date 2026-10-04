@@ -32,7 +32,7 @@ accept `true`/`false` in any case; any other value fails the publish.
 The origin must be reachable only through Cloudflare: rate limiting trusts `cf-connecting-ip`, which any client
 could send to an exposed port. Use `public` only behind another firewall.
 
-The published stack includes the Aspire dashboard (`compose-dashboard`), which receives web's OpenTelemetry
+The published Compose stack includes the Aspire dashboard (`compose-dashboard`), which receives web's OpenTelemetry
 traces. Its UI is bound to `127.0.0.1:18888` on the host; reach it with an SSH tunnel
 (`ssh -L 18888:127.0.0.1:18888 <host>`, then <http://localhost:18888>, login token in
 `docker compose logs compose-dashboard`). Secrets in request URLs (reset and verify tokens, OAuth codes) are
@@ -148,24 +148,51 @@ The `chart` job's run summary prints the version and the image it pins:
 helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet --version 0.<run>.<attempt>
 ```
 
-The chart deploys web, Postgres and the Aspire dashboard (OTLP receiver and trace UI), each behind a ClusterIP
-Service only (`web-service:4321`, `pg-service:5432`, `k8s-dashboard-service:18888`); routing to web is yours to
-add. The chart package on GHCR is public, so a cluster pulls it without a secret.
+The chart deploys web only: a Deployment behind a ClusterIP Service (`web-service:4321`), its ConfigMap and its
+Secret. Routing to web is yours to add. There is no Postgres and no Aspire dashboard in the chart. The chart
+package on GHCR is public, so a cluster pulls it without a secret.
 
 The chart holds no secret values, so an install has to supply them. `out/k8s` is the same chart built locally,
 except that `parameters.web.web_image` is `web:latest` there: set it to
 `ghcr.io/jrmatherly/matherlynet/web:<commit sha>`. Both need the values the Compose `.env` holds, through
 `values.yaml`: non-secret settings under `config.web` (`app_url`, `admin_email`, `mail_from`, `github_client_id`,
-`google_client_id`), and passwords and keys under `secrets` (`pg.pg_password` and `web.pg_password`, the same
-value: the chart builds web's connection string from the second; `web.better_auth_secret`, `web.smtp_url`, the
-OAuth client secrets). The live playground adds two optional values, both empty by default:
+`google_client_id`), and secrets under `secrets.web`: `appdb_uri` (the database, below), `better_auth_secret`,
+`smtp_url` and the OAuth client secrets. The live playground adds two optional values, both empty by default:
 `config.web.playground_model_url` and `secrets.web.playground_model_key` (section 8).
 
-Postgres data sits on an `emptyDir` (Aspire's Kubernetes publisher does not emit a volume claim for
-`withDataVolume()`), so the database is lost when the `pg` pod is deleted or rescheduled. The chart has no value
-for either fix (`secrets.web.APPDB_URI` and `ConnectionStrings__appdb` are in `values.yaml`, but no template reads
-them): before a real deploy, patch the `pg` StatefulSet's volume to a claim (a Helm post-renderer or
-Kustomize) or point web at another Postgres the same way.
+### Database
+
+web connects to an existing Postgres through `secrets.web.appdb_uri`, which the chart passes as `APPDB_URI`
+(`postgresql://<user>:<password>@<host>:5432/<database>`). For a CloudNativePG cluster, use its read-write
+service (`<cluster>-rw`): migrations and sign-ups write. What the role needs:
+
+- It owns the database. A plain role (`nosuperuser nocreatedb nocreaterole`) that owns its database works: verified
+  on Postgres 18.3, where `migrate.mjs` created its `drizzle` schema and every table.
+- A session, not a transaction-mode pooler (PgBouncer `pool_mode = transaction`): `migrate.mjs` holds a
+  session-level advisory lock while it migrates, so replicas don't migrate at once. Connect directly or through a
+  session-mode pooler.
+- Up to 16 connections per web pod (pg-pool's default 10 for the app, 6 for the live playground). Migrations use 2
+  more and close them before the server starts. Size `max_connections` for your replica count.
+
+With Umami enabled (`Umami__Enabled=true` at publish time), the chart also has `secrets.umami.appdb_uri`: set it to
+the same URI. The chart appends `?schema=umami` to it, so with Umami on the URI must carry no query string of its own.
+
+### Telemetry
+
+The chart sets no `OTEL_*` values, so web exports no OpenTelemetry data (`otel.mjs` starts the SDK only when
+`OTEL_EXPORTER_OTLP_ENDPOINT` is set). To send traces to your own collector, add `OTEL_EXPORTER_OTLP_ENDPOINT`,
+`OTEL_EXPORTER_OTLP_PROTOCOL` and `OTEL_SERVICE_NAME=web` to the web container's environment (a post-renderer or a
+patch; the chart has no value for them). Sentry error reporting is configured on /admin and works without them.
+
+### The image
+
+The image runs `node start.mjs` as the image's `node` user (UID 1000, GID 1000), set by `USER node` in the
+Dockerfile. It needs no writable path: it starts and serves with a read-only root filesystem, all capabilities
+dropped and `no-new-privileges`. The chart sets no `securityContext`. Under pod security level `restricted`, add
+one on your side, and set `runAsUser: 1000` with `runAsNonRoot: true`: the image's user is a name, and the kubelet
+refuses to start a `runAsNonRoot` container whose user it cannot check ("image has non-numeric user (node)"). With
+`runAsUser: 1000`, `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`, `seccompProfile: RuntimeDefault`
+and `readOnlyRootFilesystem: true`, the chart ran in a `restricted` namespace on Kubernetes 1.35.
 
 web has three probes on `/api/auth/ok` (distinct query strings, one health check each): a startup probe (every 5 s,
 up to 90 s, while `migrate.mjs` waits for Postgres), then readiness and liveness. All stay up while Postgres is
