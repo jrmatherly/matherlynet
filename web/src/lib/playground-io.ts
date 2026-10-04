@@ -2,8 +2,9 @@
 // response stream. The page script never imports it; everything pure lives in playground.ts.
 import { createHmac } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { CALLERS, type Caller } from "../data/gateway";
-import { db } from "../db";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { type AiGate, CALLERS, type Caller } from "../data/gateway";
+import { playgroundDb as db } from "../db";
 import {
   type Finish,
   LIVE,
@@ -17,8 +18,7 @@ import {
   type PromptText,
   type RoutingRefusal,
   type Stop,
-  liveDecision,
-  liveReason,
+  liveOutcome,
   sseFrames,
 } from "./playground";
 import { captureError } from "./sentry";
@@ -45,10 +45,11 @@ export function liveModelOn(): boolean {
 }
 
 /**
- * Who is calling, for limits and the row. The only code that reads cf-connecting-ip; never Astro.clientAddress, which
- * a client can spoof. Anonymous keys are an HMAC over the UTC date and the address (an IPv6 address's /64), so
- * yesterday's rows can't be linked to today's. With no header (local, E2E) every caller shares the key for "local", so
- * the limiter still works.
+ * Who is calling, for limits and the row. The only playground code that reads cf-connecting-ip (lib/auth.ts gives the
+ * same header to better-auth); never Astro.clientAddress, which a client can spoof. Anonymous keys are an HMAC over the
+ * UTC date and the address (an IPv6 address's /64), so yesterday's rows can't be linked to today's. The date also
+ * restarts an anonymous visitor's hourly count at 00:00 UTC: the key changes, so the earlier rows stop matching. With
+ * no header (local) every caller shares the key for "local", so the limiter still works.
  */
 export function visitorKey(headers: Headers, userId: string | null, now = new Date()): VisitorKey {
   if (userId) return `u:${userId}` as VisitorKey;
@@ -70,7 +71,8 @@ function prefix64(ip: string): string {
   if (halves.length > 2) return ip;
   const groups = halves.map((half) => (half ? half.split(":") : []));
   const last = groups.at(-1)!;
-  // An embedded IPv4 tail (::ffff:192.0.2.1) fills the last two groups, never the first four.
+  // An embedded IPv4 tail (::ffff:192.0.2.1) fills the last two groups, never the first four. So every IPv4-mapped
+  // address keys as 0:0:0:0::/64, as the loopback ::1 does, and those callers share one bucket.
   if (last.length && DOTTED.test(last.at(-1)!)) last.splice(-1, 1, "0", "0");
   const given = groups.flat();
   if (!given.every((g) => GROUP.test(g))) return ip;
@@ -83,12 +85,13 @@ export type ParsedCall = { ok: true; value: Call } | { ok: false; status: 400 | 
 // Bytes. PROMPT_MAX counts UTF-16 units; one form-encodes to at most 9 bytes (a 3-byte character as %XX%XX%XX, and a
 // surrogate pair's 4 bytes as 12 over two units), so 500 make 4,500, plus the field names and the caller.
 const BODY_MAX = 8_192;
+// Inside LIVE.totalMs, not on top of it: parseCall() takes enteredAt before it reads the body.
 const BODY_MS = 1_000;
 
 /**
  * The HTTP boundary: not a call yet, so no row. Never throws and never quotes the body. Form-encoded only: Astro's
- * origin check covers that type (and no type at all), so a cross-site POST never gets here. Content-Length is not
- * trusted or required; bytes are counted as they arrive.
+ * origin check covers that type (and no type at all), so a cross-site POST, or one with no Origin header, never gets
+ * here. Content-Length is not trusted or required; bytes are counted as they arrive.
  */
 export async function parseCall(request: Request, userId: string | null): Promise<ParsedCall> {
   const enteredAt = performance.now();
@@ -142,7 +145,6 @@ export interface Opening {
   promptChars: number;
 }
 
-/** What closes a row. */
 export interface Closing {
   decision: LiveDecision;
   reason: LiveReason | null;
@@ -169,8 +171,11 @@ export class ModelRefused extends Error {
  * Methods may throw anything; run() hands what it catches to report() and nothing else.
  */
 export interface Io {
-  /** Sweeps dead rows, prunes old ones, inserts this call's row, then counts the load once that insert committed. */
-  open(opening: Opening): Promise<{ id: CallId; load: Load }>;
+  /**
+   * Sweeps dead rows, prunes old ones, inserts this call's row, then counts the load once that insert committed.
+   * `load` null: the row exists but the count failed, so the limiter has nothing to judge by.
+   */
+  open(opening: Opening): Promise<{ id: CallId; load: Load | null }>;
   /**
    * Takes a seat under a lock: marks the row routed only while fewer than LIVE.seats open routed rows exist. true when
    * it did. A call refused "busy" never gets routed_at.
@@ -188,8 +193,15 @@ export interface Io {
 const staleSecs = LIVE.staleMs / 1000;
 // pg_advisory_xact_lock key for seat claims. migrate.mjs holds 727001.
 const SEAT_LOCK = 727_002;
+// The limiter's SQL excludes rows refused here from the hour, and close() writes the same name into stopped_at.
+const LIMIT_GATE = "Rate limits" satisfies AiGate;
 type Row = Record<string, unknown>;
-const count = (value: unknown) => Number(value ?? 0);
+// Throws on a missing or non-numeric column: read as 0, a renamed alias would pass every limit.
+const count = (value: unknown) => {
+  const n = Number(value ?? NaN);
+  if (!Number.isFinite(n)) throw Object.assign(new Error("playground: a count is missing"), { code: "no count" });
+  return n;
+};
 
 export const liveIo: Io = {
   async open({ visitor, caller, promptChars }) {
@@ -209,52 +221,69 @@ export const liveIo: Io = {
     // A second statement, after the insert committed: of racing calls, whoever counts last sees every row. Each
     // subquery is one index range: the visitor's on (visitor, started_at), the site's on the partial routed_at index,
     // so a flood of refused calls costs this visitor's rows, not the day's.
-    const counted = await db.execute<Row>(sql`
-      select
-        (select count(*) from playground_call
-          where visitor = ${visitor} and started_at > now() - make_interval(secs => ${staleSecs})
-            and ended_at is null and id <> ${id}) as mine_in_flight,
-        (select count(*) from playground_call
-          where visitor = ${visitor} and started_at > now() - interval '1 hour'
-            and stopped_at is distinct from 'Rate limits') as mine_this_hour,
-        (select 1000 * extract(epoch from min(started_at) + interval '1 hour' - now()) from playground_call
-          where visitor = ${visitor} and started_at > now() - interval '1 hour'
-            and stopped_at is distinct from 'Rate limits') as mine_frees_in_ms,
-        (select count(*) from playground_call where routed_at > now() - interval '1 day') as site_today,
-        (select 1000 * extract(epoch from min(routed_at) + interval '1 day' - now()) from playground_call
-          where routed_at > now() - interval '1 day') as site_frees_in_ms`);
-    const row = counted.rows[0];
-    return {
-      id,
-      load: {
-        mineInFlight: count(row.mine_in_flight),
-        mineThisHour: count(row.mine_this_hour),
-        siteToday: count(row.site_today),
-        mineFreesInMs: Math.max(0, Math.ceil(count(row.mine_frees_in_ms))),
-        siteFreesInMs: row.site_frees_in_ms === null ? null : Math.max(0, Math.ceil(count(row.site_frees_in_ms))),
-      },
-    };
+    try {
+      const counted = await db.execute<Row>(sql`
+        select
+          (select count(*) from playground_call
+            where visitor = ${visitor} and started_at > now() - make_interval(secs => ${staleSecs})
+              and ended_at is null and id <> ${id}) as mine_in_flight,
+          (select count(*) from playground_call
+            where visitor = ${visitor} and started_at > now() - interval '1 hour'
+              and stopped_at is distinct from ${LIMIT_GATE}) as mine_this_hour,
+          (select 1000 * extract(epoch from min(started_at) + interval '1 hour' - now()) from playground_call
+            where visitor = ${visitor} and started_at > now() - interval '1 hour'
+              and stopped_at is distinct from ${LIMIT_GATE}) as mine_frees_in_ms,
+          (select count(*) from playground_call where routed_at > now() - interval '1 day') as site_today,
+          (select 1000 * extract(epoch from min(routed_at) + interval '1 day' - now()) from playground_call
+            where routed_at > now() - interval '1 day') as site_frees_in_ms`);
+      const row = counted.rows[0];
+      return {
+        id,
+        load: {
+          mineInFlight: count(row.mine_in_flight),
+          mineThisHour: count(row.mine_this_hour),
+          siteToday: count(row.site_today),
+          mineFreesInMs: Math.max(0, Math.ceil(count(row.mine_frees_in_ms))),
+          siteFreesInMs: row.site_frees_in_ms === null ? null : Math.max(0, Math.ceil(count(row.site_frees_in_ms))),
+        },
+      };
+    } catch (error) {
+      // The row is committed, so the call keeps its id and run() closes it. With no load the limiter refuses it.
+      report("open", error);
+      return { id, load: null };
+    }
   },
 
   async claim(id) {
-    // The lock serializes claims across replicas, so each count sees every earlier claim's commit.
-    return db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(${SEAT_LOCK})`);
-      const seated = await tx.execute<Row>(sql`
-        update playground_call set routed_at = now()
-         where id = ${id} and ended_at is null
-           and (select count(*) from playground_call
-                 where routed_at is not null and ended_at is null
-                   and routed_at > now() - make_interval(secs => ${staleSecs})) < ${LIVE.seats}
-        returning id`);
+    // Not db.transaction(): drizzle-orm 0.45.3 (node-postgres/session.js) sends BEGIN outside the try/finally that
+    // releases its pool client, so a BEGIN that fails (a dead socket) would cost the pool that connection for good.
+    const client = await db.$client.connect();
+    try {
+      // The lock serializes claims across replicas, so each count sees every earlier claim's commit.
+      const seated = await drizzle({ client }).transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(${SEAT_LOCK})`);
+        return tx.execute<Row>(sql`
+          update playground_call set routed_at = now()
+           where id = ${id} and ended_at is null
+             and (select count(*) from playground_call
+                   where routed_at is not null and ended_at is null
+                     and routed_at > now() - make_interval(secs => ${staleSecs})) < ${LIVE.seats}
+          returning id`);
+      });
+      client.release();
       return seated.rows.length > 0;
-    });
+    } catch (error) {
+      client.release(true); // destroyed, not reused: the transaction's state is unknown
+      throw error;
+    }
   },
 
   async close(id, { decision, reason, replyChars, tokens }) {
+    // The table's CHECK takes these three (and the sweep's 'lost'): a wider LiveDecision must fail here, not there.
+    const verdict: "forwarded" | "refused" | "cut" = decision.verdict;
     await db.execute(sql`
       update playground_call set
-        ended_at = now(), decision = ${decision.verdict}, stopped_at = ${decision.verdict === "refused" ? decision.at : null},
+        ended_at = now(), decision = ${verdict}, stopped_at = ${decision.verdict === "refused" ? decision.at : null},
         reason = ${reason}, reply_chars = ${replyChars}, tokens_in = ${tokens?.in ?? null}, tokens_out = ${tokens?.out ?? null}
       where id = ${id} and ended_at is null`);
   },
@@ -265,9 +294,10 @@ export const liveIo: Io = {
   },
 };
 
+// A parsed frame is upstream JSON: every leaf is checked before it is used.
 interface Chunk {
-  choices?: { delta?: { content?: string | null }; finish_reason?: string | null }[];
-  usage?: { prompt_tokens: number; completion_tokens: number };
+  choices?: { delta?: { content?: unknown }; finish_reason?: unknown }[];
+  usage?: { prompt_tokens?: unknown; completion_tokens?: unknown };
 }
 
 // An async generator's body runs at the first next(), so nothing is sent before run() holds a seat.
@@ -279,7 +309,8 @@ async function* modelStream(base: string, key: string, text: PromptText, signal:
     console.error("playground: PLAYGROUND_MODEL_URL is not a URL");
     throw new ModelRefused("unavailable");
   }
-  // Outbound spans record url.full, so a credential in the URL would end up in traces.
+  // fetch() throws on a URL with credentials before it sends anything (Node 24), and that would be logged only as
+  // "model failed (TypeError)". This names the fix.
   if (url.username || url.password) {
     console.error("playground: PLAYGROUND_MODEL_URL carries credentials; put the key in PLAYGROUND_MODEL_KEY");
     throw new ModelRefused("unavailable");
@@ -305,11 +336,15 @@ async function* modelStream(base: string, key: string, text: PromptText, signal:
         }),
         signal: AbortSignal.any([signal, done.signal]),
       });
-    } catch {
+    } catch (error) {
+      // An abort is a timer or the visitor leaving. Anything else (DNS, TLS, a refused connection, a bad key) looks
+      // the same to every visitor until someone fixes it, so the operator is told.
+      if (!signal.aborted) report("model", error);
       throw new ModelRefused("unavailable");
     }
-    // Error bodies are never read: whether llama echoes the prompt in them is unknown. 503 is llama loading or full, a
-    // normal state; any other status is a misconfiguration worth a report (a 400 too: PROMPT_MAX fits the slot).
+    // Error bodies are never read: whether llama echoes the prompt in them is unknown. 503 is llama loading (a pod
+    // restart), a normal state; any other status is a misconfiguration worth a report (a 400 too: PROMPT_MAX fits
+    // the slot).
     if (res.status === 503) throw new ModelRefused("unavailable");
     if (!res.ok) reportCode("model", `http ${res.status}`);
     if (!res.ok || !res.body) throw new ModelRefused("model error");
@@ -318,19 +353,27 @@ async function* modelStream(base: string, key: string, text: PromptText, signal:
     try {
       for await (const data of sseFrames(res.body)) {
         if (data === "[DONE]") break;
-        let chunk: Chunk;
+        let chunk: Chunk | null;
         try {
           chunk = JSON.parse(data);
         } catch {
-          throw new ModelRefused("model error"); // the SyntaxError quotes the frame
+          chunk = null; // the SyntaxError quotes the frame, so it goes no further
+        }
+        if (typeof chunk !== "object" || chunk === null) {
+          reportCode("model", "bad frame");
+          throw new ModelRefused("model error");
         }
         const choice = chunk.choices?.[0];
-        if (choice?.delta?.content) yield { type: "text", text: choice.delta.content };
+        const content = choice?.delta?.content;
+        if (typeof content === "string" && content) yield { type: "text", text: content };
         if (choice?.finish_reason === "stop" || choice?.finish_reason === "length") finish = choice.finish_reason;
-        if (chunk.usage) tokens = { in: chunk.usage.prompt_tokens, out: chunk.usage.completion_tokens };
+        const { prompt_tokens: sent, completion_tokens: made } = chunk.usage ?? {};
+        if (Number.isInteger(sent) && Number.isInteger(made)) tokens = { in: sent as number, out: made as number };
       }
     } catch (error) {
-      throw error instanceof ModelRefused ? error : new ModelRefused("unavailable");
+      if (error instanceof ModelRefused) throw error;
+      if (!signal.aborted) report("stream", error);
+      throw new ModelRefused("unavailable");
     }
     if (finish) yield { type: "finish", reason: finish, tokens };
   } finally {
@@ -340,13 +383,24 @@ async function* modelStream(base: string, key: string, text: PromptText, signal:
 
 type Stage = "open" | "claim" | "model" | "stream" | "close" | "run";
 
+// Failures that carry no code, by their fixed message (pg 8.23.1, pg-pool 3.14.0). Without this a full pool, a dead
+// socket and a client-side timeout all report as "Error". The message is only looked up, never sent.
+const UNCODED = new Map([
+  ["timeout exceeded when trying to connect", "pool timeout"],
+  ["Query read timeout", "query timeout"],
+  ["Connection terminated unexpectedly", "terminated"],
+  ["Client has encountered a connection error and is not queryable", "not queryable"],
+]);
+
 /**
  * Tells Sentry and the log that a stage failed, without the caught error: its message may hold the SQL and its
  * parameters (DrizzleQueryError) or upstream text. Only a code goes out: a pg or undici code, a refusal, or a name.
  */
 export function report(stage: Stage, error: unknown): void {
-  const e = error as { cause?: { code?: unknown }; code?: unknown; name?: unknown } | null | undefined;
-  const raw = e?.cause?.code ?? e?.code ?? (error instanceof ModelRefused ? error.why : e?.name);
+  const e = error as { cause?: { code?: unknown; message?: unknown }; code?: unknown; name?: unknown; message?: unknown } | null | undefined;
+  const message = e?.cause?.message ?? e?.message;
+  const uncoded = typeof message === "string" ? UNCODED.get(message) : undefined;
+  const raw = e?.cause?.code ?? e?.code ?? uncoded ?? (error instanceof ModelRefused ? error.why : e?.name);
   reportCode(stage, typeof raw === "string" && /^[\w .-]{1,40}$/.test(raw) ? raw : "unknown");
 }
 
@@ -358,22 +412,30 @@ function reportCode(stage: Stage, code: string): void {
 /**
  * One live call: opens the row, walks the gates, streams the answer, closes the row with exactly one decision, then
  * emits `end`. Never rejects: every failure is a step or a decision. Its awaits settle on `signal` (whose reason is
- * a Stop) or on their own, so the close runs whether or not anyone is still reading. The row's only closer.
+ * a Stop) or on their own, so the close runs whether or not anyone is still reading. The only caller of io.close();
+ * open()'s sweep also closes rows, stale ones, as lost.
  */
 export async function run(call: Call, io: Io, signal: AbortSignal, emit: (event: LiveEvent) => void): Promise<void> {
   const stopped = new Promise<null>((resolve) =>
     signal.aborted ? resolve(null) : signal.addEventListener("abort", () => resolve(null), { once: true }),
   );
-  // No port method takes the signal, and the pool's own timeouts outlast the drain. null: the signal won.
-  const orStop = <T>(work: Promise<T>): Promise<T | null> => Promise.race([work, stopped]);
+  // No storage method takes the signal, and the pool's own timeouts outlast the drain. null: the signal won. Work the
+  // signal beat still settles, and a failure that lands then is reported here: nothing else is waiting for it.
+  // Work still pending at the deadline is reported as slow.
+  const orStop = async <T>(stage: Stage, work: Promise<T>): Promise<T | null> => {
+    let abandoned = false;
+    work.catch((error) => abandoned && report(stage, error));
+    const result = await Promise.race([work, stopped.then(() => ((abandoned = true), null))]);
+    if (result === null && signal.reason === "deadline") reportCode(stage, "slow");
+    return result;
+  };
   const stopReason = (): Stop | "error" => (signal.aborted ? (signal.reason === "deadline" ? "deadline" : "left") : "error");
 
-  let opened: { id: CallId; load: Load } | null = null;
+  let opened: { id: CallId; load: Load | null } | null = null;
   try {
     const opening = io.open({ visitor: call.visitor, caller: call.caller, promptChars: call.text.length });
-    opened = await orStop(opening);
+    opened = await orStop("open", opening);
     if (!opened) {
-      if (signal.reason === "deadline") reportCode("open", "slow");
       // The row may still land. Close it as cut rather than leave it to the next open()'s sweep.
       opening.then(
         ({ id }) => io.close(id, { decision: { verdict: "cut" }, reason: stopReason(), replyChars: null, tokens: null }),
@@ -386,9 +448,10 @@ export async function run(call: Call, io: Io, signal: AbortSignal, emit: (event:
 
   const steps = preRouting(call.signedIn, opened?.load ?? null, call.text);
   for (const step of steps) emit({ type: "step", step });
-  // No row, so no call: it could not be logged.
+  // No row yet (the insert failed, or the signal beat it), so no call: it could not be logged, and with no load
+  // preRouting() refused it at the limiter.
   if (!opened) {
-    emit({ type: "end", decision: { verdict: "refused", at: "Rate limits" }, finish: null, logged: false });
+    emit({ type: "end", decision: { verdict: "refused", at: LIMIT_GATE }, finish: null, logged: false });
     return;
   }
 
@@ -408,7 +471,7 @@ export async function run(call: Call, io: Io, signal: AbortSignal, emit: (event:
     if (!answer) return refuse("model off");
     let seat: boolean | null;
     try {
-      seat = await orStop(io.claim(opened.id));
+      seat = await orStop("claim", io.claim(opened.id));
     } catch (error) {
       report("claim", error);
       return refuse("unavailable");
@@ -421,6 +484,8 @@ export async function run(call: Call, io: Io, signal: AbortSignal, emit: (event:
     let failure: unknown = null;
     try {
       for await (const event of answer) {
+        // The visitor left: an event already on its way would be counted in replyChars but never sent.
+        if (signal.aborted && signal.reason !== "deadline") break;
         if (replyChars === null) {
           clearTimeout(timer);
           replyChars = 0;
@@ -444,19 +509,20 @@ export async function run(call: Call, io: Io, signal: AbortSignal, emit: (event:
     const late = firstWord.signal.aborted || signal.aborted;
     if (replyChars === null) {
       if (late) return refuse("no answer in time");
+      // A ModelRefused was reported where it was thrown, if it was worth a report.
       if (failure instanceof ModelRefused) return refuse(failure.why);
       if (failure) report("model", failure);
-      return refuse(failure ? "unavailable" : "model error"); // no failure: a 200 with no frames
+      else reportCode("model", "empty stream"); // a 200 with no usable frame: a proxy's page, a non-streaming reply
+      return refuse(failure ? "unavailable" : "model error");
     }
     if (finish === null) {
       finish = late ? "deadline" : "dropped";
-      if (!late && failure) report("stream", failure);
+      if (!late && failure && !(failure instanceof ModelRefused)) report("stream", failure);
     }
   } catch (error) {
     report("run", error);
   } finally {
-    const decision = liveDecision(steps, finish);
-    const reason = liveReason(steps, finish, stopReason());
+    const { decision, reason } = liveOutcome(steps, finish, stopReason());
     // Bounded, so the stream ends inside the drain even when Postgres stalls. A close that lands later still counts;
     // the page was told logged: false.
     let bound: ReturnType<typeof setTimeout> | undefined;
@@ -465,27 +531,28 @@ export async function run(call: Call, io: Io, signal: AbortSignal, emit: (event:
         () => true,
         (error) => (report("close", error), false),
       ),
-      new Promise<false>((resolve) => (bound = setTimeout(resolve, LIVE.closeMs, false))),
+      new Promise<false>((resolve) => (bound = setTimeout(() => (reportCode("close", "slow"), resolve(false)), LIVE.closeMs))),
     ]);
     clearTimeout(bound);
     emit({ type: "end", decision, finish, logged });
   }
 }
 
-// ponytail: per-process cap, since every accepted call writes its row on the pg pool auth shares; move to a shared counter if replicas multiply
-// Stays under the pool's 10 connections, so auth keeps some while the playground is flooded.
+// Per process: the seats plus as many calls again being refused or closed beside them. Each holds a stream, two timers
+// and, while it queries, a connection from the playground's own pool, which db/index.ts sizes to this number.
 export const IN_FLIGHT_MAX = LIVE.seats * 2;
 let inFlight = 0;
 
 /**
  * The Response. Starts run() from the stream's start() and returns at once. The client-gone signal has two paths,
- * neither trusted alone: requestSignal before the stream is read, cancel() after. Owns the call's deadline.
+ * neither trusted alone: requestSignal before the stream is read, cancel() after. Owns the call's deadline. The body
+ * is read by writeResponse() in Astro core (astro 7.3.5, dist/core/app/node.js), which the comments below name.
  */
 export function respond(call: Call, requestSignal: AbortSignal, io: Io = liveIo): Response {
   if (inFlight >= IN_FLIGHT_MAX) return new Response(null, { status: 503 });
   const stop = new AbortController();
   const leave = () => stop.abort("left" satisfies Stop);
-  // The adapter never times out a reader that stops reading, so the deadline can't depend on the client.
+  // writeResponse() sets no timer on a client that stops reading, so the deadline can't depend on the client.
   const deadline = setTimeout(() => stop.abort("deadline" satisfies Stop), Math.max(0, LIVE.totalMs - (performance.now() - call.enteredAt)));
   if (requestSignal.aborted) leave();
   else requestSignal.addEventListener("abort", leave, { once: true });
@@ -503,14 +570,14 @@ export function respond(call: Call, requestSignal: AbortSignal, io: Io = liveIo)
           inFlight--;
           clearTimeout(deadline);
           requestSignal.removeEventListener("abort", leave);
-          // Always a normal close: an error after the headers becomes "Internal server error" in a 200 body.
+          // Always a normal close: on a stream error writeResponse() writes "Internal server error" into the 200 body.
           if (open) {
             open = false;
             controller.close();
           }
         });
     },
-    // Resolves, never rejects (the adapter console.errors a rejection). It only aborts; run() closes the row.
+    // Resolves, never rejects (writeResponse() console.errors a rejection). It only aborts; run() closes the row.
     cancel() {
       open = false;
       leave();

@@ -1,9 +1,11 @@
-// A stand-in for the llama.cpp server behind /playground's live path, speaking its measured stream
-// (private/research/playground-live-2026-10-03/llama-contract.md): a first chunk with null content, one chunk per
-// token, finish_reason on an empty delta, a usage chunk with `choices: []`, then [DONE].
+// A stand-in for the llama.cpp server behind /playground's live path, speaking its measured stream: a first chunk with
+// null content, one chunk per token, finish_reason on an empty delta, a usage chunk with `choices: []`, then [DONE].
 // Vitest imports startFakeLlama(); E2E and a developer run it as `node web/tests/fake-llama.ts <port>`.
 // The user message picks the behaviour: "[slow]" (tokens 300 ms apart, so four calls overlap), "[stall]" (never sends
-// headers, like a request queued behind four busy slots), "[400]", "[500]" or "[503]". Anything else is a short answer.
+// headers, like a request queued behind four busy slots), "[drop]" (one token, then the connection is destroyed),
+// "[400]", "[500]" or "[503]"; frames a client must not trust: "[not json]" (a frame that quotes the prompt and does
+// not parse), "[null]" (the frame `null`), "[odd content]" (a numeric content first), "[odd usage]" (a string token
+// count); and "[length]" (finishes at the token limit). Anything else is a short answer.
 import { createServer, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
 import { pathToFileURL } from "node:url";
@@ -31,7 +33,11 @@ export function startFakeLlama(port = 0): Promise<{ url: string; received: Recei
   const server = createServer(async (req, res) => {
     if (req.method !== "POST" || req.url !== "/v1/chat/completions") return void res.writeHead(404).end();
     let raw = "";
-    for await (const part of req) raw += part;
+    try {
+      for await (const part of req) raw += part;
+    } catch {
+      return; // the client went away mid-body
+    }
     let body: Received["body"] = {};
     try {
       body = JSON.parse(raw);
@@ -55,16 +61,21 @@ export function startFakeLlama(port = 0): Promise<{ url: string; received: Recei
     const send = (data: object | string) => res.write(`data: ${typeof data === "string" ? data : JSON.stringify(data)}\n\n`);
     res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
     send(chunk({ role: "assistant", content: null }, null));
+    if (prompt.includes("[not json]")) return void (send(`{"choices":[{"delta":{"content":${JSON.stringify(prompt)}`), res.end());
+    if (prompt.includes("[null]")) return void (send("null"), res.end());
+    if (prompt.includes("[odd content]")) send(chunk({ content: 42 }, null));
     for (const token of FAKE_ANSWER) {
       if (gap) await new Promise((r) => setTimeout(r, gap));
       if (seen.cut) return;
       send(chunk({ content: token }, null));
+      if (prompt.includes("[drop]")) return void setTimeout(() => res.destroy(), 20);
     }
-    send(chunk({}, "stop"));
+    send(chunk({}, prompt.includes("[length]") ? "length" : "stop"));
+    const promptTokens = prompt.includes("[odd usage]") ? "42" : 42;
     send({
       ...chunk({}, null),
       choices: [],
-      usage: { completion_tokens: FAKE_ANSWER.length, prompt_tokens: 42, total_tokens: 42 + FAKE_ANSWER.length, prompt_tokens_details: { cached_tokens: 0 } },
+      usage: { completion_tokens: FAKE_ANSWER.length, prompt_tokens: promptTokens, total_tokens: 42 + FAKE_ANSWER.length, prompt_tokens_details: { cached_tokens: 0 } },
       timings: { prompt_ms: 1, predicted_ms: 1, predicted_n: FAKE_ANSWER.length },
     });
     send("[DONE]");

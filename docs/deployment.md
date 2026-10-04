@@ -197,6 +197,8 @@ time" or "unavailable".
 
 There is no `/admin` switch. The URL is the switch, and web reads it from its environment.
 
+Before you set the URL, the Cloudflare rate limiting rule for `POST /api/playground` (section 5) must be in place.
+
 - Kubernetes: set `config.web.playground_model_url` and run `helm upgrade`. The chart passes both values through
   `envFrom`, so an upgrade that changes only these values does not restart the pod. Restart it with
   `kubectl rollout restart deployment/web-deployment`.
@@ -205,12 +207,19 @@ There is no `/admin` switch. The URL is the switch, and web reads it from its en
 
 ### What is stored
 
-Every call leaves one row in the `playground_call` table (migration `web/drizzle/0004_*.sql`, applied on start like
-the others). The app writes the row before any check and closes it with one decision: `forwarded`, `refused`, `cut`,
-or `lost` for a row that a dead process left open.
+An accepted call leaves one row in the `playground_call` table. Two migrations build it, applied on start like the
+others: `web/drizzle/0004_*.sql` creates the table, and `0005_*.sql` adds the two indexes the limiter's counts read.
+The app writes the row before any gate and closes it with one decision: `forwarded`, `refused`, `cut`, or `lost` for
+a row that a dead process left open.
+
+A request that is not accepted leaves no row: a cross-site POST (Astro answers 403), one the route turns away as
+malformed, slow, too large or not form-encoded (400, 408, 413, 415), one past the per-process cap (503), or one whose
+row could not be written.
 
 A row holds a visitor key, the caller, the prompt and answer lengths, token counts, timestamps and enum reasons. It
 never holds prompt text, answer text or an IP address. Prompt and answer text do not reach the logs or Sentry either.
+A model failure goes to both as a code, such as `playground: model failed (ECONNREFUSED)`: a connection failure,
+a status other than 503, an unreadable frame, or a 200 with no usable frame. A 503 and a timeout are not reported.
 The visitor key is `u:<user id>` for a signed-in visitor. For anyone else it is a hash of `cf-connecting-ip`, keyed
 with `BETTER_AUTH_SECRET`, that changes every UTC day. An IPv6 visitor is counted per /64, the first four groups of
 the address, so rotating addresses inside one prefix does not reset the limits. The app deletes rows older than 30
@@ -221,9 +230,9 @@ days when a new call arrives.
 | Limit | Value |
 | :--- | :--- |
 | Requests per visitor | 10 an hour, one at a time |
-| Requests site-wide | about 300 a day that reached the model |
+| Requests site-wide | about 300 a day that took a seat |
 | Model slots in use at once | 3 of the server's 4 |
-| Wait for the model's first byte | 2 s |
+| Wait for the model's first text token or finish event | 2 s |
 | Whole call | 6 s |
 | Answer length | 150 tokens |
 | Prompt length | 500 characters |
@@ -232,11 +241,15 @@ days when a new call arrives.
 
 The body size and the per-process cap are `BODY_MAX` and `IN_FLIGHT_MAX` in `web/src/lib/playground-io.ts`. The
 other numbers are in `LIVE` or `PROMPT_MAX` in `web/src/lib/playground.ts`. To change one, edit it there and deploy
-a new image. The same
-`playground_call` rows are the rate limiter and the slot counter, so the limits hold across replicas. A call takes a
-slot under a Postgres lock, so exactly three are seated at once and a fourth is refused "busy". A call that held a
-slot counts toward the day whatever its outcome. The per-process cap keeps the playground under the database pool's
-10 connections, which it shares with sign-in. A call always ends inside the 7 s shutdown drain (section 2).
+a new image.
+
+The same `playground_call` rows are the rate limiter and the slot counter, so the limits hold across replicas. A call
+takes a slot under a Postgres lock, so at most three are seated at once and a fourth is refused "busy". A call that
+held a slot counts toward the day whatever its outcome, even when it failed to reach the model. A visitor without an
+account starts a new hourly count at 00:00 UTC, because the visitor key changes then.
+
+The playground queries on its own database pool of 6 connections, one per call a process admits, so a flood of calls
+cannot take the connections sign-in uses. A call always ends inside the 7 s shutdown drain (section 2).
 
 ### Check streaming through Cloudflare before announcing it
 

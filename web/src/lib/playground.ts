@@ -56,7 +56,7 @@ interface Finding {
 /** What a live Routing step reached. Not in data/gateway.ts: the home figure draws MODEL_TARGETS. */
 type LiveTarget = (typeof LIVE)["model"];
 
-/** Why the live limiter refused. "unavailable": the row could not be written, so the call is not sent on. */
+/** Why the live limiter refused. "unavailable": open() gave no load (see preRouting()), so the call is not sent on. */
 export type LimitReason = "one at a time" | "hourly" | "site daily" | "unavailable";
 /** Why live Routing refused before any answer. "model off" is the base URL unset. "busy" is no free seat. */
 export type RoutingRefusal = "model off" | "busy" | "unavailable" | "no answer in time" | "model error";
@@ -68,8 +68,10 @@ export type Stop = "left" | "deadline";
 export type LiveReason = LimitReason | GuardrailCategory | RoutingRefusal | Finish | Stop | "error";
 
 /**
- * Every real value of the live path, with its tag: SIM's counterpart. The server, its SQL, the page's pills and its
- * "Live values" list all read it, so the page cannot state a number the server does not use. No tag says "demo".
+ * The live path's real values, with their tags: SIM's counterpart. The server, its SQL, the page's pills and its
+ * "Live values" list all read it, so the page cannot state one of these numbers differently from the server. Not
+ * here: PROMPT_MAX above, BODY_MAX, BODY_MS and IN_FLIGHT_MAX in playground-io.ts, and the '1 hour' and '1 day'
+ * windows in its SQL. No tag says "demo".
  */
 export const LIVE = {
   model: "phi-4-mini",
@@ -84,7 +86,8 @@ export const LIVE = {
   /** `end` is sent at most this long after the call's last event. totalMs + closeMs must fit the HTTP drain in
    *  server.mjs; a test reads both. */
   closeMs: 1_000,
-  /** An open row older than this belongs to a dead process: no count reads it and the next open() sweeps it. */
+  /** An open row older than this belongs to a dead process, and the next open() sweeps it. The in-flight count skips
+   *  it, and the seat count skips it once routed_at is this old. The hourly and site-day counts still count it. */
   staleMs: 10_000,
   maxTokens: 150,
   temperature: 0.3,
@@ -127,7 +130,8 @@ export type LiveStep = StepFor<AiGate>;
 
 /**
  * Where a request ended: `to` exists only when forwarded and `at` only when refused. "cut": a live call that ended with
- * no verdict (the visitor left, time ran out before Routing, the stream dropped).
+ * no verdict (the visitor left, time ran out before Routing, or the page lost its own connection). A model stream that
+ * drops is not one: that call is "forwarded" with finish "dropped".
  */
 type Decision<At extends string = string, To extends string = string> =
   | { verdict: "forwarded"; to: To }
@@ -166,7 +170,8 @@ export interface LiveEntry extends AuditEntry {
 
 /**
  * The wire contract: one JSON object per SSE `data:` frame, in this order: step* (a prefix of AI_GATES), text* (only
- * after a routed Routing step), then exactly one end, sent after the row is closed. The server derives `decision`.
+ * after a routed Routing step), then one end. `logged` is true only when the row was closed first: there may be no
+ * row, and a close can fail or outlast LIVE.closeMs. The server derives `decision`.
  */
 export type LiveEvent =
   | { type: "step"; step: LiveStep }
@@ -370,8 +375,9 @@ export function limitStep(load: Load): StepFor<"Rate limits"> {
 export const PRE_ROUTING = ["SSO", "Rate limits", "Guardrails", "Cache"] as const satisfies readonly AiGate[];
 
 /**
- * SSO to Cache for a live call, with the simulation's walk and stop rule. `load` null means the row could not be
- * written, which refuses at Rate limits with "unavailable". Routing is the server's: it is the only async gate.
+ * SSO to Cache for a live call, with the simulation's walk and stop rule. `load` null means open() gave none: it
+ * failed, or the call's signal beat it (that row may still land, and is then closed as cut). Either way this refuses
+ * at Rate limits with "unavailable". Routing is the server's: it is the only async gate.
  */
 export function preRouting(signedIn: boolean, load: Load | null, text: PromptText): LiveStep[] {
   return walk(PRE_ROUTING, {
@@ -383,22 +389,22 @@ export function preRouting(signedIn: boolean, load: Load | null, text: PromptTex
 }
 
 /**
- * decide() for a live call: a refused step, or a routed step whose answer has a `finish`, is a verdict; anything else
- * was cut. Not decide() itself: a live row is never "cached", and a routed step with no finish is not yet a verdict.
+ * decide() for a live call, with the row's reason: a refused step (the refusal's reason), or a routed step whose answer
+ * has a `finish` (that finish), is a verdict; anything else was cut, and `stop` says why. Not decide() itself: a live
+ * row is never "cached", and a routed step with no finish is not yet a verdict. One branch list, so a decision and its
+ * reason can't disagree.
  */
-export function liveDecision(steps: readonly LiveStep[], finish: Finish | null): LiveDecision {
+export function liveOutcome(
+  steps: readonly LiveStep[],
+  finish: Finish | null,
+  stop: Stop | "error",
+): { decision: LiveDecision; reason: LiveReason | null } {
   const last = steps.at(-1);
-  if (last?.verdict === "refused") return { verdict: "refused", at: last.gate };
-  if (last?.gate === "Routing" && finish !== null) return { verdict: "forwarded", to: LIVE.model };
-  return { verdict: "cut" };
-}
-
-/** The row's reason, branch for branch with liveDecision(): the refusal's, the finish, or why the call was cut. */
-export function liveReason(steps: readonly LiveStep[], finish: Finish | null, stop: Stop | "error"): LiveReason | null {
-  const last = steps.at(-1);
-  if (last?.verdict === "refused") return last.gate === "Guardrails" ? last.finding.category : (last.why ?? null);
-  if (last?.gate === "Routing" && finish !== null) return finish;
-  return stop;
+  if (last?.verdict === "refused") {
+    return { decision: { verdict: "refused", at: last.gate }, reason: last.gate === "Guardrails" ? last.finding.category : (last.why ?? null) };
+  }
+  if (last?.gate === "Routing" && finish !== null) return { decision: { verdict: "forwarded", to: LIVE.model }, reason: finish };
+  return { decision: { verdict: "cut" }, reason: stop };
 }
 
 /**
@@ -642,12 +648,11 @@ export function liveClosing(entry: LiveEntry): string {
   const { decision } = entry;
   switch (decision.verdict) {
     case "forwarded":
-      return `Answered by ${decision.to}, a small self-hosted model.${entry.finish ? FINISH_NOTE[entry.finish] : ""} ${log}`;
+      return `Answered by ${decision.to}, a small self-hosted model.${(entry.finish && FINISH_NOTE[entry.finish]) ?? ""} ${log}`;
     case "refused": {
       const last = entry.steps.at(-1);
-      return last?.gate === "Routing" && last.verdict === "refused"
-        ? `Refused at Routing. ${ROUTING_SENTENCE[last.why]} ${log}`
-        : `Refused at ${decision.at}. Nothing reached the model. ${log}`;
+      const why = last?.gate === "Routing" && last.verdict === "refused" ? ROUTING_SENTENCE[last.why] : "Nothing reached the model.";
+      return [`Refused at ${decision.at}.`, why, log].filter(Boolean).join(" ");
     }
     case "cut":
       return `${CUT} ${log}`;

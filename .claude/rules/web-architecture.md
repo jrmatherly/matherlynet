@@ -41,12 +41,16 @@ web/
                        cookie) and syncThemeColor() (rebuilds the theme-color tags after a switch)
   src/lib/playground.ts  the playground's simulated gateway (pure: parsers, SIM, send(), scenarios, replay(),
                        scenarioCss(), and the row wording shared by SSR and the page script) and the live path's pure
-                       half: LIVE (every real value), limitStep(), preRouting(), liveDecision(), sseFrames()
+                       half: LIVE (its real values, except PROMPT_MAX and the caps and SQL windows that
+                       playground-io.ts holds), limitStep(), preRouting(), liveOutcome() (a call's decision and its
+                       reason), sseFrames()
   src/lib/playground-io.ts  the live call's server half; the page script never imports it. liveModelOn()
                        (PLAYGROUND_MODEL_URL set), parseCall() (form-encoded POST, 8 KB body cap), visitorKey() (the
-                       only reader of cf-connecting-ip; IPv6 keyed on its /64), liveIo (playground_call SQL, seats
-                       claimed under an advisory lock so exactly 3 are seated, model fetch to
-                       <base>/v1/chat/completions, any status but 503 reported), run() (one row, one decision),
+                       only playground reader of cf-connecting-ip, which auth.ts also gives better-auth; IPv6 keyed
+                       on its /64), liveIo (playground_call SQL on the playground's own pool; open() returns no
+                       load if its count fails; seats claimed under an advisory lock, so at most 3 are seated; model
+                       fetch to <base>/v1/chat/completions; a connection failure, any status but 503, an unreadable
+                       frame and a 200 with no usable frame are reported), run() (one row, one decision),
                        respond() (text/event-stream, the 6 s deadline, 503 past 6 calls per process), report() (a
                        code to Sentry and the log, never the caught error)
   src/data/gateway.ts  gates, callers, targets, guardrail categories, audit retention: shared by GatewayPath and the
@@ -55,8 +59,9 @@ web/
                        perspectives, recruiterFacts, work, career, bio, skills); edit facts here
   src/content/writing/  posts: .md, or .mdx to embed a component (schema in src/content.config.ts; `draft: true`
                        hides a post everywhere)
-  src/db/              Drizzle client (`APPDB_URI`, pool timeouts), generated auth-schema.ts, app tables in schema.ts:
-                       site_settings, and playground_call (one row per live playground call; no text, no IP)
+  src/db/              Drizzle clients (`APPDB_URI`, pool timeouts): db, and playgroundDb on its own pool of 6 for the
+                       live playground; generated auth-schema.ts, app tables in schema.ts: site_settings, and
+                       playground_call (one row per accepted live playground call; no text, no IP)
   src/middleware.ts    session, siteSettings and theme into Astro.locals; Sentry error capture; security headers
   src/theme/palettes.ts  palette keys, typefaces, cookie names, resolveTheme() (cookies -> theme, mode, palette,
                        typeface)
@@ -95,7 +100,9 @@ web/
                        (startFakeLlama() in tests, or `node web/tests/fake-llama.ts <port>`)
   scripts/social-preview.mts  renders .github/social-preview.png (GitHub social preview, 1280x640) with Takumi
   e2e/                 Playwright against the Aspire stack: public pages, headers, sign-up -> verify (Mailpit)
-                       -> sign-out -> password reset; each run creates an e2e-*@example.test user
+                       -> sign-out -> password reset; each run creates an e2e-*@example.test user. live.spec.ts is
+                       /playground's live path, run in two passes: model off, then against tests/fake-llama.ts (a
+                       test for one mode skips itself on the other stack)
   public/              brand favicons, web manifest, brand raster logo, portrait.jpg (648x648) and
                        portrait-320.jpg (srcset for 2x screens); public/pro/ = Pro monogram set
 ```

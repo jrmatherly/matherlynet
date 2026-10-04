@@ -1,7 +1,9 @@
 import { createHmac } from "node:crypto";
+import { EventEmitter } from "node:events";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { DrizzleQueryError } from "drizzle-orm";
+import { DrizzleQueryError, type SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AI_GATES } from "../src/data/gateway";
 import {
@@ -25,9 +27,12 @@ import { LIVE, type LiveEvent, type Load, literal, sseFrames } from "../src/lib/
 import { POST } from "../src/pages/api/playground";
 import { FAKE_ANSWER, startFakeLlama } from "./fake-llama";
 
-vi.mock("../src/db", () => ({ db: { execute: vi.fn() } }));
-const { captureError } = vi.hoisted(() => ({ captureError: vi.fn() }));
+const { captureError, execute, connect } = vi.hoisted(() => ({ captureError: vi.fn(), execute: vi.fn(), connect: vi.fn() }));
+vi.mock("../src/db", () => ({ playgroundDb: { execute, $client: { connect } } }));
 vi.mock("../src/lib/sentry", () => ({ captureError }));
+
+/** Each report as Sentry received it: "<message> (<code>)". */
+const reported = () => captureError.mock.calls.map(([error, extra]) => `${(error as Error).message} (${(extra as { code: string }).code})`);
 
 const FREE: Load = { mineInFlight: 0, mineThisHour: 1, siteToday: 0, mineFreesInMs: 3_600_000, siteFreesInMs: null };
 
@@ -76,7 +81,7 @@ const throwing =
   };
 
 interface Script {
-  open?: () => Promise<{ id: CallId; load: Load }>;
+  open?: () => Promise<{ id: CallId; load: Load | null }>;
   claim?: () => Promise<boolean>;
   close?: () => Promise<void>;
   model?: Model | null;
@@ -137,6 +142,8 @@ const endOf = (events: LiveEvent[]) => events.find((e) => e.type === "end");
 
 beforeEach(() => {
   captureError.mockReset();
+  execute.mockReset();
+  connect.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 afterEach(() => {
@@ -173,22 +180,22 @@ describe("run", () => {
   const PRE = ["open", "close"];
   const OFF = ["open", "model", "close"];
   const SEAT = ["open", "model", "claim", "close"];
-  const refusals: [string, Script & { text?: string }, string, Closing["reason"], boolean, string[]][] = [
-    // name, script, refusing gate, reason, whether the model was read, the Io calls
-    ["one at a time", { open: async () => ({ id: 1 as CallId, load: { ...FREE, mineInFlight: 1 } }) }, "Rate limits", "one at a time", false, PRE],
-    ["hourly", { open: async () => ({ id: 1 as CallId, load: { ...FREE, mineThisHour: 11 } }) }, "Rate limits", "hourly", false, PRE],
-    ["site daily", { open: async () => ({ id: 1 as CallId, load: { ...FREE, siteToday: LIVE.sitePerDay } }) }, "Rate limits", "site daily", false, PRE],
-    ["a guardrail finding", { text: "my key AKIAABCDEFGHIJKLMNOP" }, "Guardrails", "secrets", false, PRE],
-    ["model off", { model: null }, "Routing", "model off", false, OFF],
-    ["busy", { claim: async () => false }, "Routing", "busy", false, SEAT],
-    ["claim throws", { claim: async () => Promise.reject(new Error("down")) }, "Routing", "unavailable", false, SEAT],
-    ["ModelRefused unavailable", { model: throwing(new ModelRefused("unavailable")) }, "Routing", "unavailable", true, SEAT],
-    ["ModelRefused model error", { model: throwing(new ModelRefused("model error")) }, "Routing", "model error", true, SEAT],
-    ["a 200 with no frames", { model: answering([], null) }, "Routing", "model error", true, SEAT],
-    ["an unexpected model error", { model: throwing(new TypeError("fetch failed")) }, "Routing", "unavailable", true, SEAT],
+  const refusals: [string, Script & { text?: string }, string, Closing["reason"], boolean, string[], string[]][] = [
+    // name, script, refusing gate, reason, whether the model was read, the Io calls, what run() reported
+    ["one at a time", { open: async () => ({ id: 1 as CallId, load: { ...FREE, mineInFlight: 1 } }) }, "Rate limits", "one at a time", false, PRE, []],
+    ["hourly", { open: async () => ({ id: 1 as CallId, load: { ...FREE, mineThisHour: 11 } }) }, "Rate limits", "hourly", false, PRE, []],
+    ["site daily", { open: async () => ({ id: 1 as CallId, load: { ...FREE, siteToday: LIVE.sitePerDay } }) }, "Rate limits", "site daily", false, PRE, []],
+    ["a guardrail finding", { text: "my key AKIAABCDEFGHIJKLMNOP" }, "Guardrails", "secrets", false, PRE, []],
+    ["model off", { model: null }, "Routing", "model off", false, OFF, []],
+    ["busy", { claim: async () => false }, "Routing", "busy", false, SEAT, []],
+    ["claim throws", { claim: async () => Promise.reject(new Error("down")) }, "Routing", "unavailable", false, SEAT, ["playground: claim failed (Error)"]],
+    ["ModelRefused unavailable", { model: throwing(new ModelRefused("unavailable")) }, "Routing", "unavailable", true, SEAT, []],
+    ["ModelRefused model error", { model: throwing(new ModelRefused("model error")) }, "Routing", "model error", true, SEAT, []],
+    ["a 200 with no frames", { model: answering([], null) }, "Routing", "model error", true, SEAT, ["playground: model failed (empty stream)"]],
+    ["an unexpected model error", { model: throwing(new TypeError("fetch failed")) }, "Routing", "unavailable", true, SEAT, ["playground: model failed (TypeError)"]],
   ];
 
-  it.each(refusals)("%s: one close, refused at that gate with that reason", async (_name, script, gate, reason, read, calls) => {
+  it.each(refusals)("%s: one close, refused at that gate with that reason", async (_name, script, gate, reason, read, calls, reports) => {
     const f = fakeIo(script);
     const events = await runIt(script.text ?? "hello", f.io);
     expect(f.closes).toEqual([{ id: 1, closing: { decision: { verdict: "refused", at: gate }, reason, replyChars: null, tokens: null } }]);
@@ -196,6 +203,7 @@ describe("run", () => {
     expect(events.some((e) => e.type === "text")).toBe(false);
     expect(f.iteratedAfter).toEqual(read ? ["open", "model", "claim"] : null);
     expect(f.calls).toEqual(calls);
+    expect(reported()).toEqual(reports);
   });
 
   it("when open rejects, Rate limits refuses 'unavailable', nothing else runs and the page is told logged: false", async () => {
@@ -207,6 +215,18 @@ describe("run", () => {
       { type: "end", decision: { verdict: "refused", at: "Rate limits" }, finish: null, logged: false },
     ]);
     expect(f.calls).toEqual(["open"]);
+  });
+
+  it("when open gives a row but no load, Rate limits refuses 'unavailable', the row is closed so, and the page is told logged: true", async () => {
+    const f = fakeIo({ open: async () => ({ id: 4 as CallId, load: null }) });
+    const events = await runIt("hello", f.io);
+    expect(events).toEqual([
+      { type: "step", step: { gate: "SSO", verdict: "anonymous" } },
+      { type: "step", step: { gate: "Rate limits", verdict: "refused", retryMs: LIVE.totalMs, why: "unavailable" } },
+      { type: "end", decision: { verdict: "refused", at: "Rate limits" }, finish: null, logged: true },
+    ]);
+    expect(f.closes).toEqual([{ id: 4, closing: { decision: { verdict: "refused", at: "Rate limits" }, reason: "unavailable", replyChars: null, tokens: null } }]);
+    expect(f.calls).toEqual(["open", "close"]);
   });
 
   it("when open hangs until the signal aborts, the call ends at once, and a row that lands later is closed as cut", async () => {
@@ -235,16 +255,41 @@ describe("run", () => {
     expect(captureError.mock.calls.map(([, extra]) => extra)).toEqual(reports);
   });
 
-  it("a late open that rejects is swallowed: no close, no unhandled rejection", async () => {
+  it("a late open that rejects is reported at stage open, with no close and no unhandled rejection", async () => {
     const opening = deferred<{ id: CallId; load: Load }>();
     const f = fakeIo({ open: () => opening.promise });
     const stop = new AbortController();
     const done = runIt("hello", f.io, stop.signal);
     stop.abort("deadline");
     await done;
+    expect(reported()).toEqual(["playground: open failed (slow)"]);
     opening.reject(new Error("down"));
     await vi.runAllTimersAsync();
     expect(f.calls).toEqual(["open"]);
+    expect(reported()).toEqual(["playground: open failed (slow)", "playground: open failed (Error)"]);
+  });
+
+  it.each([
+    ["the first-byte timer", null],
+    ["the deadline", "deadline"],
+  ])("a model that fails with ModelRefused once %s fires is refused 'no answer in time', not cut or unavailable", async (_name, abortWith) => {
+    // What modelStream does when its signal aborts before the headers.
+    const f = fakeIo({
+      model: async function* (signal) {
+        await aborted(signal).catch(() => {});
+        throw new ModelRefused("unavailable");
+      },
+    });
+    const stop = new AbortController();
+    const done = runIt("hello", f.io, stop.signal);
+    if (abortWith) {
+      await vi.advanceTimersByTimeAsync(500);
+      stop.abort(abortWith);
+    } else await vi.advanceTimersByTimeAsync(LIVE.firstByteMs);
+    await done;
+    expect(f.closes).toEqual([
+      { id: 1, closing: { decision: { verdict: "refused", at: "Routing" }, reason: "no answer in time", replyChars: null, tokens: null } },
+    ]);
   });
 
   const onCache = (leave: () => void) => (e: LiveEvent) => e.type === "step" && e.step.gate === "Cache" && leave();
@@ -292,6 +337,26 @@ describe("run", () => {
     expect({ calls: f.calls, iteratedAfter: f.iteratedAfter, modelAborted: f.modelSignal?.aborted ?? null }).toEqual(expected);
   });
 
+  it("a claim that rejects after the visitor left is reported at stage claim", async () => {
+    const claiming = deferred<boolean>();
+    const f = fakeIo({ claim: () => claiming.promise });
+    const stop = new AbortController();
+    const events = await runIt("hello", f.io, stop.signal, onCache(() => queueMicrotask(() => stop.abort("left"))));
+    expect(endOf(events)).toEqual({ type: "end", decision: { verdict: "cut" }, finish: null, logged: true });
+    expect(reported()).toEqual([]);
+    claiming.reject(new Error("down"));
+    await vi.runAllTimersAsync();
+    expect(reported()).toEqual(["playground: claim failed (Error)"]);
+  });
+
+  it("a claim still pending at the deadline is reported as slow", async () => {
+    const f = fakeIo({ claim: () => new Promise(() => {}) });
+    const stop = new AbortController();
+    const events = await runIt("hello", f.io, stop.signal, onCache(() => queueMicrotask(() => stop.abort("deadline"))));
+    expect(endOf(events)).toMatchObject({ decision: { verdict: "cut" } });
+    expect(reported()).toEqual(["playground: claim failed (slow)"]);
+  });
+
   it("no first event within firstByteMs: Routing 'no answer in time', and the model's signal is aborted", async () => {
     const f = fakeIo({ model: stalling([]) });
     const stop = new AbortController();
@@ -328,13 +393,20 @@ describe("run", () => {
     expect(captureError).toHaveBeenCalledWith(new Error("playground: stream failed"), { code: "UND_ERR_SOCKET" });
   });
 
+  it("a ModelRefused mid-answer is forwarded 'dropped', and run() does not report it a second time", async () => {
+    const f = fakeIo({ model: throwing(new ModelRefused("model error"), ["Hel"]) });
+    const events = await runIt("hello", f.io);
+    expect(endOf(events)).toEqual({ type: "end", decision: { verdict: "forwarded", to: "phi-4-mini" }, finish: "dropped", logged: true });
+    expect(reported()).toEqual([]);
+  });
+
   it("a close that rejects: end.logged false, and run() still resolves", async () => {
     const f = fakeIo({ close: async () => Promise.reject(new Error("down")) });
     const events = await runIt("hello", f.io);
     expect(endOf(events)).toMatchObject({ decision: { verdict: "forwarded" }, logged: false });
   });
 
-  it("a close slower than closeMs: end is sent at closeMs with logged false", async () => {
+  it("a close slower than closeMs: end is sent at closeMs with logged false, and the slow close is reported", async () => {
     const f = fakeIo({ close: () => new Promise<void>(() => {}) });
     const events: LiveEvent[] = [];
     const done = run(call("hello"), f.io, new AbortController().signal, (e) => events.push(e));
@@ -343,6 +415,65 @@ describe("run", () => {
     await vi.advanceTimersByTimeAsync(1);
     await done;
     expect(endOf(events)).toMatchObject({ logged: false });
+    expect(reported()).toEqual(["playground: close failed (slow)"]);
+  });
+});
+
+describe("liveIo storage", () => {
+  const visitor = "h:0123456789abcdef0123456789abcdef" as VisitorKey;
+  const opening = { visitor, caller: "End users" as const, promptChars: 5 };
+  const counts = { mine_in_flight: "0", mine_this_hour: "1", mine_frees_in_ms: "1000.4", site_today: "2", site_frees_in_ms: null };
+
+  it("open: the row's id and the load, parsed from the count", async () => {
+    execute.mockResolvedValueOnce({ rows: [{ id: 5 }] }).mockResolvedValueOnce({ rows: [counts] });
+    await expect(liveIo.open(opening)).resolves.toEqual({
+      id: 5,
+      load: { mineInFlight: 0, mineThisHour: 1, siteToday: 2, mineFreesInMs: 1001, siteFreesInMs: null },
+    });
+  });
+
+  const missing: Record<string, unknown> = { ...counts };
+  delete missing.site_today;
+
+  it.each([
+    ["the count fails", () => Promise.reject(Object.assign(new Error("down"), { code: "57P01" })), "57P01"],
+    ["a count row is missing a column", async () => ({ rows: [missing] }), "no count"],
+  ])("open: when %s, the row's id with no load, reported, and nothing else is sent", async (_name, count, code) => {
+    execute.mockResolvedValueOnce({ rows: [{ id: 5 }] }).mockImplementationOnce(count);
+    await expect(liveIo.open(opening)).resolves.toEqual({ id: 5, load: null });
+    expect(reported()).toEqual([`playground: open failed (${code})`]);
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
+
+  const client = (query: (text: string) => Promise<unknown>) => {
+    const fake = { query: vi.fn((config: { text: string }) => query(config.text)), release: vi.fn() };
+    connect.mockResolvedValueOnce(fake);
+    return fake;
+  };
+  const seated = async (text: string) => ({ rows: text.includes("update playground_call") ? [{ id: 5 }] : [] });
+
+  it("claim: seats the row inside one transaction and returns its client to the pool", async () => {
+    const fake = client(seated);
+    await expect(liveIo.claim(5 as CallId)).resolves.toBe(true);
+    expect(fake.query.mock.calls.map(([config]) => config.text.trim().split(/\s+/).slice(0, 2).join(" "))).toEqual([
+      "begin",
+      "select pg_advisory_xact_lock($1)",
+      "update playground_call",
+      "commit",
+    ]);
+    expect(fake.release.mock.calls).toEqual([[]]);
+  });
+
+  it("claim: no row updated is false, and the client goes back to the pool", async () => {
+    const fake = client(async () => ({ rows: [] }));
+    await expect(liveIo.claim(5 as CallId)).resolves.toBe(false);
+    expect(fake.release.mock.calls).toEqual([[]]);
+  });
+
+  it("claim: a BEGIN that fails rejects, and the client is destroyed rather than reused", async () => {
+    const fake = client(async (text) => (text === "begin" ? Promise.reject(new Error("dead socket")) : seated(text)));
+    await expect(liveIo.claim(5 as CallId)).rejects.toMatchObject({ cause: { message: "dead socket" } });
+    expect(fake.release.mock.calls).toEqual([[true]]);
   });
 });
 
@@ -390,7 +521,48 @@ describe("respond", () => {
   const hold = (f = fakeIo({ model: stalling(["Hel"]) })) => respond(call("hello"), new AbortController().signal, f.io);
   const fill = (n = IN_FLIGHT_MAX) => Array.from({ length: n }, () => hold());
 
-  it("at six calls in flight, under the pool's ten: 503 without touching Io; settled calls free their places", async () => {
+  it("the playground's own pool holds one connection per call a process admits", async () => {
+    const { playgroundDb } = await vi.importActual<typeof import("../src/db")>("../src/db");
+    expect(playgroundDb.$client.options.max).toBe(IN_FLIGHT_MAX);
+  });
+
+  it("both pools listen for a dropped idle connection, so a Postgres restart can't end the process, and both time out", async () => {
+    const { db, playgroundDb } = await vi.importActual<typeof import("../src/db")>("../src/db");
+    for (const pool of [db.$client, playgroundDb.$client]) {
+      expect(pool.listenerCount("error")).toBe(1);
+      expect(pool.options).toMatchObject({ connectionTimeoutMillis: 5_000, statement_timeout: 10_000, query_timeout: 15_000 });
+    }
+  });
+
+  it("every client of both pools listens for 'error', so a socket that drops while checked out can't end the process", async () => {
+    const { db, playgroundDb } = await vi.importActual<typeof import("../src/db")>("../src/db");
+    for (const pool of [db.$client, playgroundDb.$client]) {
+      const client = new EventEmitter();
+      pool.emit("connect", client);
+      // An "error" with no listener throws, which in production is an uncaught exception.
+      expect(client.emit("error", new Error("reset"))).toBe(true);
+    }
+  });
+
+  it("a token already in flight when the visitor cancels is dropped quietly: the row is cut and nothing is reported", async () => {
+    const f = fakeIo({
+      model: async function* (signal) {
+        yield { type: "text", text: "Hel" };
+        await new Promise((r) => setTimeout(r, 30));
+        yield { type: "text", text: "lo" };
+        await aborted(signal);
+      },
+    });
+    const res = respond(call("hello"), new AbortController().signal, f.io);
+    for await (const data of sseFrames(res.body!)) if ((JSON.parse(data) as LiveEvent).type === "text") break;
+    await res.body!.cancel();
+    await vi.advanceTimersByTimeAsync(30);
+    await f.closed;
+    expect(f.closes.map(({ closing }) => [closing.decision, closing.reason, closing.replyChars])).toEqual([[{ verdict: "cut" }, "left", 3]]);
+    expect(reported()).toEqual([]);
+  });
+
+  it("at six calls in flight, one per connection in the playground's pool: 503 without touching Io; settled calls free their places", async () => {
     expect(IN_FLIGHT_MAX).toBe(6);
     expect(fill().map((res) => res.status)).toEqual(Array(6).fill(200));
     const refused = fakeIo();
@@ -475,6 +647,16 @@ describe("leaks", () => {
     expect(vi.mocked(console.error).mock.calls).toEqual([["playground: open failed (ECONNREFUSED)"]]);
   });
 
+  it.each([
+    ["timeout exceeded when trying to connect", "pool timeout"],
+    ["Query read timeout", "query timeout"],
+    ["Connection terminated unexpectedly", "terminated"],
+    ["Client has encountered a connection error and is not queryable", "not queryable"],
+  ])("report() names pg's uncoded failure '%s' by a short code, not its message", (message, code) => {
+    report("open", new DrizzleQueryError("select 1", [CANARY], new Error(message)));
+    expect(captureError.mock.calls).toEqual([[new Error("playground: open failed"), { code }]]);
+  });
+
   it("report() never forwards a code that could be text", () => {
     report("run", { code: `${CANARY} was the prompt, quoted in a code` });
     expect(captureError).toHaveBeenCalledWith(new Error("playground: run failed"), { code: "unknown" });
@@ -498,10 +680,26 @@ describe("parseCall and the route", () => {
     ["multipart", new Request(url, { method: "POST", body: (() => { const d = new FormData(); d.set("text", "hi"); return d; })() }), 415],
     ["no content type", new Request(url, { method: "POST", body: new TextEncoder().encode("text=hi&caller=Agents") }), 415],
     ["8193 bytes without Content-Length", new Request(url, { method: "POST", headers: form, body: streamOf(8_193), duplex: "half" } as RequestInit), 413],
+    [
+      "8193 bytes in two chunks",
+      new Request(url, {
+        method: "POST",
+        headers: form,
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(`text=${"a".repeat(4_091)}`));
+            controller.enqueue(new TextEncoder().encode("a".repeat(4_097)));
+            controller.close();
+          },
+        }),
+        duplex: "half",
+      } as RequestInit),
+      413,
+    ],
     ["an empty body", new Request(url, { method: "POST", headers: form, body: "" }), 400],
     ["501 characters", new Request(url, { method: "POST", headers: form, body: new URLSearchParams({ text: "a".repeat(501), caller: "Agents" }) }), 400],
     ["an unknown caller", new Request(url, { method: "POST", headers: form, body: new URLSearchParams({ text: "hi", caller: "Nobody" }) }), 400],
-  ])("%s: %i with no body", async (_name, request, status) => {
+  ])("%s: its status, with no body", async (_name, request, status) => {
     const res = await post(request);
     expect(res.status).toBe(status);
     expect(await res.text()).toBe("");
@@ -534,6 +732,16 @@ describe("parseCall and the route", () => {
       value: { visitor: "u:user-1", signedIn: true },
     });
   });
+
+  it("the route keys a signed-in caller on the user id, never the email", async () => {
+    execute.mockRejectedValue(new Error("down"));
+    const request = new Request(url, { method: "POST", headers: form, body: "text=hi&caller=Agents" });
+    const res = await (POST({ request, locals: { user: { id: "user-1", email: "owner@example.test" } } } as unknown as Parameters<typeof POST>[0]) as Promise<Response>);
+    expect(endOf(await allEvents(res))).toMatchObject({ logged: false });
+    const insert = new PgDialect().sqlToQuery(execute.mock.calls[0][0] as SQL);
+    expect(insert.params).toContain("u:user-1");
+    expect(JSON.stringify(insert.params)).not.toContain("owner@example.test");
+  });
 });
 
 describe("visitorKey", () => {
@@ -560,6 +768,10 @@ describe("visitorKey", () => {
 
   it("hashes an IPv4 address whole", () => {
     expect(key("203.0.113.9")).toBe(hashOf("203.0.113.9"));
+  });
+
+  it("reads only cf-connecting-ip: X-Forwarded-For alone is the shared local key", () => {
+    expect(visitorKey(new Headers({ "x-forwarded-for": "203.0.113.9" }), null, day)).toBe(hashOf("local"));
   });
 
   it("keys an IPv6 address on its /64: same prefix, same key; another prefix, another key; never the address", () => {
@@ -642,24 +854,79 @@ describe("liveIo.model over real undici against the fake llama", () => {
     expect(error).toMatchObject({ why, message: why });
     expect(captureError.mock.calls.map(([, extra]) => extra)).toEqual(reports);
     expect(JSON.stringify(captureError.mock.calls)).not.toContain("canary");
+    expect(vi.mocked(console.error).mock.calls).toEqual(reports.map(({ code }) => [`playground: model failed (${code})`]));
   });
 
-  it("a refused connection is 'unavailable'", async () => {
+  it("a refused connection is 'unavailable', reported with its code", async () => {
     const closed = createServer();
     await new Promise<void>((r) => closed.listen(0, "127.0.0.1", r));
     const { port } = closed.address() as AddressInfo;
     await new Promise((r) => closed.close(r));
     vi.stubEnv("PLAYGROUND_MODEL_URL", `http://127.0.0.1:${port}`);
     await expect(refusal("hello")).resolves.toMatchObject({ why: "unavailable" });
+    expect(reported()).toEqual(["playground: model failed (ECONNREFUSED)"]);
   });
 
-  it("a request that gets no headers is aborted by the signal", async () => {
+  it("a request that gets no headers is aborted by the signal, and the abort is not reported", async () => {
     vi.stubEnv("PLAYGROUND_MODEL_URL", fake.url);
     const stop = new AbortController();
     setTimeout(() => stop.abort("left"), 100);
     const t0 = Date.now();
-    await expect(collect("[stall]", stop.signal)).rejects.toBeInstanceOf(ModelRefused);
+    await expect(collect("[stall]", stop.signal)).rejects.toMatchObject({ why: "unavailable" });
     expect(Date.now() - t0).toBeLessThan(1_000);
+    expect(reported()).toEqual([]);
+  });
+
+  it("an upstream that drops mid-answer: the text so far, then 'unavailable', reported once at stage stream", async () => {
+    vi.stubEnv("PLAYGROUND_MODEL_URL", fake.url);
+    const events: ModelEvent[] = [];
+    const error = await (async () => {
+      for await (const event of liveIo.model(literal("hello [drop]"), new AbortController().signal)!) events.push(event);
+    })().then(() => null, (thrown: unknown) => thrown);
+    expect(events).toEqual([{ type: "text", text: "Hello" }]);
+    expect(error).toBeInstanceOf(ModelRefused);
+    expect(error).toMatchObject({ why: "unavailable" });
+    expect(reported()).toEqual(["playground: stream failed (UND_ERR_SOCKET)"]);
+  });
+
+  it("a signal aborted while the next token is pending: 'unavailable', and the abort is not reported", async () => {
+    vi.stubEnv("PLAYGROUND_MODEL_URL", fake.url);
+    const stop = new AbortController();
+    const iterator = liveIo.model(literal("[slow] hello"), stop.signal)![Symbol.asyncIterator]();
+    expect(await iterator.next()).toEqual({ done: false, value: { type: "text", text: "Hello" } });
+    const pending = iterator.next();
+    setTimeout(() => stop.abort("left"), 50);
+    await expect(pending).rejects.toMatchObject({ why: "unavailable" });
+    expect(reported()).toEqual([]);
+  });
+
+  it("sends nothing until the stream is read", async () => {
+    vi.stubEnv("PLAYGROUND_MODEL_URL", fake.url);
+    const answer = liveIo.model(literal("hello"), new AbortController().signal)!;
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fake.received).toHaveLength(0);
+    await answer[Symbol.asyncIterator]().next();
+    expect(fake.received).toHaveLength(1);
+  });
+
+  it.each([
+    ["[not json]", "a frame that is not JSON"],
+    ["[null]", "a frame that is JSON null"],
+  ])("%s: %s is 'model error', reported as a bad frame without quoting it", async (mode) => {
+    vi.stubEnv("PLAYGROUND_MODEL_URL", fake.url);
+    await expect(refusal(`canary ${mode}`)).resolves.toMatchObject({ why: "model error", message: "model error" });
+    expect(reported()).toEqual(["playground: model failed (bad frame)"]);
+    expect(JSON.stringify([captureError.mock.calls, vi.mocked(console.error).mock.calls])).not.toContain("canary");
+  });
+
+  it.each<[string, ModelEvent]>([
+    ["[odd content]", { type: "finish", reason: "stop", tokens: { in: 42, out: FAKE_ANSWER.length } }],
+    ["[odd usage]", { type: "finish", reason: "stop", tokens: null }],
+    ["[length]", { type: "finish", reason: "length", tokens: { in: 42, out: FAKE_ANSWER.length } }],
+  ])("%s: only string content is text, tokens only when both are integers, and the finish is the model's", async (mode, finish) => {
+    vi.stubEnv("PLAYGROUND_MODEL_URL", fake.url);
+    expect(await collect(`hello ${mode}`)).toEqual([...FAKE_ANSWER.map((text) => ({ type: "text", text })), finish]);
+    expect(reported()).toEqual([]);
   });
 
   it("stopping early ends the upstream request, so the slot frees", async () => {

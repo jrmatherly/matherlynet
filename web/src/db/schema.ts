@@ -53,7 +53,7 @@ export const playgroundCall = pgTable(
     check("playground_call_closed", sql`(${t.endedAt} is null) = (${t.decision} is null)`),
     check("playground_call_decision", sql`${t.decision} in ('forwarded', 'refused', 'cut', 'lost')`),
     index("playground_call_started_at").on(t.startedAt),
-    // The sweep reads open rows only; this keeps it off the 30-day table.
+    // The sweep reads open rows only; this keeps it off the retained table.
     index("playground_call_open").on(t.startedAt).where(sql`${t.endedAt} is null`),
     // The per-visitor counts read one visitor's last hour.
     index("playground_call_visitor").on(t.visitor, t.startedAt),
