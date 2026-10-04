@@ -43,6 +43,14 @@ test("the case study opens from Writing with its figure and table", async ({ pag
   await expect(page.getByRole("table")).toBeVisible();
 });
 
+test("the feed and sitemap carry the case study and no drafts", async ({ request }) => {
+  for (const path of ["/rss.xml", "/sitemap.xml"]) {
+    const xml = await (await request.get(path)).text();
+    expect(xml, path).toContain("/writing/ai-gateway-three-generations<");
+    expect(xml, path).not.toContain("first-post");
+  }
+});
+
 test("each perspective's panel shows when it is picked", async ({ page }) => {
   await page.goto("/");
   for (const id of ["leaders", "security", "recruiters"]) {
