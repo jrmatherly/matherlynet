@@ -29,6 +29,20 @@
       "when": 1790948619726,
       "tag": "0003_deep_otto_octavius",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791088442360,
+      "tag": "0004_dizzy_captain_cross",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791090352657,
+      "tag": "0005_outstanding_clint_barton",
+      "breakpoints": true
     }
   ]
 }

@@ -51,6 +51,7 @@ recorded as `REDACTED`.
 | `MAIL_FROM` | sender address, e.g. `MatherlyNet <…@matherly.net>` |
 | `ADMIN_EMAIL` | the admin's address, set **before** that account's email is verified (see below) |
 | `GITHUB_*`, `GOOGLE_*` | optional; a provider is enabled only when both its id and secret are set |
+| `PLAYGROUND_MODEL_URL`, `PLAYGROUND_MODEL_KEY` | optional, blank by default. They configure the live playground (section 8). With the URL blank, `/playground` stays a simulation |
 
 ```sh
 cd out/compose           # aspire publish also wrote docker-compose.override.yaml (the web healthcheck)
@@ -127,6 +128,9 @@ of the security headers pages get (checked on a production build), and the clien
   `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`.
 - **WAF custom rule**, action Block: `ends_with(http.request.uri.path, ".map")`. CI uploads the maps to Sentry from
   the image, so nobody needs them over HTTP.
+- **Rate limiting rule**, required before the app is exposed. This repo does not create it. Limit
+  `POST /api/playground` to about 30 requests a minute per address. The route writes a `playground_call` row for
+  every accepted POST even with the model off, and the app's own limits only stop the model call.
 
 ## 6. Sentry
 
@@ -154,7 +158,8 @@ except that `parameters.web.web_image` is `web:latest` there: set it to
 `values.yaml`: non-secret settings under `config.web` (`app_url`, `admin_email`, `mail_from`, `github_client_id`,
 `google_client_id`), and passwords and keys under `secrets` (`pg.pg_password` and `web.pg_password`, the same
 value: the chart builds web's connection string from the second; `web.better_auth_secret`, `web.smtp_url`, the
-OAuth client secrets).
+OAuth client secrets). The live playground adds two optional values, both empty by default:
+`config.web.playground_model_url` and `secrets.web.playground_model_key` (section 8).
 
 Postgres data sits on an `emptyDir` (Aspire's Kubernetes publisher does not emit a volume claim for
 `withDataVolume()`), so the database is lost when the `pg` pod is deleted or rescheduled. The chart has no value
@@ -166,3 +171,85 @@ web has three probes on `/api/auth/ok` (distinct query strings, one health check
 up to 90 s, while `migrate.mjs` waits for Postgres), then readiness and liveness. All stay up while Postgres is
 unreachable (site settings fall back; better-auth's database rate limiter skips `/ok`), so a database outage doesn't
 restart pods.
+
+## 8. Live playground (when a model URL is set)
+
+With the model URL unset, `/playground` is a browser simulation, and a direct POST to `/api/playground` is refused at
+Routing with "model off". With the URL set, the page POSTs a visitor's own request to `/api/playground`. The server
+checks the request against its limits and guardrails, sends it to the model and streams the answer back. The
+example scenarios stay simulated in both modes.
+
+| Setting | Compose `.env` | Helm value | Value |
+| :--- | :--- | :--- | :--- |
+| Model URL | `PLAYGROUND_MODEL_URL` | `config.web.playground_model_url` | Base URL of an OpenAI-compatible server, without `/v1`. The app POSTs to `<base>/v1/chat/completions`. A URL that carries a username or password is refused |
+| Model key | `PLAYGROUND_MODEL_KEY` | `secrets.web.playground_model_key` | Optional. Sent as `Authorization: Bearer <key>` |
+
+### The model server
+
+The model is `phi-4-mini`, served by llama.cpp with 4 slots at `http://llama-server.ai.svc.cluster.local:8080` on the
+home cluster. The server is reachable only from namespaces labelled `llama-server.ai/client: "true"`. It is not
+reachable from a laptop, from CI or from a Compose deployment outside that cluster.
+
+Leave the URL unset until web's namespace has that label. Without the label, every live send ends "no answer in
+time" or "unavailable".
+
+### Turn it on and off
+
+There is no `/admin` switch. The URL is the switch, and web reads it from its environment.
+
+- Kubernetes: set `config.web.playground_model_url` and run `helm upgrade`. The chart passes both values through
+  `envFrom`, so an upgrade that changes only these values does not restart the pod. Restart it with
+  `kubectl rollout restart deployment/web-deployment`.
+- Compose: set `PLAYGROUND_MODEL_URL` in `.env` and run `docker compose --env-file .env up -d`.
+- To turn the feature off, empty the value and repeat the same step.
+
+### What is stored
+
+Every call leaves one row in the `playground_call` table (migration `web/drizzle/0004_*.sql`, applied on start like
+the others). The app writes the row before any check and closes it with one decision: `forwarded`, `refused`, `cut`,
+or `lost` for a row that a dead process left open.
+
+A row holds a visitor key, the caller, the prompt and answer lengths, token counts, timestamps and enum reasons. It
+never holds prompt text, answer text or an IP address. Prompt and answer text do not reach the logs or Sentry either.
+The visitor key is `u:<user id>` for a signed-in visitor. For anyone else it is a hash of `cf-connecting-ip`, keyed
+with `BETTER_AUTH_SECRET`, that changes every UTC day. An IPv6 visitor is counted per /64, the first four groups of
+the address, so rotating addresses inside one prefix does not reset the limits. The app deletes rows older than 30
+days when a new call arrives.
+
+### Limits
+
+| Limit | Value |
+| :--- | :--- |
+| Requests per visitor | 10 an hour, one at a time |
+| Requests site-wide | about 300 a day that reached the model |
+| Model slots in use at once | 3 of the server's 4 |
+| Wait for the model's first byte | 2 s |
+| Whole call | 6 s |
+| Answer length | 150 tokens |
+| Prompt length | 500 characters |
+| Request body | 8 KB, form-encoded POST only |
+| Calls in progress per web process | 6, and more answer 503 |
+
+The body size and the per-process cap are `BODY_MAX` and `IN_FLIGHT_MAX` in `web/src/lib/playground-io.ts`. The
+other numbers are in `LIVE` or `PROMPT_MAX` in `web/src/lib/playground.ts`. To change one, edit it there and deploy
+a new image. The same
+`playground_call` rows are the rate limiter and the slot counter, so the limits hold across replicas. A call takes a
+slot under a Postgres lock, so exactly three are seated at once and a fourth is refused "busy". A call that held a
+slot counts toward the day whatever its outcome. The per-process cap keeps the playground under the database pool's
+10 connections, which it shares with sign-in. A call always ends inside the 7 s shutdown drain (section 2).
+
+### Check streaming through Cloudflare before announcing it
+
+Two behaviours are not verified. Cloudflare may buffer `text/event-stream` through the tunnel, and cloudflared may
+keep the origin connection open after the browser disconnects. The 6 s deadline bounds both. Check them once
+deployed:
+
+```sh
+curl -N https://matherly.net/api/playground -H 'Origin: https://matherly.net' \
+  --data-urlencode 'caller=End users' --data-urlencode 'text=Say hello in one sentence.'
+```
+
+- Buffering: the `data:` lines must arrive one at a time. If they arrive together when the call ends, Cloudflare
+  buffers the stream.
+- Disconnect: press Ctrl-C while the answer streams, then read the newest `playground_call` row. `decision` is `cut`
+  and `reason` is `left` when the disconnect reached web.

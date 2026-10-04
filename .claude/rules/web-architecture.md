@@ -40,14 +40,23 @@ web/
   src/lib/theme-cookie.ts  browser helpers for ModeToggle and ThemeControls: remember() (one-year visitor theme
                        cookie) and syncThemeColor() (rebuilds the theme-color tags after a switch)
   src/lib/playground.ts  the playground's simulated gateway (pure: parsers, SIM, send(), scenarios, replay(),
-                       scenarioCss(), and the row wording shared by SSR and the page script)
+                       scenarioCss(), and the row wording shared by SSR and the page script) and the live path's pure
+                       half: LIVE (every real value), limitStep(), preRouting(), liveDecision(), sseFrames()
+  src/lib/playground-io.ts  the live call's server half; the page script never imports it. liveModelOn()
+                       (PLAYGROUND_MODEL_URL set), parseCall() (form-encoded POST, 8 KB body cap), visitorKey() (the
+                       only reader of cf-connecting-ip; IPv6 keyed on its /64), liveIo (playground_call SQL, seats
+                       claimed under an advisory lock so exactly 3 are seated, model fetch to
+                       <base>/v1/chat/completions, any status but 503 reported), run() (one row, one decision),
+                       respond() (text/event-stream, the 6 s deadline, 503 past 6 calls per process), report() (a
+                       code to Sentry and the log, never the caught error)
   src/data/gateway.ts  gates, callers, targets, guardrail categories, audit retention: shared by GatewayPath and the
                        playground
   src/data/profile.ts  all résumé-derived copy (headline, intro, availability, contact, gateway case study,
                        perspectives, recruiterFacts, work, career, bio, skills); edit facts here
   src/content/writing/  posts: .md, or .mdx to embed a component (schema in src/content.config.ts; `draft: true`
                        hides a post everywhere)
-  src/db/              Drizzle client (`APPDB_URI`, pool timeouts), generated auth-schema.ts, app tables in schema.ts
+  src/db/              Drizzle client (`APPDB_URI`, pool timeouts), generated auth-schema.ts, app tables in schema.ts:
+                       site_settings, and playground_call (one row per live playground call; no text, no IP)
   src/middleware.ts    session, siteSettings and theme into Astro.locals; Sentry error capture; security headers
   src/theme/palettes.ts  palette keys, typefaces, cookie names, resolveTheme() (cookies -> theme, mode, palette,
                        typeface)
@@ -68,17 +77,22 @@ web/
                         changelog: RailEntry; work: WorkCard (a row, slot for extra detail);
                         playground: GatewayConsole (chips, panels, form, page script), TraceRow (one request's gates;
                         `entry={null}` is the script's template), FlowTable (the audit log table), LogRow (one log
-                        row; `row={null}` is the script's template)
+                        row; `row={null}` is the script's template). All four take `live`. With it, GatewayConsole
+                        adds the answer box and the "Live values" list (from LIVE), and its script POSTs the
+                        visitor's own request to /api/playground
   src/pages/           one job each: index (overview, perspectives), changelog (timeline: recruiter facts, roles with
                         highlights), work (platforms, gateway generations), about (person: skills, education,
-                        volunteering), playground (the gateway simulation, `?try=<scenario>`), writing/ (+[slug]),
+                        volunteering), playground (the gateway simulation, `?try=<scenario>`; passes `live` when
+                        liveModelOn()), writing/ (+[slug]),
                         404 (links the nav pages); robots/sitemap/rss per request
   src/pages/ (account)  sign-in, sign-up, forgot/reset-password, account (sessions), admin (role-gated, 404
                        otherwise); all noindex, AuthCard shell, form classes and whileBusy() in src/lib/form.ts
   src/pages/og/[slug].png.ts  share cards rendered on demand by Takumi (cards in src/lib/og.ts, colors from
                        palettes.css in the palette ?v= names, else the /admin theme's palette)
   src/pages/api/auth/[...all].ts  better-auth request handler
-  tests/               Vitest (node env) + Astro Container API
+  src/pages/api/playground.ts  the live playground call: POST only, parseCall() then respond()
+  tests/               Vitest (node env) + Astro Container API; fake-llama.ts is a fake model server
+                       (startFakeLlama() in tests, or `node web/tests/fake-llama.ts <port>`)
   scripts/social-preview.mts  renders .github/social-preview.png (GitHub social preview, 1280x640) with Takumi
   e2e/                 Playwright against the Aspire stack: public pages, headers, sign-up -> verify (Mailpit)
                        -> sign-out -> password reset; each run creates an e2e-*@example.test user

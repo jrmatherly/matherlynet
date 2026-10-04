@@ -74,6 +74,12 @@ const smtpUrl = await builder.executionContext().isRunMode()
   ? await (await builder.addMailPit('mailpit')).uriExpression()
   : await optionalParameter('smtp-url', true);
 
+// The playground's live model (web/src/lib/playground-io.ts): the base URL of an OpenAI-compatible server, without
+// /v1, and an optional bearer key. URL unset: /playground stays the simulation and a direct POST is refused at
+// Routing with "model off". Set with `aspire secret set Parameters:playground-model-url <url>`.
+const playgroundModelUrl = await optionalParameter('playground-model-url');
+const playgroundModelKey = await optionalParameter('playground-model-key', true);
+
 const pg = await builder.addPostgres('pg')
   .withDataVolume()
   // addDatabase() only creates the database under `aspire run`; published Compose/K8s rely on this.
@@ -116,6 +122,8 @@ const web = await builder
   .withEnvironment('ADMIN_EMAIL', adminEmail)
   .withEnvironment('MAIL_FROM', mailFrom)
   .withEnvironment('SMTP_URL', smtpUrl)
+  .withEnvironment('PLAYGROUND_MODEL_URL', playgroundModelUrl)
+  .withEnvironment('PLAYGROUND_MODEL_KEY', playgroundModelKey)
   .withDockerfileBaseImage({ buildImage: 'node:24-slim', runtimeImage: 'node:24-alpine' })
   .publishAsPackageScript({ scriptName: 'start' })
   // CI sets IMAGE_TAG to the commit SHA; Aspire's default push tag is `latest`. Set it when publishing too: it

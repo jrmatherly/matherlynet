@@ -29,6 +29,7 @@ pushes it, with a Helm chart pinned to it, to `ghcr.io/jrmatherly/matherlynet`.
 | Compose web host port | `Web__HostPort=none` (default, cloudflared on the compose network) / `loopback` / `public` |
 | Enable Umami | `Umami__Enabled=true aspire start` (`Umami__Public=true` at publish time adds a Compose host port) |
 | Change Umami's admin password | `UMAMI_URL=<url> UMAMI_NEW_PASSWORD=<8+ chars> node scripts/umami-set-password.mjs` |
+| Live playground with a fake model | `node web/tests/fake-llama.ts 18080`, `aspire secret set Parameters:playground-model-url http://127.0.0.1:18080`, then `aspire stop && aspire start`. To turn it off, `aspire secret delete Parameters:playground-model-url` and restart. Each model-on E2E run seats about 15 calls, and the 300-a-day site cap persists in the local database, so more than about 20 runs in a day make the live tests fail with "site daily" |
 | Push images (CI does this) | `aspire do push` after `docker login ghcr.io` |
 
 <!-- END AUTO-MANAGED -->
@@ -51,14 +52,16 @@ web/                   Astro SSR app (server.mjs entry, otel.mjs, migrate.mjs, s
                        pins outside package.json (Sentry CLI, Aspire packages and CLI); Dependabot security
                        updates, CodeQL default setup and private reporting are repo settings
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported
-docs/deployment.md     production runbook: publish settings, .env, Cloudflare Tunnel + rules, Umami, Sentry, K8s
+docs/deployment.md     production runbook: publish settings, .env, Cloudflare Tunnel + rules, Umami, Sentry, K8s,
+                       live playground
 deploy/                docker-compose.override.yaml: web healthcheck; `aspire publish` copies it next to the Compose file
 out/                   aspire publish output (gitignored)
 ```
 
 - Request flow: browser -> Astro middleware (session lookup) -> page render; auth calls hit `/api/auth/*`.
 - Config flow: Aspire injects `APPDB_URI`, `BETTER_AUTH_URL`, `BETTER_AUTH_SECRET`, OAuth ids/secrets, `ADMIN_EMAIL`,
-  `MAIL_FROM`, `SMTP_URL`, `PORT`.
+  `MAIL_FROM`, `SMTP_URL`, `PORT`, and the optional `PLAYGROUND_MODEL_URL` and `PLAYGROUND_MODEL_KEY` (parameters
+  `playground-model-url` and `playground-model-key`, the second a secret).
 
 <!-- END AUTO-MANAGED -->
 
@@ -138,8 +141,14 @@ out/                   aspire publish output (gitignored)
   timings are computed in the frontmatter from lane lengths at one `SPEED`; `home.test.ts` pins the pulse counts and
   that every `keyTimes` list runs 0 to 1 in order (a bad list makes the browser drop the animation).
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
-- /playground is a browser simulation of the gateway. `lib/playground.ts` is pure and shared by the SSR replay, the
-  page script and the tests; every invented value lives in its `SIM` and is labelled demo or example on the page.
+- /playground is a browser simulation of the gateway, with a live path when `PLAYGROUND_MODEL_URL` is set. Live, the
+  page POSTs the visitor's own request to `/api/playground`, and the server checks it, sends it to a self-hosted
+  model and streams the answer back. The scenario chips and the no-script replay stay simulated in both modes.
+  `lib/playground.ts` is pure and shared by the SSR replay, the page script, the server and the tests; every invented
+  value lives in its `SIM` and is labelled demo or example on the page, and every real value of the live path lives
+  in its `LIVE`. `lib/playground-io.ts` is server-only (the `playground_call` row, the model fetch, the stream). The
+  page script must not import it. Prompt text must never be bound to a query or logged (a failed query's error
+  quotes its parameters).
   `data/gateway.ts` is the one list of gates, callers and targets that the home figure and the playground share.
   The scenario chips switch panels with generated CSS (`scenarioCss()`, an inline `<style>` whose hash
   `GatewayConsole.astro` registers with `Astro.csp`). Without script each panel shows its scenario's `replay()`
@@ -230,6 +239,15 @@ out/                   aspire publish output (gitignored)
 - Database: never edit migrations in `web/drizzle/` by hand. Change the better-auth config or
   `web/src/db/`, then run `pnpm db:generate` and commit the new SQL. `web/migrate.mjs` applies
   migrations on every start under a Postgres advisory lock.
+- `playground_call` (`web/src/db/schema.ts`) holds one row per live /playground call, written before any check and
+  closed with one decision (`forwarded`, `refused`, `cut`, `lost`). The same rows are the rate limiter and the seat
+  counter, so limits hold across replicas. A seat is claimed under a Postgres advisory lock, so exactly three are
+  seated at once. `routed_at` is never cleared: a row with it held a seat and counts toward the site's day. The table
+  never stores prompt text, answer text or an IP, only a visitor key, the caller, lengths, token counts, timestamps
+  and enum reasons. `visitorKey()` in `playground-io.ts` is the only code that reads `cf-connecting-ip`, and keys an
+  IPv6 visitor on their /64. The route takes an 8 KB form body. Each process holds at most 6 calls (`IN_FLIGHT_MAX`,
+  under the pool's 10 connections), and more answer 503. A model 400 is "model error" and is reported, like any
+  status but 503.
 - Dependencies: exact versions, latest stable. npm (`~/.npmrc`) and pnpm both enforce a minimum release
   age: pin a newer version explicitly (pnpm records `minimumReleaseAgeExclude`; npm needs
   `--min-release-age-exclude=<package-name>`). Known caps: `vscode-jsonrpc` 8.x (Aspire's generated

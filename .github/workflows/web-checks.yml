@@ -90,6 +90,21 @@ jobs:
           [ "$same" != 403 ] || { echo "::error::same-origin POST rejected (origin check vs X-Forwarded-Proto)"; exit 1; }
           cross=$(post https://evil.example); echo "cross-origin POST: $cross"
           [ "$cross" = 403 ] || { echo "::error::cross-origin POST not rejected"; exit 1; }
+          # /api/playground streams through the adapter: with no database there is no row, so the call is refused at
+          # Rate limits and not logged, inside the pool's 5 s connect timeout.
+          playground="http://127.0.0.1:$PORT/api/playground"
+          proxied=(-X POST -H 'Host: matherly.net' -H 'X-Forwarded-Proto: https')
+          stream=$(curl -s -m 10 -w '\n%{http_code} %{content_type}' "${proxied[@]}" -H 'Origin: https://matherly.net' \
+            --data-urlencode 'text=hello' --data-urlencode 'caller=End users' "$playground")
+          echo "$stream"
+          frames=$(grep '^data: ' <<<"$stream")
+          if ! { [ "$(tail -n1 <<<"$stream")" = '200 text/event-stream' ] \
+            && grep -q '"why":"unavailable"' <<<"$(tail -n2 <<<"$frames" | head -n1)" \
+            && grep -q '"type":"end".*"logged":false' <<<"$(tail -n1 <<<"$frames")"; }; then
+            echo "::error::playground stream did not end unavailable and unlogged"; exit 1
+          fi
+          expect 415 "${proxied[@]}" -H 'Origin: https://matherly.net' -H 'Content-Type: application/json' --data '{}' "$playground"
+          expect 403 "${proxied[@]}" -H 'Origin: https://evil.example' --data 'text=hello&caller=End+users' "$playground"
           kill -TERM "$pid"
           start=$SECONDS; status=0; wait "$pid" || status=$?
           trap - EXIT

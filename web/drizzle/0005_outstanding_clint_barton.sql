@@ -1,0 +1,2 @@
+CREATE INDEX "playground_call_visitor" ON "playground_call" USING btree ("visitor","started_at");--> statement-breakpoint
+CREATE INDEX "playground_call_routed" ON "playground_call" USING btree ("routed_at") WHERE "playground_call"."routed_at" is not null;

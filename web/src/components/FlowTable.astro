@@ -4,8 +4,9 @@ import LogRow from "./LogRow.astro";
 
 interface Props {
   rows: readonly FlowRow[];
+  live?: boolean;
 }
-const { rows } = Astro.props;
+const { rows, live = false } = Astro.props;
 // Newest first, as the script prepends.
 const shown = [...rows].reverse();
 const head = "px-3 py-2 align-top font-medium";
@@ -24,8 +25,8 @@ const head = "px-3 py-2 align-top font-medium";
       </tr>
     </thead>
     <tbody data-log data-span={Math.max(0, ...rows.map((r) => r.at))}>
-      {shown.map((r) => <LogRow row={r} />)}
+      {shown.map((r) => <LogRow row={r} live={live} />)}
     </tbody>
   </table>
 </div>
-<template data-logrow><LogRow row={null} /></template>
+<template data-logrow><LogRow row={null} live={live} /></template>
