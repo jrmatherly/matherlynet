@@ -13,7 +13,7 @@ deployment artifacts for that commit:
 
 ```sh
 IMAGE_TAG=<commit sha> aspire publish -o out/compose          # Docker Compose
-IMAGE_TAG=<commit sha> DEPLOY_TARGET=k8s aspire publish -o out/k8s   # Kubernetes (Helm chart)
+IMAGE_TAG=<commit sha> DEPLOY_TARGET=k8s aspire publish -o out/k8s   # Helm chart (CI also pushes one: section 7)
 ```
 
 `IMAGE_TAG` also becomes `SENTRY_RELEASE`, so server and browser errors land in that commit's Sentry release.
@@ -134,23 +134,30 @@ server/browser switches are runtime settings on `/admin` (an https DSN on a publ
 
 ## 7. Kubernetes
 
-CI pushes the chart with each image, to `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`. Chart versions
-are `0.1.<workflow run number>`, `appVersion` is the commit SHA, and `parameters.web.web_image` is already pinned
-to that commit's image by digest, so a chart version is a whole release:
+CI pushes the chart with each image from `main`, to `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`.
+Chart versions are `0.<workflow run number>.<run attempt>`, `appVersion` is the commit SHA, and
+`parameters.web.web_image` is already pinned to that commit's image by digest, so a chart version names one image:
 
 ```sh
-helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet --version 0.1.<n>
+helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet --version 0.<run>.<attempt>
 ```
 
+The chart deploys web, Postgres and the Aspire dashboard (an in-cluster Service, the OTLP receiver and trace UI).
 The chart package starts private on GHCR, like any new package: make it public once (README, Deploy) or give the
-cluster a pull secret. The chart holds no secret values. Postgres data sits on an `emptyDir` (Aspire's Kubernetes
-publisher does not emit a volume claim for `withDataVolume()`), so the database is lost when the `pg` pod is
-deleted or rescheduled: use an external Postgres or add persistent storage before a real deploy.
+cluster a pull secret.
 
-`out/k8s` is the same chart built locally. Supply the same values as the Compose `.env` through its `values.yaml`:
-`parameters.web.web_image` (local builds only), non-secret settings under `config.web` (`app_url`, `admin_email`, `mail_from`,
-`github_client_id`, `google_client_id`), and passwords and keys under `secrets` (`pg.pg_password`,
-`web.better_auth_secret`, `web.smtp_url`, the OAuth client secrets).
+The chart holds no secret values, so an install has to supply them. `out/k8s` is the same chart built locally,
+except that `parameters.web.web_image` is `web:latest` there: set it to
+`ghcr.io/jrmatherly/matherlynet/web:<commit sha>`. Both need the values the Compose `.env` holds, through
+`values.yaml`: non-secret settings under `config.web` (`app_url`, `admin_email`, `mail_from`, `github_client_id`,
+`google_client_id`), and passwords and keys under `secrets` (`pg.pg_password` and `web.pg_password`, the same
+value: the chart builds web's connection string from the second; `web.better_auth_secret`, `web.smtp_url`, the
+OAuth client secrets).
+
+Postgres data sits on an `emptyDir` (Aspire's Kubernetes publisher does not emit a volume claim for
+`withDataVolume()`), so the database is lost when the `pg` pod is deleted or rescheduled. The chart has no value
+for either fix: before a real deploy, patch the `pg` StatefulSet's volume to a claim (a Helm post-renderer or
+Kustomize) or point web at another Postgres the same way.
 
 web has three probes on `/api/auth/ok` (distinct query strings, one health check each): a startup probe (every 5 s,
 up to 90 s, while `migrate.mjs` waits for Postgres), then readiness and liveness. All stay up while Postgres is

@@ -38,6 +38,14 @@ describe("feeds", () => {
     expect(xml).toContain(`<link>${ORIGIN}/writing</link>`);
   });
 
+  it("carries the published case study and no drafts", async () => {
+    for (const endpoint of [rss, sitemap]) {
+      const xml = await (await get(endpoint)).text();
+      expect(xml).toContain(`${ORIGIN}/writing/ai-gateway-three-generations<`);
+      expect(xml).not.toContain("first-post");
+    }
+  });
+
   it("keeps column alignment out of post tables, which renders style attributes the CSP blocks", () => {
     const dir = new URL("../src/content/writing/", import.meta.url);
     for (const file of readdirSync(dir)) {

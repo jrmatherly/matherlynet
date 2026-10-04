@@ -40,11 +40,10 @@ Commit `web/drizzle/`. Migrations run on app start under a Postgres advisory loc
 
 ## Deploy
 
-Images are pushed to `ghcr.io/jrmatherly/matherlynet` by `.github/workflows/publish-images.yml` on every push
-to `main`, along with a Helm chart pinned to that image
-(`oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`, version `0.1.<run number>`). New GHCR packages start
-private: make them public under Package settings, Danger Zone (one-way for that
-package).
+`.github/workflows/publish-images.yml` pushes the web image to `ghcr.io/jrmatherly/matherlynet` on pushes to `main`
+that can change it, with a Helm chart pinned to that image
+(`oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`, version `0.<run number>.<run attempt>`). New GHCR
+packages start private: make each public under Package settings, Danger Zone (one-way for that package).
 
 ```sh
 aspire publish -o out/compose                  # Docker Compose: docker-compose.yaml + .env + Dockerfile
@@ -55,7 +54,8 @@ Set `APP_URL` (`Parameters:app-url`) to the public origin when deploying; better
 
 Kubernetes notes (Aspire 13.6):
 
-- A manual `helm install` must supply secret-derived values the chart leaves empty
-  (`secrets.web.APPDB_URI`, connection strings, passwords).
+- A manual `helm install` must supply what the chart leaves empty: `secrets.pg.pg_password` and
+  `secrets.web.pg_password` (the same value; the chart builds `APPDB_URI` from it), `secrets.web.better_auth_secret`
+  and `config.web.app_url` (docs/deployment.md, section 7).
 - Pods don't restart on ConfigMap changes; run `kubectl rollout restart` after changing config.
 - On OrbStack, a `LoadBalancer` service is reachable at `<service>.<namespace>.k8s.orb.local`.
