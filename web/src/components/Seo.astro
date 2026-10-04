@@ -5,7 +5,7 @@ import { themeColorTags, type ThemeColor } from "../theme/theme-color";
 export interface Props {
   title: string;
   description?: string;
-  // Absolute or root-relative image URL; defaults to the generated card for this page.
+  // Absolute or root-relative image URL (pages pass ogImage()); without one no og:image is emitted.
   image?: string;
   type?: "website" | "article" | "profile";
   noindex?: boolean;

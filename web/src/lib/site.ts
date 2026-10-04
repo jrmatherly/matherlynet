@@ -16,7 +16,7 @@ export const person = {
   sameAs: ["https://www.linkedin.com/in/jason-matherly"],
 } as const;
 
-// Public, indexable routes: the header nav and sitemap both read this list.
+// Public, indexable routes: the header nav, footer, 404 page and sitemap read this list.
 export const publicRoutes: { path: string; label: string; nav: boolean }[] = [
   { path: "/", label: "Home", nav: false },
   { path: "/work", label: "Work", nav: true },

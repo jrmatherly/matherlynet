@@ -3,8 +3,8 @@ name: 📦 Publish images
 on:
   push:
     branches: [main]
-    # Build only when the image can change: the web app, the AppHost that generates the
-    # Dockerfile, its dependencies/config, or this workflow. Docs and agent config don't.
+    # Build only when the image or the chart can change: the web app, the AppHost that generates the
+    # Dockerfile and the Helm chart, its dependencies/config, or this workflow. Docs and agent config don't.
     # (paths-ignore can't take `!` exceptions, so this is an include list.)
     paths:
       - 'web/**'
@@ -17,7 +17,8 @@ on:
       - 'package-lock.json'
       - 'tsconfig.apphost.json'
       - '.github/workflows/publish-images.yml'
-      # Called from here before pushing; they no longer run on push to main by themselves.
+      - 'scripts/check-chart.sh'
+      # Called from here before pushing; on their own they run only for pull requests and manual dispatch.
       - '.github/workflows/web-checks.yml'
       - '.github/workflows/e2e.yml'
   workflow_dispatch: # manual runs ignore the path filter
@@ -90,17 +91,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Before the image push: a chart that can't be generated or linted stops the job with nothing published.
-      # `yq -e` fails if Aspire renames the value the push step pins. helm and yq ship with the runner image.
-      - name: ☸️ Generate Helm chart
+      # Before the image push: a chart that can't be generated or fails its checks stops the job with nothing
+      # published. helm and yq ship with the runner image.
+      - name: ☸️ Generate & check Helm chart
         env:
           IMAGE_TAG: ${{ github.sha }}
           DEPLOY_TARGET: k8s
         run: |
           aspire publish -o out/k8s --non-interactive --nologo
           rm -f out/k8s/*.Dockerfile
-          yq -e '.parameters.web.web_image' out/k8s/values.yaml
-          helm lint out/k8s
+          scripts/check-chart.sh out/k8s
+
+      - name: 📤 Hand the chart to the chart job
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: helm-chart
+          path: out/k8s
+          if-no-files-found: error
+          retention-days: 1
 
       # Images go to ghcr.io/jrmatherly/matherlynet/<resource>:<commit sha> (see apphost.mts).
       - name: 🐳 Build & push images
@@ -127,27 +135,40 @@ jobs:
           push-to-registry: true
           create-storage-record: false
 
-      # One chart per image: it pins the image just pushed (tag to read, digest to run), so a chart version is a
-      # whole release. Versions are 0.1.<run number>: SemVer that only goes up, so Flux or Renovate can order them.
-      # main only: a manual run on another branch would otherwise publish unmerged code as the newest version.
-      # Lands at oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet.
-      - name: ☸️ Pin image, package & push Helm chart
-        if: github.ref == 'refs/heads/main'
+  # The chart pins the image just pushed by digest, so a chart version is a whole release. It lands at
+  # oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet as 0.<run number>.<run attempt>: SemVer that goes up
+  # with every run, and a re-run gets a new version instead of replacing one a cluster may already have pulled.
+  # Its own job: a failed chart push can be re-run without rebuilding the image, and can't skip the source maps.
+  # main only: a manual run on another branch would otherwise publish unmerged code as the newest version.
+  chart:
+    name: ☸️ Push Helm chart to GHCR
+    needs: push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      packages: write
+    steps:
+      - name: 📥 Download the chart
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: helm-chart
+          path: chart
+
+      - name: ☸️ Pin image, package & push
         env:
-          WEB_IMAGE: ghcr.io/${{ github.repository }}/web:${{ github.sha }}@${{ steps.digest.outputs.digest }}
-          CHART_VERSION: 0.1.${{ github.run_number }}
+          WEB_IMAGE: ${{ needs.push.outputs.image }}
+          CHART_VERSION: 0.${{ github.run_number }}.${{ github.run_attempt }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          yq -i '.parameters.web.web_image = strenv(WEB_IMAGE)' out/k8s/values.yaml
-          # Rendered to a file: under pipefail, `grep -q` closing the pipe early would fail the step.
-          helm template out/k8s > "$RUNNER_TEMP/rendered.yaml"
-          grep -qF "image: \"$WEB_IMAGE\"" "$RUNNER_TEMP/rendered.yaml"
-          helm package out/k8s --version "$CHART_VERSION" --app-version "$GITHUB_SHA" --destination "$RUNNER_TEMP"
+          [[ "$WEB_IMAGE" =~ @sha256:[0-9a-f]{64}$ ]] || { echo "::error::No image digest to pin (got '$WEB_IMAGE')"; exit 1; }
+          yq -i '.parameters.web.web_image = strenv(WEB_IMAGE)' chart/values.yaml
+          helm package chart --version "$CHART_VERSION" --app-version "$GITHUB_SHA" --destination "$RUNNER_TEMP"
           echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           helm push "$RUNNER_TEMP/matherlynet-$CHART_VERSION.tgz" "oci://ghcr.io/$GITHUB_REPOSITORY/charts"
 
   # Separate job: the third-party CLI and SENTRY_AUTH_TOKEN never share a runner with packages: write or
-  # id-token: write. No token scopes at all: the GHCR package is public, so the pull is anonymous.
+  # id-token: write. No token scopes at all: the web image package is public, so the pull is anonymous.
   sourcemaps:
     name: 🗺️ Upload source maps to Sentry
     needs: push

@@ -61,10 +61,10 @@ web/
                        header/footer (chrome full|minimal)
   src/components/       Seo (canonical, OG, Person JSON-LD, noindex, theme-color), SiteHeader (nav, ModeToggle,
                         Let's talk), SiteFooter (ThemeControls: Brand/Pro + Sans/Serif, page links from publicRoutes,
-                        LinkedIn, RSS, sign in), Logo (monogram at header size;
-                        `decorative` hides it beside the name), Telemetry (Umami tag + lazy @sentry/browser, both from
-                        site settings); home: GatewayPath (SVG request path), Perspectives (no-JS radio switcher),
-                        CaseStudy, PlatformList, AboutStrip, Cta, Availability (renders only when set);
+                        LinkedIn, RSS, sign in), Logo (monogram at header size; `decorative` hides it beside the
+                        name), Telemetry (Umami tag + lazy @sentry/browser, both from site settings); home:
+                        GatewayPath (SVG request path), Perspectives (no-JS radio switcher), CaseStudy,
+                        PlatformList, AboutStrip, Cta, Availability (renders only when set);
                         changelog: RailEntry; work: WorkCard (a row, slot for extra detail);
                         playground: GatewayConsole (chips, panels, form, page script), TraceRow (one request's gates;
                         `entry={null}` is the script's template), FlowTable (the audit log table), LogRow (one log

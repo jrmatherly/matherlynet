@@ -15,7 +15,7 @@ const k8s = process.env.DEPLOY_TARGET === 'k8s';
 const target = k8s
   ? await builder.addKubernetesEnvironment('k8s')
       // CI pushes the chart under this name to oci://ghcr.io/jrmatherly/matherlynet/charts (publish-images.yml).
-      .withHelm({ configure: async (helm) => { await helm.withNamespace('matherlynet').withChartName('matherlynet').withChartDescription('matherlynet: Astro web app and PostgreSQL'); } })
+      .withHelm({ configure: async (helm) => { await helm.withNamespace('matherlynet').withChartName('matherlynet').withChartDescription('matherlynet: Astro web app, PostgreSQL and the Aspire dashboard'); } })
   : await builder.addDockerComposeEnvironment('compose');
 
 const ghcr = await builder.addContainerRegistry('ghcr', 'ghcr.io', { repository: 'jrmatherly/matherlynet' });
@@ -118,8 +118,9 @@ const web = await builder
   .withEnvironment('SMTP_URL', smtpUrl)
   .withDockerfileBaseImage({ buildImage: 'node:24-slim', runtimeImage: 'node:24-alpine' })
   .publishAsPackageScript({ scriptName: 'start' })
-  // CI sets IMAGE_TAG to the commit SHA; Aspire's default push tag is `latest`. Set it when publishing too,
-  // so the deployment pulls that image and Sentry files its events under that release.
+  // CI sets IMAGE_TAG to the commit SHA; Aspire's default push tag is `latest`. Set it when publishing too: it
+  // becomes SENTRY_RELEASE in the output. The image a deployment pulls is set separately (WEB_IMAGE in the
+  // Compose .env, parameters.web.web_image in the chart).
   .withRemoteImageTag(process.env.IMAGE_TAG ?? 'latest')
   .withEnvironment('SENTRY_RELEASE', process.env.IMAGE_TAG ?? '')
   // K8s: the pod is Ready only once migrations ran and Astro answers; distinct paths because each probe also

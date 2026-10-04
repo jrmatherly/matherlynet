@@ -1,12 +1,16 @@
 import { expect, test } from "@playwright/test";
 
+// Pixels of horizontal overflow on the page, 0 when it fits (run in the browser).
+const sidewaysScroll = () => document.documentElement.scrollWidth - document.documentElement.clientWidth;
+
 test("public pages render and the nav links work", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/Jason Matherly/);
   for (const label of ["Work", "Changelog", "Playground", "Writing", "About"]) {
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    // aria-current first: it only holds on the new page, so the heading check below can't pass on the old one.
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   }
 });
 
@@ -19,7 +23,24 @@ test("the nav fits one row on a 360px phone", async ({ page }) => {
     .getByRole("link")
     .evaluateAll((links) => links.map((a) => a.getBoundingClientRect().top));
   expect(new Set(tops).size).toBe(1);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  expect(await page.evaluate(sidewaysScroll)).toBe(0);
+});
+
+test("no page scrolls sideways on a 320px phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 780 });
+  for (const path of ["/", "/writing/ai-gateway-three-generations", "/no-such-page"]) {
+    await page.goto(path);
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.evaluate(sidewaysScroll), path).toBe(0);
+  }
+});
+
+test("the case study opens from Writing with its figure and table", async ({ page }) => {
+  await page.goto("/writing");
+  await page.getByRole("link", { name: /One gateway, three generations/ }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "One gateway, three generations" })).toBeVisible();
+  await expect(page.locator('article [role="img"]')).toBeVisible();
+  await expect(page.getByRole("table")).toBeVisible();
 });
 
 test("each perspective's panel shows when it is picked", async ({ page }) => {

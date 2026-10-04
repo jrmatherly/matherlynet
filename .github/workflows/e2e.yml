@@ -9,6 +9,7 @@ on:
       - 'deploy/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'scripts/check-chart.sh'
       - '.github/workflows/e2e.yml'
   workflow_call: # Publish images runs this before pushing (see publish-images.yml)
   workflow_dispatch:
@@ -84,7 +85,7 @@ jobs:
           test -f out/compose/docker-compose.override.yaml
           WEB_IMAGE=x PG_PASSWORD=x docker compose --project-directory out/compose config | grep -q 'start_period: 1m30s'
           DEPLOY_TARGET=k8s aspire publish -o out/k8s --non-interactive --nologo
-          helm lint out/k8s
+          scripts/check-chart.sh out/k8s
 
       - name: 📜 Stack logs
         if: failure()
