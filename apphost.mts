@@ -4,7 +4,7 @@
 //                DEPLOY_TARGET=k8s aspire publish -o out/k8s
 // Push images:   aspire do push        (after `docker login ghcr.io`; CI does this)
 
-import { copyFile, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createBuilder, refExpr, ProbeType } from './.aspire/modules/aspire.mjs';
 
@@ -188,6 +188,23 @@ if (!(await builder.executionContext().isRunMode())) {
       if (fixed === text) throw new Error('fix-probe-scheme: every probe scheme in the web Deployment is already valid; remove this step');
       await writeFile(file, fixed);
     }, { dependsOn: ['publish-k8s'], requiredBy: ['publish'] });
+    // Aspire names each object after its resource alone (web-deployment), and the TS SDK has no hook for the name.
+    // In a pod list across namespaces that says nothing, so every object name gets the chart's name in front,
+    // references to it included. Container names, labels and value paths stay as generated. A template with no
+    // such name fails the publish: the generated shape changed and the references may no longer match.
+    await builder.pipeline().addStep('prefix-object-names', async () => {
+      const templates = join(await publishDir('prefix-object-names'), 'templates');
+      for (const resource of await readdir(templates)) {
+        for (const template of await readdir(join(templates, resource))) {
+          const file = join(templates, resource, template);
+          const text = await readFile(file, 'utf8');
+          const prefixed = text.replaceAll(`name: "${resource}-`, `name: "matherlynet-${resource}-`);
+          // Aspire leaves a resource's templates in place when a later publish to the same directory drops it.
+          if (prefixed === text) throw new Error(`prefix-object-names: no object name starts with "${resource}-" in ${file}. If an earlier publish left it there, delete the output directory and publish again`);
+          await writeFile(file, prefixed);
+        }
+      }
+    }, { dependsOn: ['fix-probe-scheme'], requiredBy: ['publish'] });
   } else {
     // Aspire 13.6's TS SDK can't set a healthcheck (.claude/rules/apphost.md), so web's lives in
     // deploy/docker-compose.override.yaml. Publishing copies it next to docker-compose.yaml, where Compose merges it.

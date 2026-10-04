@@ -39,8 +39,13 @@ bad=$(grep -E 'scheme:' "$rendered" | grep -vE "^ *scheme: (\"HTTP\"|\"HTTPS\"|'
 # The cluster supplies Postgres and its own telemetry (apphost.mts): web and the opt-in Umami are the only workloads,
 # so a bundled database or the Aspire dashboard fails here whatever kind it is rendered as.
 objects=$(yq -N '.kind + "/" + .metadata.name' "$rendered")
-bad=$(grep -vE '^(ConfigMap|Secret|Service|Deployment)/(web|umami)-' <<<"$objects" || true)
-[ -z "$bad" ] || fail "the chart renders objects other than web's and Umami's: $(tr '\n' ' ' <<<"$bad")"
+bad=$(grep -vE '^(ConfigMap|Secret|Service|Deployment)/matherlynet-(web|umami)-' <<<"$objects" || true)
+[ -z "$bad" ] || fail "the chart renders objects other than web's and Umami's, or one without the matherlynet- prefix (prefix-object-names in apphost.mts): $(tr '\n' ' ' <<<"$bad")"
+# The prefix is written over the generated names: a reference it missed would leave the pod unable to start.
+refs=$(yq -N '.spec.template.spec.containers[]?.envFrom[]? | (select(.configMapRef) | "ConfigMap/" + .configMapRef.name), (select(.secretRef) | "Secret/" + .secretRef.name)' "$rendered")
+[ -n "$refs" ] || fail "no Deployment reads a ConfigMap or Secret through envFrom, so the reference check has nothing to check"
+bad=$(grep -vxFf <(echo "$objects") <<<"$refs" || true)
+[ -z "$bad" ] || fail "a Deployment refers to an object the chart does not render: $(tr '\n' ' ' <<<"$bad")"
 if grep -qF OTEL_EXPORTER_OTLP_ENDPOINT "$rendered"; then
   grep -nF OTEL_EXPORTER_OTLP_ENDPOINT "$rendered"
   fail "the chart renders an OTLP endpoint"

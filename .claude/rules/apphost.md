@@ -35,6 +35,11 @@ paths:
     step" once every scheme is already valid. `scripts/check-chart.sh` allows only those two values. `helm lint`
     and `helm template` don't catch this kind of error: check a chart change with
     `helm template out/k8s | kubectl apply --dry-run=server -f -` on a local cluster.
+  - The Kubernetes publisher names objects after the resource alone (`web-deployment`), and the TS SDK exposes no
+    hook for the name. The `prefix-object-names` pipeline step (after `fix-probe-scheme`) puts `matherlynet-` in
+    front of every object name and reference in `templates/<resource>/`, and throws on a template with no such
+    name. Container names, labels and value paths (`secrets.web.*`) keep the resource name.
+    `scripts/check-chart.sh` requires the prefix and checks that each `envFrom` reference names a rendered object.
   - `withHttpProbe` also registers a health check keyed by path, so the startup, readiness and liveness probes
     use different query strings on `/api/auth/ok` and there is no separate `withHttpHealthCheck`.
   - A stopped resource's local port stays open (DCP proxy) and never answers: clients need connect timeouts.

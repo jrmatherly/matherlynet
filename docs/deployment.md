@@ -148,9 +148,12 @@ The `chart` job's run summary prints the version and the image it pins:
 helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet --version 0.<run>.<attempt>
 ```
 
-The chart deploys web only: a Deployment behind a ClusterIP Service (`web-service:4321`), its ConfigMap and its
-Secret. Routing to web is yours to add. There is no Postgres and no Aspire dashboard in the chart. The chart
-package on GHCR is public, so a cluster pulls it without a secret.
+The chart deploys web only: a Deployment (`matherlynet-web-deployment`) behind a ClusterIP Service
+(`matherlynet-web-service:4321`), its ConfigMap (`matherlynet-web-config`) and its Secret
+(`matherlynet-web-secrets`). The container is named `web` and pods carry `app.kubernetes.io/component: web`.
+Charts up to 0.29.1 named the four objects without the `matherlynet-` prefix. Routing to web is yours to add.
+There is no Postgres and no Aspire dashboard in the chart. The chart package on GHCR is public, so a cluster pulls
+it without a secret.
 
 The chart holds no secret values, so an install has to supply them. `out/k8s` is the same chart built locally,
 except that `parameters.web.web_image` is `web:latest` there: set it to
@@ -237,7 +240,7 @@ Before you set the URL, the Cloudflare rate limiting rule for `POST /api/playgro
 
 - Kubernetes: set `config.web.playground_model_url` and run `helm upgrade`. The chart passes both values through
   `envFrom`, so an upgrade that changes only these values does not restart the pod. Restart it with
-  `kubectl rollout restart deployment/web-deployment`.
+  `kubectl rollout restart deployment/matherlynet-web-deployment`.
 - Compose: set `PLAYGROUND_MODEL_URL` in `.env` and run `docker compose --env-file .env up -d`.
 - To turn the feature off, empty the value and repeat the same step.
 
