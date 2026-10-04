@@ -153,6 +153,9 @@ The chart deploys web only: a Deployment (`matherlynet-web-deployment`) behind a
 (`matherlynet-web-secrets`). The container is named `web` and pods carry `app.kubernetes.io/component: web`.
 Charts up to 0.29.1 named the four objects without the `matherlynet-` prefix: when you upgrade from one, repoint
 anything that names them (a route to `web-service:4321`, a patch on Deployment `web-deployment`) in the same change.
+That upgrade is not a rolling update: Helm deletes the old objects and creates the new ones, so the site is down
+from the old pod's stop until the new pod is ready (on one cluster, 8 s to the new container's start, 7 s of it the
+image pull).
 Routing to web is yours to add.
 There is no Postgres and no Aspire dashboard in the chart. The chart package on GHCR is public, so a cluster pulls
 it without a secret.
@@ -213,6 +216,11 @@ web has three probes on `/api/auth/ok` (distinct query strings, one health check
 up to 90 s, while `migrate.mjs` waits for Postgres), then readiness and liveness. All stay up while Postgres is
 unreachable (site settings fall back; better-auth's database rate limiter skips `/ok`), so a database outage doesn't
 restart pods.
+
+Each pod logs `WARN [Better Auth]: Rate limiting could not determine a client IP` once, a few seconds after it
+starts. The first probe causes it: a kubelet request carries no `cf-connecting-ip`, and better-auth 1.7.7 warns
+before it applies the `/ok` exemption. Probes are still not limited. The warning is logged once per process, so it
+will not appear again if a visitor's request later arrives without the header.
 
 ## 8. Live playground (when a model URL is set)
 
@@ -297,9 +305,12 @@ cannot take the connections sign-in uses. A call always ends inside the 7 s shut
 
 ### Check streaming through Cloudflare before announcing it
 
-Two behaviours are not verified. Cloudflare may buffer `text/event-stream` through the tunnel, and cloudflared may
-keep the origin connection open after the browser disconnects. The 6 s deadline bounds both. Check them once
-deployed:
+Cloudflare does not buffer the stream. On 2026-10-04, through the tunnel, a call's `data:` lines arrived one at a
+time, about 17 ms apart, and the response was not compressed when the request sent a browser's `Accept-Encoding`.
+Check again after a Cloudflare change that touches responses (a compression rule, a Worker, a new tunnel).
+
+One behaviour is not verified: cloudflared may keep the origin connection open after the browser disconnects. The
+6 s deadline bounds it. Both checks use the same call:
 
 ```sh
 curl -N https://matherly.net/api/playground -H 'Origin: https://matherly.net' \
