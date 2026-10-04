@@ -56,6 +56,7 @@ Kubernetes notes (Aspire 13.6):
 
 - A manual `helm install` must supply what the chart leaves empty: `secrets.pg.pg_password` and
   `secrets.web.pg_password` (the same value; the chart builds `APPDB_URI` from it), `secrets.web.better_auth_secret`
-  and `config.web.app_url` (docs/deployment.md, section 7).
+  and `config.web.app_url`; a locally published chart also needs `parameters.web.web_image` (docs/deployment.md,
+  section 7).
 - Pods don't restart on ConfigMap changes; run `kubectl rollout restart` after changing config.
 - On OrbStack, a `LoadBalancer` service is reachable at `<service>.<namespace>.k8s.orb.local`.

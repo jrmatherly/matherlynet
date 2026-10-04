@@ -22,9 +22,10 @@ paths:
 - `aspire do push` must stay quoted as `aspire 'do' push` (shellcheck SC1010 reads `do` as a keyword).
 - Validate with `actionlint .github/workflows/<file>.yml` after every edit.
 - Image tags: CI sets `IMAGE_TAG=${{ github.sha }}`, consumed by `withRemoteImageTag` in `apphost.mts`.
-- The chart steps use the runner image's own `helm` (3.x; local rehearsals here run 4.x) and `yq`, with no setup
+- The chart steps use the runner image's own `helm` (3.x; a local helm 4 also works) and `yq`, with no setup
   action. Chart checks live in `scripts/check-chart.sh`, shared by `e2e.yml` and `publish-images.yml`. Rehearse
-  changes locally: `DEPLOY_TARGET=k8s aspire publish`, the script, the `chart` job's commands, then
-  `helm push --plain-http` to a throwaway `registry:2` container.
+  changes locally: `DEPLOY_TARGET=k8s aspire publish`, the script, then the `chart` job's own step text
+  (`yq -r '.jobs.chart.steps[1].run'`) with `ghcr.io` swapped for a throwaway `registry:2` container and
+  `--plain-http` added to the helm registry commands.
 - `run:` steps use `bash -e` with no pipefail unless they set it (`shell: bash`, or `set -o pipefail`), so a
   pipeline's status is its last command's. When the left side must not fail silently, write to a file and grep that.

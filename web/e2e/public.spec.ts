@@ -41,6 +41,9 @@ test("the case study opens from Writing with its figure and table", async ({ pag
   await expect(page.getByRole("heading", { level: 1, name: "One gateway, three generations" })).toBeVisible();
   await expect(page.locator('article [role="img"]')).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
+  // The CSP blocks inline styles, and the dev server this runs against doesn't send the CSP.
+  await expect(page.locator("article [style]")).toHaveCount(0);
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /\/og\/writing\.png\?v=/);
 });
 
 test("the feed and sitemap carry the case study and no drafts", async ({ request }) => {
@@ -105,9 +108,11 @@ test("the theme choice survives a reload", async ({ page }) => {
   await expect(html).toHaveAttribute("data-type", "serif");
 });
 
-test("unknown pages return 404", async ({ page }) => {
+test("unknown pages and draft posts return 404", async ({ page }) => {
   const response = await page.goto("/no-such-page");
   expect(response?.status()).toBe(404);
+  await expect(page.getByRole("navigation", { name: "Pages" }).first().getByRole("link", { name: "Writing" })).toBeVisible();
+  expect((await page.goto("/writing/first-post"))?.status()).toBe(404);
 });
 
 test("signed-out visitors can't reach account pages", async ({ page }) => {

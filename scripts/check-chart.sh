@@ -12,11 +12,16 @@ fail() {
 helm lint "$chart"
 
 # CI pushes `matherlynet-<version>.tgz` to .../charts/matherlynet; the name comes from withChartName in apphost.mts.
-name=$(yq '.name' "$chart/Chart.yaml")
+name=$(yq -r '.name' "$chart/Chart.yaml")
 [ "$name" = matherlynet ] || fail "the chart is named '$name', not matherlynet"
 
 # helm lint passes a chart whose web Deployment ignores the value CI pins, so render it with a probe value.
-# Rendered to a file: the step must stop when `helm template` fails, and a pipe would report only grep's status.
+# Rendered to a file, not piped: a `helm template` failure then stops the script with helm's own error instead of
+# reading as a missing image value, and `grep -q` can't close the pipe on helm mid-write (pipefail is on).
 rendered=$(mktemp)
+trap 'rm -f "$rendered"' EXIT
 helm template "$chart" --set parameters.web.web_image=pin-probe > "$rendered"
-grep -qF 'image: "pin-probe"' "$rendered" || fail "the web Deployment does not render parameters.web.web_image"
+if ! grep -qF 'image: "pin-probe"' "$rendered"; then
+  grep -n 'image:' "$rendered" || true
+  fail "the web Deployment does not render parameters.web.web_image"
+fi
