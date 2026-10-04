@@ -58,7 +58,8 @@ jobs:
       - name: 🏗️ Build
         run: pnpm build
 
-      # E2E runs the dev server, so only this exercises the production entry (server.mjs). With the database
+      # E2E runs the dev server. This runs the production server half (server.mjs, without start.mjs's migrations;
+      # e2e.yml's image smoke runs the real entry against a database). With the database
       # unreachable and better-auth's production rate limiter on: probes still answer, Astro's origin check accepts
       # a same-origin form POST forwarded as HTTPS (allowedDomains) and rejects a cross-site one, and SIGTERM drains
       # and exits 0 inside Docker's 10 s stop timeout.

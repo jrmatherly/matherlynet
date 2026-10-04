@@ -10,6 +10,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'scripts/check-chart.sh'
+      - 'scripts/smoke-image.sh'
       - '.github/workflows/e2e.yml'
   workflow_call: # Publish images runs this before pushing (see publish-images.yml)
   workflow_dispatch:
@@ -78,7 +79,8 @@ jobs:
       - name: 🎭 Run E2E
         run: pnpm --dir web e2e
 
-      # aspire start is run mode; publish-only AppHost code (the copy-compose-override step) only runs here.
+      # aspire start is run mode; publish-only AppHost code (the copy-compose-override and fix-probe-scheme steps)
+      # only runs here.
       - name: 📦 Check publish output
         run: |
           aspire publish -o out/compose --non-interactive --nologo
@@ -86,6 +88,10 @@ jobs:
           WEB_IMAGE=x PG_PASSWORD=x docker compose --project-directory out/compose config | grep -q 'start_period: 1m30s'
           DEPLOY_TARGET=k8s aspire publish -o out/k8s --non-interactive --nologo
           scripts/check-chart.sh out/k8s
+
+      # The stack above runs the dev server; this builds the production image and runs its entrypoint.
+      - name: 🐳 Smoke-test the production image
+        run: scripts/smoke-image.sh out/k8s/web.Dockerfile
 
       # The runs above have no model URL (the playground's off path); this one points it at the fake model server.
       # The runner keeps a step's background process alive until the job ends.
