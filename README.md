@@ -41,7 +41,9 @@ Commit `web/drizzle/`. Migrations run on app start under a Postgres advisory loc
 ## Deploy
 
 Images are pushed to `ghcr.io/jrmatherly/matherlynet` by `.github/workflows/publish-images.yml` on every push
-to `main`. New GHCR packages start private: make them public under Package settings, Danger Zone (one-way for that
+to `main`, along with a Helm chart pinned to that image
+(`oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`, version `0.1.<run number>`). New GHCR packages start
+private: make them public under Package settings, Danger Zone (one-way for that
 package).
 
 ```sh

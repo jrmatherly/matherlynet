@@ -8,7 +8,7 @@ This file provides guidance to AI coding agents when working with code in this r
 matherlynet: an Astro SSR web app (`web/`) with better-auth (email/password plus optional GitHub/Google OAuth)
 on Drizzle ORM and PostgreSQL, orchestrated by an Aspire TypeScript AppHost (`apphost.mts`). The same AppHost
 runs the stack locally and publishes Docker Compose or Kubernetes (Helm) artifacts; CI builds the web image and
-pushes it to `ghcr.io/jrmatherly/matherlynet`.
+pushes it, with a Helm chart pinned to it, to `ghcr.io/jrmatherly/matherlynet`.
 
 <!-- END AUTO-MANAGED -->
 
@@ -42,7 +42,8 @@ apphost.mts            Aspire AppHost: Postgres (pg/appdb), Umami (opt-in), Mail
 web/                   Astro SSR app (server.mjs entry, otel.mjs, migrate.mjs, src/lib, src/pages, tests, e2e);
                        file-by-file map: .claude/rules/web-architecture.md (also loads when you work in web/)
 .github/workflows/     publish-images.yml: on main (path-filtered) runs web-checks + e2e first, then builds, pushes and
-                       attests the web image; a separate no-permission job uploads Sentry source maps from it
+                       attests the web image and pushes the Helm chart pinned to it; a separate no-permission job
+                       uploads Sentry source maps from the image
                        web-checks.yml: astro check, lint, test, build on PRs (web/** only) and when called
                        e2e.yml: Playwright on `aspire start` + `aspire publish` check; PRs (web/** + AppHost), called
 .github/pull_request_template.md  PR body: summary, verification evidence, deployment impact, docs
@@ -179,6 +180,12 @@ out/                   aspire publish output (gitignored)
 - CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
   Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
   -R jrmatherly/matherlynet`.
+- The same job pushes the Helm chart to `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet` as
+  `0.1.<run number>` (`appVersion` = commit SHA), from `main` only: a manual run on another branch must not publish
+  a higher version. The chart is generated and linted before the image push, so a broken chart publishes nothing.
+  CI writes the pushed image (`web:<sha>@<digest>`) into `parameters.web.web_image` before packaging: `aspire
+  publish` leaves it as `web:latest`. The chart name comes from `withChartName` in `apphost.mts`; the chart is not
+  attested.
 - The image workflow runs only when the image can change (`web/**` minus docs, AppHost files, root `package*.json`,
   the workflow itself); `workflow_dispatch` bypasses the filter. `paths-ignore` can't take `!` exceptions, so it is
   an include list.

@@ -90,6 +90,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Before the image push: a chart that can't be generated or linted stops the job with nothing published.
+      # `yq -e` fails if Aspire renames the value the push step pins. helm and yq ship with the runner image.
+      - name: ☸️ Generate Helm chart
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          DEPLOY_TARGET: k8s
+        run: |
+          aspire publish -o out/k8s --non-interactive --nologo
+          rm -f out/k8s/*.Dockerfile
+          yq -e '.parameters.web.web_image' out/k8s/values.yaml
+          helm lint out/k8s
+
       # Images go to ghcr.io/jrmatherly/matherlynet/<resource>:<commit sha> (see apphost.mts).
       - name: 🐳 Build & push images
         env:
@@ -114,6 +126,25 @@ jobs:
           subject-digest: ${{ steps.digest.outputs.digest }}
           push-to-registry: true
           create-storage-record: false
+
+      # One chart per image: it pins the image just pushed (tag to read, digest to run), so a chart version is a
+      # whole release. Versions are 0.1.<run number>: SemVer that only goes up, so Flux or Renovate can order them.
+      # main only: a manual run on another branch would otherwise publish unmerged code as the newest version.
+      # Lands at oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet.
+      - name: ☸️ Pin image, package & push Helm chart
+        if: github.ref == 'refs/heads/main'
+        env:
+          WEB_IMAGE: ghcr.io/${{ github.repository }}/web:${{ github.sha }}@${{ steps.digest.outputs.digest }}
+          CHART_VERSION: 0.1.${{ github.run_number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          yq -i '.parameters.web.web_image = strenv(WEB_IMAGE)' out/k8s/values.yaml
+          # Rendered to a file: under pipefail, `grep -q` closing the pipe early would fail the step.
+          helm template out/k8s > "$RUNNER_TEMP/rendered.yaml"
+          grep -qF "image: \"$WEB_IMAGE\"" "$RUNNER_TEMP/rendered.yaml"
+          helm package out/k8s --version "$CHART_VERSION" --app-version "$GITHUB_SHA" --destination "$RUNNER_TEMP"
+          echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          helm push "$RUNNER_TEMP/matherlynet-$CHART_VERSION.tgz" "oci://ghcr.io/$GITHUB_REPOSITORY/charts"
 
   # Separate job: the third-party CLI and SENTRY_AUTH_TOKEN never share a runner with packages: write or
   # id-token: write. No token scopes at all: the GHCR package is public, so the pull is anonymous.

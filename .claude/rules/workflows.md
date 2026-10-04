@@ -22,3 +22,6 @@ paths:
 - `aspire do push` must stay quoted as `aspire 'do' push` (shellcheck SC1010 reads `do` as a keyword).
 - Validate with `actionlint .github/workflows/<file>.yml` after every edit.
 - Image tags: CI sets `IMAGE_TAG=${{ github.sha }}`, consumed by `withRemoteImageTag` in `apphost.mts`.
+- The chart step uses the runner image's own `helm` and `yq` (no setup action). Rehearse changes to it locally:
+  `DEPLOY_TARGET=k8s aspire publish`, the step's commands, then `helm push --plain-http` to a throwaway
+  `registry:2` container. In `run:` scripts, don't pipe into `grep -q`: under pipefail the early close fails the step.
