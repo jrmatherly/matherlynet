@@ -47,7 +47,7 @@ recorded as `REDACTED`.
 | `WEB_IMAGE` | `ghcr.io/jrmatherly/matherlynet/web:<commit sha>` |
 | `APP_URL` | `https://matherly.net` (OAuth callbacks and canonical URLs are built from it) |
 | `BETTER_AUTH_SECRET`, `PG_PASSWORD`, `UMAMI_SECRET` | `openssl rand -hex 32` each; keep them stable across deploys |
-| `SMTP_URL` | `smtp://<user>:<app password>@smtp.mail.me.com:587` (STARTTLS) |
+| `SMTP_URL` | `smtp://<user>:<app password>@smtp.mail.me.com:587` (STARTTLS). A value that is not an `smtp://` or `smtps://` URL stops the container at start; blank runs without mail |
 | `MAIL_FROM` | sender address, e.g. `MatherlyNet <…@matherly.net>` |
 | `ADMIN_EMAIL` | the admin's address, set **before** that account's email is verified (see below) |
 | `GITHUB_*`, `GOOGLE_*` | optional; a provider is enabled only when both its id and secret are set |
@@ -148,18 +148,24 @@ The `chart` job's run summary prints the version and the image it pins:
 helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet --version 0.<run>.<attempt>
 ```
 
-The chart deploys web only: a Deployment behind a ClusterIP Service (`web-service:4321`), its ConfigMap and its
-Secret. Routing to web is yours to add. There is no Postgres and no Aspire dashboard in the chart. The chart
-package on GHCR is public, so a cluster pulls it without a secret.
+The chart deploys web only: a Deployment (`matherlynet-web-deployment`) behind a ClusterIP Service
+(`matherlynet-web-service:4321`), its ConfigMap (`matherlynet-web-config`) and its Secret
+(`matherlynet-web-secrets`). The container is named `web` and pods carry `app.kubernetes.io/component: web`.
+Charts up to 0.29.1 named the four objects without the `matherlynet-` prefix: when you upgrade from one, repoint
+anything that names them (a route to `web-service:4321`, a patch on Deployment `web-deployment`) in the same change.
+Routing to web is yours to add.
+There is no Postgres and no Aspire dashboard in the chart. The chart package on GHCR is public, so a cluster pulls
+it without a secret.
 
 The chart holds no secret values, so an install has to supply them. `out/k8s` is the same chart built locally,
 except that `parameters.web.web_image` is `web:latest` there: set it to
 `ghcr.io/jrmatherly/matherlynet/web:<commit sha>`. Both take their settings through `values.yaml`: non-secret
 settings under `config.web` (`app_url`, `admin_email`, `mail_from`, `github_client_id`, `google_client_id`), and
 secrets under `secrets.web`: `appdb_uri` (the database, below), `better_auth_secret`, `smtp_url` and the OAuth client
-secrets. These match the Compose `.env` except for the database: the chart has no `PG_PASSWORD`, and `appdb_uri`
-has no `.env` counterpart. The live playground adds two optional values, both empty by default:
-`config.web.playground_model_url` and `secrets.web.playground_model_key` (section 8).
+secrets. An `smtp_url` that is not an `smtp://` or `smtps://` URL stops the pod at start, with the reason in its
+log; leave it blank to run without mail. These match the Compose `.env` except for the database: the chart has no
+`PG_PASSWORD`, and `appdb_uri` has no `.env` counterpart. The live playground adds two optional values, both empty
+by default: `config.web.playground_model_url` and `secrets.web.playground_model_key` (section 8).
 
 ### Database
 
@@ -237,7 +243,7 @@ Before you set the URL, the Cloudflare rate limiting rule for `POST /api/playgro
 
 - Kubernetes: set `config.web.playground_model_url` and run `helm upgrade`. The chart passes both values through
   `envFrom`, so an upgrade that changes only these values does not restart the pod. Restart it with
-  `kubectl rollout restart deployment/web-deployment`.
+  `kubectl rollout restart deployment/matherlynet-web-deployment`.
 - Compose: set `PLAYGROUND_MODEL_URL` in `.env` and run `docker compose --env-file .env up -d`.
 - To turn the feature off, empty the value and repeat the same step.
 
