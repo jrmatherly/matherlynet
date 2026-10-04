@@ -137,7 +137,11 @@ test.describe("model on", () => {
   test.beforeEach(async ({ request }) => {
     test.skip(!(live ??= await liveStack(request)), "the stack has no model URL");
     if (firstId !== null) return;
-    if (!LOOPBACK.has(URL.parse(process.env.APPDB_URI ?? "")?.hostname ?? "")) throw new Error("live.spec.ts reads and deletes playground_call rows: set APPDB_URI to a database on localhost, 127.0.0.1 or ::1.");
+    const appdb = URL.parse(process.env.APPDB_URI ?? "");
+    // pg takes a ?host= parameter over the URL's host, so a loopback hostname alone proves nothing.
+    if (!LOOPBACK.has(appdb?.hostname ?? "") || appdb?.searchParams.has("host")) {
+      throw new Error("live.spec.ts reads and deletes playground_call rows: set APPDB_URI to a database on localhost, 127.0.0.1 or ::1, with no host parameter.");
+    }
     // A run killed mid-test leaves its seeds, and 300 of them would refuse every local live call for a day.
     await query("delete from playground_call where visitor = $1", [SEED]);
     firstId = await lastId();
@@ -279,7 +283,6 @@ test.describe("model on", () => {
     const ago = `${LIVE.retentionDays + 1} days`;
     const seeded = [...(await seed(1, { ago, decision: "forwarded", reason: "stop" })), ...(await seed(1, { ago }))];
     expect(seeded).toHaveLength(2);
-    expect(seeded).toHaveLength(2);
     await post(request, randomUUID(), FLAGGED);
     expect(await query("select id from playground_call where id = any($1)", [seeded.map((row) => row.id)])).toEqual([]);
   });
@@ -330,7 +333,9 @@ test.describe("model on", () => {
       expect((await rowsAfter(before))[0].routed_at).toBeNull();
       await lock.query("commit");
       expect((await routing).value).toEqual({ type: "step", step: { gate: "Routing", verdict: "routed", to: LIVE.model } });
-      for await (const event of answer) if (event.type === "end") expect(event.decision).toEqual({ verdict: "forwarded", to: LIVE.model });
+      const rest = [];
+      for await (const event of answer) rest.push(event);
+      expect(rest.find((event) => event.type === "end")?.decision).toEqual({ verdict: "forwarded", to: LIVE.model });
     } finally {
       await lock.query("rollback");
       lock.release();

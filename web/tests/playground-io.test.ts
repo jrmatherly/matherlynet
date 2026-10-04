@@ -475,6 +475,15 @@ describe("liveIo storage", () => {
     await expect(liveIo.claim(5 as CallId)).rejects.toMatchObject({ cause: { message: "dead socket" } });
     expect(fake.release.mock.calls).toEqual([[true]]);
   });
+
+  it.each(["select pg_advisory_xact_lock", "update playground_call", "commit"])(
+    "claim: a failure after BEGIN (%s) rejects, and the client is destroyed rather than reused",
+    async (failing) => {
+      const fake = client(async (text) => (text.trim().startsWith(failing) ? Promise.reject(new Error("dead socket")) : seated(text)));
+      await expect(liveIo.claim(5 as CallId)).rejects.toMatchObject({ cause: { message: "dead socket" } });
+      expect(fake.release.mock.calls).toEqual([[true]]);
+    },
+  );
 });
 
 async function allEvents(res: Response): Promise<LiveEvent[]> {
@@ -540,8 +549,13 @@ describe("respond", () => {
       const client = new EventEmitter();
       pool.emit("connect", client);
       // An "error" with no listener throws, which in production is an uncaught exception.
-      expect(client.emit("error", new Error("reset"))).toBe(true);
+      expect(client.emit("error", Object.assign(new Error("reset canary"), { code: "ECONNRESET" }))).toBe(true);
+      expect(client.emit("error", new Error("canary"))).toBe(true);
+      expect(client.listenerCount("error")).toBe(1);
     }
+    // The code, or the name when there is none; never the message.
+    const lines = [["db: checked-out connection lost", "ECONNRESET"], ["db: checked-out connection lost", "Error"]];
+    expect(vi.mocked(console.error).mock.calls).toEqual([...lines, ...lines]);
   });
 
   it("a token already in flight when the visitor cancels is dropped quietly: the row is cut and nothing is reported", async () => {
@@ -652,9 +666,19 @@ describe("leaks", () => {
     ["Query read timeout", "query timeout"],
     ["Connection terminated unexpectedly", "terminated"],
     ["Client has encountered a connection error and is not queryable", "not queryable"],
+    ["Connection terminated due to connection timeout", "connect timeout"],
   ])("report() names pg's uncoded failure '%s' by a short code, not its message", (message, code) => {
     report("open", new DrizzleQueryError("select 1", [CANARY], new Error(message)));
     expect(captureError.mock.calls).toEqual([[new Error("playground: open failed"), { code }]]);
+  });
+
+  // claim() calls db.$client.connect() itself, so a connect failure reaches report() unwrapped.
+  it.each([
+    ["a connect timeout, whose cause is the dropped socket", new Error("Connection terminated due to connection timeout", { cause: new Error("Connection terminated unexpectedly") }), "connect timeout"],
+    ["a full pool", new Error("timeout exceeded when trying to connect"), "pool timeout"],
+  ])("report() names %s from pg-pool, not wrapped in a query error", (_name, error, code) => {
+    report("claim", error);
+    expect(captureError.mock.calls).toEqual([[new Error("playground: claim failed"), { code }]]);
   });
 
   it("report() never forwards a code that could be text", () => {
@@ -847,6 +871,7 @@ describe("liveIo.model over real undici against the fake llama", () => {
     [400, "model error", [{ code: "http 400" }]],
     [500, "model error", [{ code: "http 500" }]],
     [503, "unavailable", []],
+    [204, "model error", [{ code: "http 204" }]],
   ])("maps %i to '%s' without reading the body, which quotes the prompt; reports only an unexpected status", async (status, why, reports) => {
     vi.stubEnv("PLAYGROUND_MODEL_URL", fake.url);
     const error = await refusal(`canary [${status}]`);

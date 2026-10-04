@@ -219,7 +219,8 @@ row could not be written.
 A row holds a visitor key, the caller, the prompt and answer lengths, token counts, timestamps and enum reasons. It
 never holds prompt text, answer text or an IP address. Prompt and answer text do not reach the logs or Sentry either.
 A model failure goes to both as a code, such as `playground: model failed (ECONNREFUSED)`: a connection failure,
-a status other than 503, an unreadable frame, or a 200 with no usable frame. A 503 and a timeout are not reported.
+a status other than 503 (or a success with no body), an unreadable frame, or a 200 with no usable frame. A stream
+that drops mid-answer is reported as `playground: stream failed (<code>)`. A 503 and a timeout are not reported.
 The visitor key is `u:<user id>` for a signed-in visitor. For anyone else it is a hash of `cf-connecting-ip`, keyed
 with `BETTER_AUTH_SECRET`, that changes every UTC day. An IPv6 visitor is counted per /64, the first four groups of
 the address, so rotating addresses inside one prefix does not reset the limits. The app deletes rows older than 30
@@ -230,7 +231,7 @@ days when a new call arrives.
 | Limit | Value |
 | :--- | :--- |
 | Requests per visitor | 10 an hour, one at a time |
-| Requests site-wide | about 300 a day that took a seat |
+| Requests site-wide | about 300 a day that held a slot |
 | Model slots in use at once | 3 of the server's 4 |
 | Wait for the model's first text token or finish event | 2 s |
 | Whole call | 6 s |
@@ -241,10 +242,11 @@ days when a new call arrives.
 
 The body size and the per-process cap are `BODY_MAX` and `IN_FLIGHT_MAX` in `web/src/lib/playground-io.ts`. The
 other numbers are in `LIVE` or `PROMPT_MAX` in `web/src/lib/playground.ts`. To change one, edit it there and deploy
-a new image.
+a new image. Changing `IN_FLIGHT_MAX` also means changing the playground pool's size, `newPool(6)` in
+`web/src/db/index.ts`; a test fails until the two match.
 
 The same `playground_call` rows are the rate limiter and the slot counter, so the limits hold across replicas. A call
-takes a slot under a Postgres lock, so at most three are seated at once and a fourth is refused "busy". A call that
+takes a slot under a Postgres lock, so at most three hold one at once and a fourth is refused "busy". A call that
 held a slot counts toward the day whatever its outcome, even when it failed to reach the model. A visitor without an
 account starts a new hourly count at 00:00 UTC, because the visitor key changes then.
 

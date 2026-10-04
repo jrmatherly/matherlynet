@@ -28,10 +28,14 @@ step "AppHost eslint"       npm run --silent lint
 step "AppHost tsc"          node_modules/.bin/tsc -p tsconfig.apphost.json --noEmit
 step "Markdown lint"        markdownlint-cli2
 step "Workflow lint"        actionlint
+# check, sync and build have their own Vite cache (astro.config.mjs); replacing the dev server's breaks its pages.
+dev_deps=web/node_modules/.vite/deps/_metadata.json
+dev_deps_sum=$([ -f "$dev_deps" ] && cksum <"$dev_deps")
 step "Web astro check"      pnpm --dir web check
 step "Web lint"             pnpm --dir web lint
 step "Web tests"            pnpm --dir web test
 step "Web build"            pnpm --dir web build
+[ -n "$dev_deps_sum" ] && step "Dev server Vite deps kept" test "$dev_deps_sum" = "$(cksum <"$dev_deps" 2>&1)"
 
 smoke() {
   aspire wait web --non-interactive --nologo >/dev/null &&

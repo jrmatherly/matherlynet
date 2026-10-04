@@ -29,7 +29,7 @@ pushes it, with a Helm chart pinned to it, to `ghcr.io/jrmatherly/matherlynet`.
 | Compose web host port | `Web__HostPort=none` (default, cloudflared on the compose network) / `loopback` / `public` |
 | Enable Umami | `Umami__Enabled=true aspire start` (`Umami__Public=true` at publish time adds a Compose host port) |
 | Change Umami's admin password | `UMAMI_URL=<url> UMAMI_NEW_PASSWORD=<8+ chars> node scripts/umami-set-password.mjs` |
-| Live playground with a fake model | `node web/tests/fake-llama.ts 18080`, `aspire secret set Parameters:playground-model-url http://127.0.0.1:18080`, then `aspire stop && aspire start`. To turn it off, `aspire secret delete Parameters:playground-model-url` and restart. A model-on E2E run reads and seeds `playground_call` through the stack's `APPDB_URI` and, when it ends, deletes every row created while it ran (any other live call on that stack included), so runs don't use up the 300-a-day site cap; a run killed midway leaves its rows (about 20 seated calls) |
+| Live playground with a fake model | `node web/tests/fake-llama.ts 18080`, `aspire secret set Parameters:playground-model-url http://127.0.0.1:18080`, then `aspire stop && aspire start`. To turn it off, `aspire secret delete Parameters:playground-model-url` and restart. A model-on E2E run reads and seeds `playground_call` through the stack's `APPDB_URI` and, when it ends, deletes every row created while it ran (any other live call on that stack included), so runs don't use up the 300-a-day site cap. A run killed midway leaves its rows: inside the site-daily test, 300 seeded seated rows that refuse every local live call until the next model-on run deletes them or you run `delete from playground_call where visitor = 'e2e-seed'` |
 | Push images (CI does this) | `aspire do push` after `docker login ghcr.io` |
 
 <!-- END AUTO-MANAGED -->
@@ -166,8 +166,9 @@ out/                   aspire publish output (gitignored)
 - Astro sessions are disabled (`session: false` in `web/astro.config.mjs`, Astro 7.2+): the Node adapter's default
   filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
-- `astro check`, `astro sync` and `astro build` keep their Vite cache in `node_modules/.vite-<command>` (an inline
-  integration in `web/astro.config.mjs`). On the default directory, which `astro dev` uses, a check run under a
+- `astro check` and `astro sync` keep their Vite cache in `node_modules/.vite-sync` (check runs the config hook as
+  `sync`) and `astro build` in `node_modules/.vite-build` (an inline integration in `web/astro.config.mjs`). On the
+  default directory, which `astro dev` uses, a check run under a
   running stack replaced the dev server's optimized client deps: page scripts answered `504 Outdated Optimize Dep`
   and E2E form tests failed until `aspire resource web restart`.
 - `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
@@ -263,7 +264,8 @@ out/                   aspire publish output (gitignored)
   form body. Each process holds at most 6 calls (`IN_FLIGHT_MAX`), and more answer 503. The playground queries on
   its own pg pool (`playgroundDb` in `web/src/db/index.ts`), sized to that number. A model failure is reported to
   the log and Sentry as a code: a connection failure (DNS, TLS, refused), any status but 503 (a 400 is "model
-  error"), an unreadable frame, or a 200 with no usable frame. A 503 and an abort are not reported.
+  error"; a 2xx with no body too), an unreadable frame, or a 200 with no usable frame. A stream that drops
+  mid-answer is reported as `playground: stream failed (<code>)`. A 503 and an abort are not reported.
 - Dependencies: exact versions, latest stable. npm (`~/.npmrc`) and pnpm both enforce a minimum release
   age: pin a newer version explicitly (pnpm records `minimumReleaseAgeExclude`; npm needs
   `--min-release-age-exclude=<package-name>`). Known caps: `vscode-jsonrpc` 8.x (Aspire's generated

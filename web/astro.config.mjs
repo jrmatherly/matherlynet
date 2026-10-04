@@ -10,7 +10,8 @@ const npmFonts = fontProviders.npm({ remote: false });
 
 // `astro check`, `astro sync` and `astro build` start a temporary Vite server whose config hash differs from the
 // dev server's. On the shared default cache directory, Vite (8.3.1) then replaces the optimized deps of a running
-// `astro dev`, which answers 504 for its client scripts until it restarts. Each command gets its own directory.
+// `astro dev`, which answers 504 for its client scripts until it restarts. So they get their own directories:
+// `astro check` runs this hook as "sync", so check and sync share node_modules/.vite-sync, and build has .vite-build.
 /** @type {import("astro").AstroIntegration} */
 const viteCachePerCommand = {
   name: "vite-cache-per-command",

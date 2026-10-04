@@ -3,9 +3,10 @@
 // Vitest imports startFakeLlama(); E2E and a developer run it as `node web/tests/fake-llama.ts <port>`.
 // The user message picks the behaviour: "[slow]" (tokens 300 ms apart, so four calls overlap), "[stall]" (never sends
 // headers, like a request queued behind four busy slots), "[drop]" (one token, then the connection is destroyed),
-// "[400]", "[500]" or "[503]"; frames a client must not trust: "[not json]" (a frame that quotes the prompt and does
-// not parse), "[null]" (the frame `null`), "[odd content]" (a numeric content first), "[odd usage]" (a string token
-// count); and "[length]" (finishes at the token limit). Anything else is a short answer.
+// "[400]", "[500]", "[503]" or "[204]" (a success with no body); frames a client must not trust: "[not json]" (a
+// frame that quotes the prompt and does not parse), "[null]" (the frame `null`), "[odd content]" (a numeric content
+// first), "[odd usage]" (a string token count); and "[length]" (finishes at the token limit). Anything else is a
+// short answer.
 import { createServer, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
 import { pathToFileURL } from "node:url";
@@ -50,6 +51,7 @@ export function startFakeLlama(port = 0): Promise<{ url: string; received: Recei
     res.on("close", () => (seen.cut = !res.writableEnded));
     const prompt = body.messages?.find((m) => m.role === "user")?.content ?? "";
     if (prompt.includes("[stall]")) return; // held open until the client goes
+    if (prompt.includes("[204]")) return void res.writeHead(204).end();
     // Error bodies quote the prompt, so a test can prove the client never reads them.
     for (const status of [400, 500, 503]) {
       if (prompt.includes(`[${status}]`)) {

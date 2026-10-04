@@ -8,9 +8,8 @@ import { playgroundDb as db } from "../db";
 import {
   type Finish,
   LIVE,
-  type LiveDecision,
   type LiveEvent,
-  type LiveReason,
+  type LiveOutcome,
   type LiveStep,
   type Load,
   parsePrompt,
@@ -145,20 +144,18 @@ export interface Opening {
   promptChars: number;
 }
 
-export interface Closing {
-  decision: LiveDecision;
-  reason: LiveReason | null;
+export type Closing = LiveOutcome & {
   /** Characters of answer sent to the page. null when the model never answered. */
   replyChars: number | null;
   tokens: Tokens | null;
-}
+};
 
 /** What the model half yields. llama's chunk JSON never leaves liveIo. */
 export type ModelEvent = { type: "text"; text: string } | { type: "finish"; reason: "stop" | "length"; tokens: Tokens | null };
 
 /** Thrown by Io.model's iterable. The message is the enum value and nothing else, never upstream text. */
 export class ModelRefused extends Error {
-  readonly why: Exclude<RoutingRefusal, "model off" | "busy" | "no answer in time">;
+  readonly why: Extract<RoutingRefusal, "unavailable" | "model error">;
   constructor(why: ModelRefused["why"]) {
     super(why);
     this.why = why;
@@ -337,17 +334,19 @@ async function* modelStream(base: string, key: string, text: PromptText, signal:
         signal: AbortSignal.any([signal, done.signal]),
       });
     } catch (error) {
-      // An abort is a timer or the visitor leaving. Anything else (DNS, TLS, a refused connection, a bad key) looks
-      // the same to every visitor until someone fixes it, so the operator is told.
+      // An abort is a timer or the visitor leaving. Anything else (DNS, TLS, a refused connection, a key that is not a
+      // valid header value) looks the same to every visitor until someone fixes it, so the operator is told.
       if (!signal.aborted) report("model", error);
       throw new ModelRefused("unavailable");
     }
     // Error bodies are never read: whether llama echoes the prompt in them is unknown. 503 is llama loading (a pod
-    // restart), a normal state; any other status is a misconfiguration worth a report (a 400 too: PROMPT_MAX fits
-    // the slot).
+    // restart), a normal state; any other status, or a success with no body, is a misconfiguration worth a report (a
+    // 400 too: PROMPT_MAX fits the slot).
     if (res.status === 503) throw new ModelRefused("unavailable");
-    if (!res.ok) reportCode("model", `http ${res.status}`);
-    if (!res.ok || !res.body) throw new ModelRefused("model error");
+    if (!res.ok || !res.body) {
+      reportCode("model", `http ${res.status}`);
+      throw new ModelRefused("model error");
+    }
     let finish: "stop" | "length" | null = null;
     let tokens: Tokens | null = null;
     try {
@@ -384,9 +383,12 @@ async function* modelStream(base: string, key: string, text: PromptText, signal:
 type Stage = "open" | "claim" | "model" | "stream" | "close" | "run";
 
 // Failures that carry no code, by their fixed message (pg 8.23.1, pg-pool 3.14.0). Without this a full pool, a dead
-// socket and a client-side timeout all report as "Error". The message is only looked up, never sent.
+// socket, a connect timeout and a client-side query timeout all report as "Error". A connect timeout's cause is
+// "Connection terminated unexpectedly", so the error's own message is looked up before its cause's. The message is
+// only looked up, never sent.
 const UNCODED = new Map([
   ["timeout exceeded when trying to connect", "pool timeout"],
+  ["Connection terminated due to connection timeout", "connect timeout"],
   ["Query read timeout", "query timeout"],
   ["Connection terminated unexpectedly", "terminated"],
   ["Client has encountered a connection error and is not queryable", "not queryable"],
@@ -394,12 +396,13 @@ const UNCODED = new Map([
 
 /**
  * Tells Sentry and the log that a stage failed, without the caught error: its message may hold the SQL and its
- * parameters (DrizzleQueryError) or upstream text. Only a code goes out: a pg or undici code, a refusal, or a name.
+ * parameters (DrizzleQueryError) or upstream text. Only a code goes out: a pg or undici code, an UNCODED label,
+ * "no count", a refusal, or a name.
  */
 export function report(stage: Stage, error: unknown): void {
   const e = error as { cause?: { code?: unknown; message?: unknown }; code?: unknown; name?: unknown; message?: unknown } | null | undefined;
-  const message = e?.cause?.message ?? e?.message;
-  const uncoded = typeof message === "string" ? UNCODED.get(message) : undefined;
+  const lookup = (message: unknown) => (typeof message === "string" ? UNCODED.get(message) : undefined);
+  const uncoded = lookup(e?.message) ?? lookup(e?.cause?.message);
   const raw = e?.cause?.code ?? e?.code ?? uncoded ?? (error instanceof ModelRefused ? error.why : e?.name);
   reportCode(stage, typeof raw === "string" && /^[\w .-]{1,40}$/.test(raw) ? raw : "unknown");
 }
@@ -522,19 +525,19 @@ export async function run(call: Call, io: Io, signal: AbortSignal, emit: (event:
   } catch (error) {
     report("run", error);
   } finally {
-    const { decision, reason } = liveOutcome(steps, finish, stopReason());
+    const outcome = liveOutcome(steps, finish, stopReason());
     // Bounded, so the stream ends inside the drain even when Postgres stalls. A close that lands later still counts;
     // the page was told logged: false.
     let bound: ReturnType<typeof setTimeout> | undefined;
     const logged = await Promise.race([
-      io.close(opened.id, { decision, reason, replyChars, tokens }).then(
+      io.close(opened.id, { ...outcome, replyChars, tokens }).then(
         () => true,
         (error) => (report("close", error), false),
       ),
       new Promise<false>((resolve) => (bound = setTimeout(() => (reportCode("close", "slow"), resolve(false)), LIVE.closeMs))),
     ]);
     clearTimeout(bound);
-    emit({ type: "end", decision, finish, logged });
+    emit({ type: "end", decision: outcome.decision, finish, logged });
   }
 }
 
@@ -545,8 +548,9 @@ let inFlight = 0;
 
 /**
  * The Response. Starts run() from the stream's start() and returns at once. The client-gone signal has two paths,
- * neither trusted alone: requestSignal before the stream is read, cancel() after. Owns the call's deadline. The body
- * is read by writeResponse() in Astro core (astro 7.3.5, dist/core/app/node.js), which the comments below name.
+ * neither trusted alone: requestSignal before the stream is read, cancel() after. Owns the call's deadline. In the
+ * built server the body is read by writeResponse() in Astro core (astro 7.3.5, dist/core/app/node.js), which the
+ * comments below name; `astro dev` reads it with writeWebResponse() instead.
  */
 export function respond(call: Call, requestSignal: AbortSignal, io: Io = liveIo): Response {
   if (inFlight >= IN_FLIGHT_MAX) return new Response(null, { status: 503 });

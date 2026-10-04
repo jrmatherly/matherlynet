@@ -64,8 +64,6 @@ export type RoutingRefusal = "model off" | "busy" | "unavailable" | "no answer i
 export type Finish = "stop" | "length" | "deadline" | "dropped";
 /** Why the call's signal aborted. The first abort wins: AbortController ignores later ones. */
 export type Stop = "left" | "deadline";
-/** A closed row's `reason`: always an enum value, never text. "error": a cut with no stop. */
-export type LiveReason = LimitReason | GuardrailCategory | RoutingRefusal | Finish | Stop | "error";
 
 /**
  * The live path's real values, with their tags: SIM's counterpart. The server, its SQL, the page's pills and its
@@ -130,8 +128,9 @@ export type LiveStep = StepFor<AiGate>;
 
 /**
  * Where a request ended: `to` exists only when forwarded and `at` only when refused. "cut": a live call that ended with
- * no verdict (the visitor left, time ran out before Routing, or the page lost its own connection). A model stream that
- * drops is not one: that call is "forwarded" with finish "dropped".
+ * no verdict (the visitor left, time ran out before Routing, an unexpected error in run(), or the page lost its own
+ * connection). A model stream that drops is not one: after the first event the call is "forwarded" with finish
+ * "dropped", and before it Routing refuses it "unavailable".
  */
 type Decision<At extends string = string, To extends string = string> =
   | { verdict: "forwarded"; to: To }
@@ -140,6 +139,13 @@ type Decision<At extends string = string, To extends string = string> =
   | { verdict: "cut" };
 /** What a live call can end as. No "cached" (Cache is off) and no tool gate. */
 export type LiveDecision = Exclude<Decision<AiGate, LiveTarget>, { verdict: "cached" }>;
+/** A live call's decision and the closed row's `reason`, paired so neither can be written with the other's kind. */
+export type LiveOutcome =
+  | { decision: { verdict: "forwarded"; to: LiveTarget }; reason: Finish }
+  | { decision: { verdict: "refused"; at: "Rate limits" }; reason: LimitReason | null }
+  | { decision: { verdict: "refused"; at: "Guardrails" }; reason: GuardrailCategory }
+  | { decision: { verdict: "refused"; at: "Routing" }; reason: RoutingRefusal }
+  | { decision: { verdict: "cut" }; reason: Stop | "error" };
 
 type Provenance = "recorded" | "you";
 
@@ -398,10 +404,17 @@ export function liveOutcome(
   steps: readonly LiveStep[],
   finish: Finish | null,
   stop: Stop | "error",
-): { decision: LiveDecision; reason: LiveReason | null } {
+): LiveOutcome {
   const last = steps.at(-1);
   if (last?.verdict === "refused") {
-    return { decision: { verdict: "refused", at: last.gate }, reason: last.gate === "Guardrails" ? last.finding.category : (last.why ?? null) };
+    switch (last.gate) {
+      case "Rate limits":
+        return { decision: { verdict: "refused", at: last.gate }, reason: last.why ?? null };
+      case "Guardrails":
+        return { decision: { verdict: "refused", at: last.gate }, reason: last.finding.category };
+      case "Routing":
+        return { decision: { verdict: "refused", at: last.gate }, reason: last.why };
+    }
   }
   if (last?.gate === "Routing" && finish !== null) return { decision: { verdict: "forwarded", to: LIVE.model }, reason: finish };
   return { decision: { verdict: "cut" }, reason: stop };

@@ -39,7 +39,8 @@ const simulated = [
   ),
 ];
 
-// Read from LIVE, as "Simulated values" reads SIM, so this list cannot state a number the server does not use.
+// The numbers come from LIVE, as "Simulated values" reads SIM. The time windows ("every day", "an hour", "a day",
+// "midnight UTC") are written by hand to match the limiter's SQL and visitorKey() in playground-io.ts.
 const s = (ms: number) => ms / 1000;
 const liveValues = [
   {

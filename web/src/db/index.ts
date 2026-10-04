@@ -20,8 +20,11 @@ function newPool(max?: number) {
   pool.on("error", (err: Error & { code?: string }) => console.error("db: idle connection lost", err.code ?? "", err.message));
   // A client checked out by hand (pool.connect()) has no "error" listener: pg-pool 3.14.0 takes its own off at checkout,
   // and pg 8.23.1 emits "error" when the socket drops, which unheard is an uncaught exception that ends the process.
-  // This one stays on every client; the failed query's rejection already carries the error.
-  pool.on("connect", (client) => client.on("error", () => {}));
+  // This one stays on every client. It logs only the code (else the name): the next query may report just "not
+  // queryable", and a message can quote SQL parameters.
+  pool.on("connect", (client) =>
+    client.on("error", (err: Error & { code?: unknown }) => console.error("db: checked-out connection lost", typeof err.code === "string" ? err.code : err.name)),
+  );
   return pool;
 }
 

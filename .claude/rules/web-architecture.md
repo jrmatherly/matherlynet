@@ -41,16 +41,17 @@ web/
                        cookie) and syncThemeColor() (rebuilds the theme-color tags after a switch)
   src/lib/playground.ts  the playground's simulated gateway (pure: parsers, SIM, send(), scenarios, replay(),
                        scenarioCss(), and the row wording shared by SSR and the page script) and the live path's pure
-                       half: LIVE (its real values, except PROMPT_MAX and the caps and SQL windows that
-                       playground-io.ts holds), limitStep(), preRouting(), liveOutcome() (a call's decision and its
-                       reason), sseFrames()
+                       half: LIVE (its real values, except PROMPT_MAX, which sits beside it, and the caps and SQL
+                       windows in playground-io.ts), limitStep(), preRouting(), liveOutcome() (a call's decision and
+                       its reason), sseFrames()
   src/lib/playground-io.ts  the live call's server half; the page script never imports it. liveModelOn()
                        (PLAYGROUND_MODEL_URL set), parseCall() (form-encoded POST, 8 KB body cap), visitorKey() (the
                        only playground reader of cf-connecting-ip, which auth.ts also gives better-auth; IPv6 keyed
                        on its /64), liveIo (playground_call SQL on the playground's own pool; open() returns no
                        load if its count fails; seats claimed under an advisory lock, so at most 3 are seated; model
-                       fetch to <base>/v1/chat/completions; a connection failure, any status but 503, an unreadable
-                       frame and a 200 with no usable frame are reported), run() (one row, one decision),
+                       fetch to <base>/v1/chat/completions; a connection failure, any status but 503 (a 2xx with no
+                       body too), an unreadable frame and a stream that drops mid-answer (stage "stream") are
+                       reported), run() (one row, one decision; reports a 200 with no usable frame),
                        respond() (text/event-stream, the 6 s deadline, 503 past 6 calls per process), report() (a
                        code to Sentry and the log, never the caught error)
   src/data/gateway.ts  gates, callers, targets, guardrail categories, audit retention: shared by GatewayPath and the
