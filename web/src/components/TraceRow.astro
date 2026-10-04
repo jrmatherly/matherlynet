@@ -5,8 +5,10 @@ import { type AuditEntry, closing, GATES, stepView } from "../lib/playground";
 interface Props {
   /** null renders the skeleton the page script clones: the model lane's gates, every text slot empty, pills hidden. */
   entry: AuditEntry | null;
+  /** The page has a live path, so a simulated row must not say that nothing leaves the browser. */
+  live?: boolean;
 }
-const { entry } = Astro.props;
+const { entry, live = false } = Astro.props;
 
 const pills = GATES[entry?.lane ?? "model"].map((gate, i) =>
   entry ? { gate, ...stepView(entry.steps[i]) } : { gate: "", kind: undefined, verdict: "", detail: "", tag: "" },
@@ -33,7 +35,7 @@ const pills = GATES[entry?.lane ?? "model"].map((gate, i) =>
     }
     <li class="step self-start rounded-md bg-surface-2 px-2 py-0.5 text-xs font-medium lg:mt-2 lg:ms-auto lg:flex-none" data-logged hidden={!entry}><span aria-hidden="true">■</span> logged</li>
   </ol>
-  <p class="closing step text-[13px] text-muted" data-slot="closing" hidden={!entry}>{entry && closing(entry)}</p>
+  <p class="closing step text-[13px] text-muted" data-slot="closing" hidden={!entry}>{entry && closing(entry, live)}</p>
 </li>
 
 <style>

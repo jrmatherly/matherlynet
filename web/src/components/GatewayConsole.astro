@@ -2,15 +2,17 @@
 import { createHash } from "node:crypto";
 import { AUDIT_RETENTION, CALLERS, type Gate, GUARDRAIL_CATEGORIES, MODEL_TARGETS } from "../data/gateway";
 import { badge, choice, field, primary } from "../lib/form";
-import { PROMPT_MAX, RECORDED_TOUR, replay, SCENARIO_IDS, SCENARIOS, type ScenarioId, scenarioCss, SIM } from "../lib/playground";
+import { LIVE, PROMPT_MAX, RECORDED_TOUR, replay, SCENARIO_IDS, SCENARIOS, type ScenarioId, scenarioCss, SIM } from "../lib/playground";
 import FlowTable from "./FlowTable.astro";
 import TraceRow from "./TraceRow.astro";
 
 interface Props {
   /** Which chip's radio is checked on the server (from ?try=, else the first). */
   picked: ScenarioId;
+  /** The model URL is set, so "Your own request" is sent to the server. false renders the simulation only. */
+  live?: boolean;
 }
-const { picked } = Astro.props;
+const { picked, live = false } = Astro.props;
 
 const panels = SCENARIO_IDS.map((id) => ({ id, ...SCENARIOS[id], entries: replay([id]) }));
 const recorded = replay(RECORDED_TOUR);
@@ -37,14 +39,58 @@ const simulated = [
   ),
 ];
 
+// Rendered from LIVE as "Simulated values" is from SIM, so the page cannot state a number the server does not use.
+const s = (ms: number) => ms / 1000;
+const liveValues = [
+  {
+    label: "SSO",
+    value: "Anyone may send. Signed-in visitors are counted by account. Everyone else is counted by a keyed hash of their network address that changes every day.",
+    tag: LIVE.tags.SSO,
+  },
+  {
+    label: "Rate limits",
+    value: `${LIVE.perVisitorPerHour} requests an hour each, one at a time. About ${LIVE.sitePerDay} a day for the whole site. A visitor without an account starts a new count at midnight UTC.`,
+    tag: LIVE.tags["Rate limits"],
+  },
+  {
+    label: "Guardrails",
+    value: "The same pattern checks as the simulation. They run in your browser first and again on the server. The model's answer is not checked.",
+    tag: LIVE.tags.Guardrails,
+  },
+  { label: "Cache", value: "Off. Every answer is generated fresh.", tag: LIVE.tags.Cache },
+  {
+    label: "Routing",
+    value: `${LIVE.model}, a small self-hosted model. ${LIVE.seats} answers at a time, at most ${LIVE.maxTokens} tokens each. An answer that has not started in ${s(LIVE.firstByteMs)} s is refused. A request is cut at ${s(LIVE.totalMs)} s.`,
+    tag: LIVE.tags.Routing,
+  },
+  { label: "Instructions the model gets", value: LIVE.systemPrompt, tag: "live" },
+  {
+    label: "What this site keeps",
+    value: `One row per request. It holds the time, your visitor key, the caller you picked, the verdict and its reason, the length of your text and of the answer, and token counts. It never holds the text. Rows older than ${LIVE.retentionDays} days are deleted as new requests arrive.`,
+    tag: "live",
+  },
+];
+
+// The console says its mode in data-mode, not data-live: TraceRow already puts data-live on script-cloned rows, and
+// E2E selects on it.
 const chip = `${choice} px-3.5 py-2.5`;
 const panel = "hidden min-w-0 gap-3";
 ---
 
-<div data-console class="grid min-w-0 gap-6">
+<div data-console data-mode={live ? "live" : undefined} class="grid min-w-0 gap-6">
   <style is:inline set:html={css} />
   <p class="rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm">
-    <strong>SIMULATION.</strong> No model is called, and nothing you type leaves your browser. The checks and their order are the platform's; the values marked demo are not.
+    {
+      live ? (
+        <>
+          <strong>LIVE AND SIMULATION.</strong> The example requests are simulated in your browser. Your own request is sent to this site's server and checked there. One that passes is answered by a small self-hosted model. Text the guardrails flag is stopped in your browser and is not sent. This site stores none of your text. The checks and their order are the platform's; the values marked demo are not.
+        </>
+      ) : (
+        <>
+          <strong>SIMULATION.</strong> No model is called, and nothing you type leaves your browser. The checks and their order are the platform's; the values marked demo are not.
+        </>
+      )
+    }
   </p>
 
   <section aria-label="Gateway console" class="grid min-w-0 gap-5 lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-8">
@@ -60,7 +106,7 @@ const panel = "hidden min-w-0 gap-3";
       }
       <label class={`${chip} border-dashed`} data-js hidden>
         <input type="radio" name="scenario" value="yours" class="sr-only" />
-        Your own request
+        Your own request{live && <em class={badge}>live</em>}
       </label>
     </fieldset>
 
@@ -72,7 +118,7 @@ const panel = "hidden min-w-0 gap-3";
               <p class="text-sm text-muted">{p.teaches}</p>
               <ol class="grid gap-2" aria-live="polite" data-rows data-many={p.entries.length > 2 ? "" : undefined}>
                 {p.entries.map((entry) => (
-                  <TraceRow entry={entry} />
+                  <TraceRow entry={entry} live={live} />
                 ))}
               </ol>
             </article>
@@ -99,9 +145,25 @@ const panel = "hidden min-w-0 gap-3";
               <span class="ms-auto font-mono text-xs text-muted tabular-nums" data-count>0/{PROMPT_MAX}</span>
               <button type="submit" class={primary}>Send</button>
             </div>
-            <p class="text-xs text-muted">Try an email address, a card number, a key that starts with sk- or ghp_, or telling it to ignore its instructions.</p>
+            <p class="text-xs text-muted">
+              {
+                live
+                  ? "Try an email address, a card number, a key that starts with sk- or ghp_, or telling it to ignore its instructions. Those are stopped in your browser. Anything else is sent, so do not paste a real secret."
+                  : "Try an email address, a card number, a key that starts with sk- or ghp_, or telling it to ignore its instructions."
+              }
+            </p>
           </form>
           <ol class="grid gap-2" aria-live="polite" data-rows data-yours></ol>
+          {
+            /* Its own live region: the rows list would announce every token. aria-busy holds the announcement until
+               the answer is whole. The script appends Text nodes only, so model output is never parsed as HTML. */
+            live && (
+              <div class="grid gap-1 rounded-xl border border-border bg-surface p-3" data-answer-box hidden>
+                <p class="text-xs font-semibold tracking-wide text-muted uppercase">Answer from {LIVE.model}, unfiltered</p>
+                <p class="text-sm whitespace-pre-wrap" aria-live="polite" aria-busy="false" data-answer></p>
+              </div>
+            )
+          }
         </article>
       </div>
       <noscript><p class="text-sm text-muted">Showing recorded runs. Turn on JavaScript to send your own.</p></noscript>
@@ -121,6 +183,23 @@ const panel = "hidden min-w-0 gap-3";
           }
         </dl>
       </details>
+      {
+        live && (
+          <details class="rounded-xl border border-border bg-surface px-4 text-sm">
+            <summary class="cursor-pointer py-3 font-semibold">Live values</summary>
+            <dl class="mb-4 grid gap-x-4 gap-y-1 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-y-2">
+              {liveValues.map((row) => (
+                <>
+                  <dt class="mt-1.5 text-muted sm:mt-0">{row.label}</dt>
+                  <dd>
+                    {row.value} <em class={badge}>{row.tag}</em>
+                  </dd>
+                </>
+              ))}
+            </dl>
+          </details>
+        )
+      }
     </div>
   </section>
 
@@ -128,32 +207,48 @@ const panel = "hidden min-w-0 gap-3";
     <p class="text-sm text-muted tabular-nums" data-gauge data-js hidden>
       Rate limit <span aria-hidden="true" data-slot="dots"></span> <span data-slot="count"></span>
     </p>
-    <FlowTable rows={recorded} />
-    <p class="text-sm text-muted">Kept for this tab only. The real log is kept {AUDIT_RETENTION}.</p>
+    <FlowTable rows={recorded} live={live} />
+    <p class="text-sm text-muted">
+      {
+        live
+          ? `This table is kept for this tab only. Each live request also leaves one row on this site's server, without its text. Rows older than ${LIVE.retentionDays} days are deleted as new requests arrive. The real gateway's log is kept ${AUDIT_RETENTION}.`
+          : `Kept for this tab only. The real log is kept ${AUDIT_RETENTION}.`
+      }
+    </p>
   </div>
 
   <template data-row><TraceRow entry={null} /></template>
 </div>
 
 <script>
-  import { CALLERS } from "../data/gateway";
+  import { type Caller, CALLERS } from "../data/gateway";
+  import { whileBusy } from "../lib/form";
   import {
     type AuditEntry,
     clock,
     closing,
     createConsole,
+    detect,
     endpoint,
+    type FlowRow,
     GATES,
     GLYPH,
+    type LiveEntry,
+    type LiveEvent,
+    type LiveStep,
+    liveClosing,
     parsePrompt,
     parseScenarioId,
     type PlayRequest,
     PROMPT_MAX,
+    type PromptText,
     refill,
     SCENARIOS,
     send,
     SIM,
+    sseFrames,
     stepView,
+    summarise,
   } from "../lib/playground";
 
   // Same pace as TraceRow's 0.18s stagger: live rows paint one pill per STEP_MS, recorded rows stagger by that delay in
@@ -180,6 +275,10 @@ const panel = "hidden min-w-0 gap-3";
     const message = form.querySelector<HTMLElement>("[data-msg]")!;
     const count = form.querySelector<HTMLElement>("[data-count]")!;
     const yours = root.querySelector<HTMLOListElement>("[data-yours]")!;
+    const live = root.dataset.mode === "live";
+    // Absent when the model is off; only the live send touches them.
+    const answerBox = root.querySelector<HTMLElement>("[data-answer-box]")!;
+    const answer = root.querySelector<HTMLElement>("[data-answer]")!;
 
     const updateGauge = () => {
       const left = Math.floor(refill(state.bucket, performance.now()).tokens);
@@ -187,16 +286,24 @@ const panel = "hidden min-w-0 gap-3";
       slot(gauge, "count").textContent = `${left}/${SIM["Rate limits"].capacity}, ${SIM["Rate limits"].tag}`;
     };
 
-    const logRow = (entry: AuditEntry) => {
+    // A live call's log row exists before its decision, so the row is written in two parts.
+    const logRow = (head: Omit<FlowRow, "decision">) => {
       const row = clone(logTemplate);
-      row.dataset.v = entry.decision.verdict;
-      slot(row, "time").textContent = clock(entry.at - t0);
-      slot(row, "from").textContent = entry.from;
-      row.querySelector<HTMLElement>("[data-you]")!.hidden = entry.provenance !== "you";
-      slot(row, "summary").textContent = entry.summary;
-      slot(row, "glyph").textContent = GLYPH[entry.decision.verdict];
-      slot(row, "verdict").textContent = entry.decision.verdict;
-      slot(row, "endpoint").textContent = endpoint(entry.decision);
+      row.dataset.v = "pending";
+      slot(row, "time").textContent = clock(head.at - t0);
+      slot(row, "from").textContent = head.from;
+      row.querySelector<HTMLElement>("[data-you]")!.hidden = head.provenance !== "you";
+      slot(row, "summary").textContent = head.summary;
+      slot(row, "glyph").textContent = "…";
+      slot(row, "verdict").textContent = "sending";
+      return row;
+    };
+
+    const settle = (row: HTMLElement, decision: FlowRow["decision"]) => {
+      row.dataset.v = decision.verdict;
+      slot(row, "glyph").textContent = GLYPH[decision.verdict];
+      slot(row, "verdict").textContent = decision.verdict;
+      slot(row, "endpoint").textContent = endpoint(decision);
       return row;
     };
 
@@ -208,21 +315,40 @@ const panel = "hidden min-w-0 gap-3";
       pill.hidden = false;
     };
 
-    const paint = async (entry: AuditEntry, row: HTMLElement) => {
-      const gates = GATES[entry.lane];
+    const frame = (row: HTMLElement, lane: AuditEntry["lane"]) => {
+      const gates = GATES[lane];
       const pills = [...row.querySelectorAll<HTMLElement>("[data-step]")];
       for (const pill of pills.slice(gates.length)) pill.remove();
       gates.forEach((gate, i) => (slot(pills[i], "gate").textContent = gate));
+      return pills;
+    };
+
+    // The one end-of-row path for simulated and live rows. A live row shows "logged" only when the server confirmed it.
+    const finish = (row: HTMLElement, entry: AuditEntry, sentence: string, logged: boolean) => {
+      const pills = [...row.querySelectorAll<HTMLElement>("[data-step]")];
+      for (const pill of pills.slice(entry.steps.length, GATES[entry.lane].length)) fill(pill, stepView(undefined));
+      row.querySelector<HTMLElement>("[data-logged]")!.hidden = !logged;
+      const end = slot(row, "closing");
+      end.textContent = sentence;
+      end.hidden = false;
+    };
+
+    const paint = async (entry: AuditEntry, row: HTMLElement) => {
+      const pills = frame(row, entry.lane);
       for (const [i, step] of entry.steps.entries()) {
         if (!reduced.matches) await sleep(STEP_MS);
         fill(pills[i], stepView(step));
       }
       if (!reduced.matches) await sleep(STEP_MS);
-      for (const pill of pills.slice(entry.steps.length, gates.length)) fill(pill, stepView(undefined));
-      row.querySelector<HTMLElement>("[data-logged]")!.hidden = false;
-      const end = slot(row, "closing");
-      end.textContent = closing(entry);
-      end.hidden = false;
+      finish(row, entry, closing(entry, live), true);
+    };
+
+    const traceRow = (head: Pick<FlowRow, "from" | "summary">, list: HTMLOListElement) => {
+      const row = clone(rowTemplate);
+      slot(row, "from").textContent = head.from;
+      slot(row, "summary").textContent = head.summary;
+      list.append(row);
+      return row;
     };
 
     const run = (request: PlayRequest, list: HTMLOListElement) => {
@@ -230,12 +356,45 @@ const panel = "hidden min-w-0 gap-3";
       state = result.state;
       updateGauge();
       // Logged at send, not when the trace finishes painting: traces differ in length, so a burst would land out of order.
-      log.prepend(logRow(result.entry));
-      const row = clone(rowTemplate);
-      slot(row, "from").textContent = result.entry.from;
-      slot(row, "summary").textContent = result.entry.summary;
-      list.append(row);
-      void paint(result.entry, row);
+      log.prepend(settle(logRow(result.entry), result.entry.decision));
+      void paint(result.entry, traceRow(result.entry, list));
+    };
+
+    // Pills fill as the server's steps arrive, at the server's pace. The answer goes in as Text nodes only.
+    const liveSend = async (caller: Caller, text: PromptText) => {
+      const head = { at: performance.now(), provenance: "you", from: caller, summary: summarise(text), lane: "model" } as const;
+      const logLine = logRow(head);
+      log.prepend(logLine);
+      const row = traceRow(head, yours);
+      const pills = frame(row, head.lane);
+      answer.setAttribute("aria-busy", "true");
+      const steps: LiveStep[] = [];
+      let end: Extract<LiveEvent, { type: "end" }> | null = null;
+      try {
+        const res = await fetch("/api/playground", { method: "POST", body: new URLSearchParams({ text, caller }) });
+        if (!res.ok || !res.body) message.textContent = `The gateway did not answer (HTTP ${res.status}). Try again in a moment.`;
+        else
+          for await (const data of sseFrames(res.body)) {
+            const event = JSON.parse(data) as LiveEvent;
+            if (event.type === "step") fill(pills[steps.push(event.step) - 1], stepView(event.step, "live"));
+            else if (event.type === "text") {
+              answerBox.hidden = false;
+              answer.append(event.text);
+            } else end = event;
+          }
+      } catch {
+        // A dropped connection or an unreadable frame: the row ends as cut below.
+      }
+      const entry: LiveEntry = {
+        ...head,
+        steps,
+        decision: end?.decision ?? { verdict: "cut" },
+        finish: end?.finish ?? null,
+        logged: end?.logged ?? false,
+      };
+      settle(logLine, entry.decision);
+      finish(row, entry, liveClosing(entry), entry.logged);
+      answer.setAttribute("aria-busy", "false");
     };
 
     root.querySelectorAll<HTMLElement>("[data-js]").forEach((el) => (el.hidden = false));
@@ -266,7 +425,14 @@ const panel = "hidden min-w-0 gap-3";
       const picked = new FormData(form).get("caller");
       const caller = CALLERS.find((c) => c === picked) ?? "End users";
       yours.replaceChildren();
-      run({ lane: "model", caller, text: parsed.value }, yours);
+      // Cleared on both paths, so a refusal in the browser never sits under the previous request's answer.
+      if (live) {
+        answerBox.hidden = true;
+        answer.replaceChildren();
+      }
+      // Model off, or text the guardrails flag: the simulation. Flagged text never leaves the browser.
+      if (!live || detect(parsed.value)) return run({ lane: "model", caller, text: parsed.value }, yours);
+      void whileBusy(form, () => liveSend(caller, parsed.value));
     });
 
     text.addEventListener("input", () => {

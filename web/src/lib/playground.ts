@@ -53,28 +53,89 @@ interface Finding {
   masked: string;
 }
 
+/** What a live Routing step reached. Not in data/gateway.ts: the home figure draws MODEL_TARGETS. */
+type LiveTarget = (typeof LIVE)["model"];
+
+/** Why the live limiter refused. "unavailable": the row could not be written, so the call is not sent on. */
+export type LimitReason = "one at a time" | "hourly" | "site daily" | "unavailable";
+/** Why live Routing refused before any answer. "model off" is the base URL unset. "busy" is no free seat. */
+export type RoutingRefusal = "model off" | "busy" | "unavailable" | "no answer in time" | "model error";
+/** How a forwarded live answer ended. "dropped": the model's stream ended without a finish_reason. */
+export type Finish = "stop" | "length" | "deadline" | "dropped";
+/** Why the call's signal aborted. The first abort wins: AbortController ignores later ones. */
+export type Stop = "left" | "deadline";
+/** A closed row's `reason`: always an enum value, never text. "error": a cut with no stop. */
+export type LiveReason = LimitReason | GuardrailCategory | RoutingRefusal | Finish | Stop | "error";
+
+/**
+ * Every real value of the live path, with its tag: SIM's counterpart. The server, its SQL, the page's pills and its
+ * "Live values" list all read it, so the page cannot state a number the server does not use. No tag says "demo".
+ */
+export const LIVE = {
+  model: "phi-4-mini",
+  /** Calls holding a seat at once, site-wide: 3 of the server's 4 slots, one left for the owner's other consumers. */
+  seats: 3,
+  perVisitorPerHour: 10,
+  sitePerDay: 300,
+  /** Wait for the model's first event. A queued llama request is silent, so this is how "queued" is told apart. */
+  firstByteMs: 2_000,
+  /** The whole call, measured from the route's entry, not from admission. */
+  totalMs: 6_000,
+  /** `end` is sent at most this long after the call's last event. totalMs + closeMs must fit the HTTP drain in
+   *  server.mjs; a test reads both. */
+  closeMs: 1_000,
+  /** An open row older than this belongs to a dead process: no count reads it and the next open() sweeps it. */
+  staleMs: 10_000,
+  maxTokens: 150,
+  temperature: 0.3,
+  retentionDays: 30,
+  /** Names no person. About 40 tokens: with a 500-character prompt and 150 output tokens it fits a 2048-token slot. */
+  systemPrompt:
+    "You answer visitors in a demo of an AI gateway on a personal website. Reply in plain text, in at most three " +
+    "short sentences. Do not use Markdown, links or code.",
+  tags: {
+    SSO: "live session",
+    "Rate limits": "live limit",
+    Guardrails: "live checks",
+    Cache: "live, off",
+    Routing: "live model",
+  } satisfies Record<AiGate, string>,
+} as const;
+
 // Each gate owns its verdicts, so "Cache: refused" can't be written and a Guardrails refusal always carries a Finding.
 // Gates after a stop have no Step: a renderer derives "not reached" from GATES[lane].
+// "anonymous", "off", a refused Routing and `why` are made only by the live path, so send() and replay() never emit them.
 export type Step =
   | { gate: "SSO"; verdict: "signed in"; identity: string }
+  | { gate: "SSO"; verdict: "anonymous" }
   | { gate: "Rate limits"; verdict: "passed"; left: number }
-  | { gate: "Rate limits"; verdict: "refused"; retryMs: number }
+  | { gate: "Rate limits"; verdict: "refused"; retryMs: number; why?: LimitReason }
   | { gate: "Guardrails"; verdict: "passed" }
   | { gate: "Guardrails"; verdict: "refused"; finding: Finding }
   | { gate: "Cache"; verdict: "hit" }
   | { gate: "Cache"; verdict: "miss" }
-  | { gate: "Routing"; verdict: "routed"; to: ModelTarget }
+  | { gate: "Cache"; verdict: "off" }
+  | { gate: "Routing"; verdict: "routed"; to: ModelTarget | LiveTarget }
+  | { gate: "Routing"; verdict: "refused"; why: RoutingRefusal }
   | { gate: "OAuth"; verdict: "passed" }
   | { gate: "Registry"; verdict: "approved"; server: DemoServerId }
   | { gate: "Registry"; verdict: "refused"; server: DemoServerId };
 
 type StepFor<G extends Gate> = Extract<Step, { gate: G }>;
+/** A step of the model lane: all the server ever sends. */
+export type LiveStep = StepFor<AiGate>;
 
-/** Where a request ended: `to` exists only when forwarded and `at` only when refused. */
+/**
+ * Where a request ended: `to` exists only when forwarded and `at` only when refused. "cut": a live call that ended with
+ * no verdict (the visitor left, time ran out before Routing, the stream dropped).
+ */
 type Decision<At extends string = string, To extends string = string> =
   | { verdict: "forwarded"; to: To }
   | { verdict: "cached" }
-  | { verdict: "refused"; at: At };
+  | { verdict: "refused"; at: At }
+  | { verdict: "cut" };
+/** What a live call can end as. No "cached" (Cache is off) and no tool gate. */
+export type LiveDecision = Exclude<Decision<AiGate, LiveTarget>, { verdict: "cached" }>;
 
 type Provenance = "recorded" | "you";
 
@@ -91,8 +152,26 @@ export interface FlowRow {
 export interface AuditEntry extends FlowRow {
   lane: Lane;
   steps: readonly Step[]; // a prefix of GATES[lane], in order, ending at the deciding step
-  readonly decision: Decision<Gate, Target>;
+  readonly decision: Decision<Gate, Target | LiveTarget>;
 }
+
+/** What the page assembles from one live event stream: an entry plus the two things only the server knows. */
+export interface LiveEntry extends AuditEntry {
+  readonly steps: readonly LiveStep[];
+  readonly decision: LiveDecision;
+  readonly finish: Finish | null;
+  /** The server confirmed the row was closed. The page shows "■ logged" only when true. */
+  readonly logged: boolean;
+}
+
+/**
+ * The wire contract: one JSON object per SSE `data:` frame, in this order: step* (a prefix of AI_GATES), text* (only
+ * after a routed Routing step), then exactly one end, sent after the row is closed. The server derives `decision`.
+ */
+export type LiveEvent =
+  | { type: "step"; step: LiveStep }
+  | { type: "text"; text: string }
+  | { type: "end"; decision: LiveDecision; finish: Finish | null; logged: boolean };
 
 interface Bucket {
   readonly tokens: number; // fractional, refilled lazily from `at`
@@ -209,7 +288,7 @@ function normalise(text: PromptText): string {
 // Masks every detector match, not only the deciding finding: a request stopped at Rate limits never ran Guardrails,
 // and a refused one may hold a second secret.
 const SUMMARY_MAX = 60;
-const summarise = (text: PromptText) => {
+export const summarise = (text: PromptText) => {
   let shown: string = text;
   for (const { test, accept } of detectors) shown = shown.replace(test, (m) => (!accept || accept(m) ? mask(m) : m));
   return shown.length > SUMMARY_MAX ? `${shown.slice(0, SUMMARY_MAX - 1)}…` : shown;
@@ -223,8 +302,8 @@ type Checks<G extends Gate> = { readonly [K in G]: () => StepFor<K> };
 
 const stops = (step: Step) => step.verdict === "refused" || step.verdict === "hit";
 
-function walk<G extends Gate>(gates: readonly G[], checks: Checks<G>): Step[] {
-  const steps: Step[] = [];
+function walk<G extends Gate>(gates: readonly G[], checks: Checks<G>): StepFor<G>[] {
+  const steps: StepFor<G>[] = [];
   for (const gate of gates) {
     const step = checks[gate]();
     steps.push(step);
@@ -234,7 +313,7 @@ function walk<G extends Gate>(gates: readonly G[], checks: Checks<G>): Step[] {
 }
 
 /** Derived from the last step; `walk` never tracks it. */
-export function decide(steps: readonly Step[]): Decision<Gate, Target> {
+export function decide(steps: readonly Step[]): Decision<Gate, Target | LiveTarget> {
   const last = steps.at(-1);
   if (last?.verdict === "refused") return { verdict: "refused", at: last.gate };
   if (last?.gate === "Cache" && last.verdict === "hit") return { verdict: "cached" };
@@ -254,13 +333,107 @@ const modelChecks = (state: ConsoleState, text: PromptText, bucket: Bucket): Che
     bucket.tokens >= 1
       ? { gate: "Rate limits", verdict: "passed", left: Math.floor(bucket.tokens - 1) }
       : { gate: "Rate limits", verdict: "refused", retryMs: Math.ceil((1 - bucket.tokens) * SIM["Rate limits"].refillMs) },
-  Guardrails: () => {
-    const finding = detect(text);
-    return finding ? { gate: "Guardrails", verdict: "refused", finding } : { gate: "Guardrails", verdict: "passed" };
-  },
+  Guardrails: () => guardrailStep(text),
   Cache: () => (state.cache.has(normalise(text)) ? { gate: "Cache", verdict: "hit" } : { gate: "Cache", verdict: "miss" }),
   Routing: () => ({ gate: "Routing", verdict: "routed", to: MODEL_TARGETS[state.nextTarget] }),
 });
+
+function guardrailStep(text: PromptText): StepFor<"Guardrails"> {
+  const finding = detect(text);
+  return finding ? { gate: "Guardrails", verdict: "refused", finding } : { gate: "Guardrails", verdict: "passed" };
+}
+
+/** What the live limiter needs, counted by Postgres after this call's row is committed. */
+export interface Load {
+  /** This visitor's other open rows younger than LIVE.staleMs. This call is excluded. */
+  mineInFlight: number;
+  /** This visitor's rows started in the last hour that were not refused at Rate limits, this call included. */
+  mineThisHour: number;
+  /** Rows that took a seat (routed_at) in the last 24 h, whatever their decision. This call is not yet one of them. */
+  siteToday: number;
+  /** ms until this visitor's oldest counted row leaves the hour. */
+  mineFreesInMs: number;
+  /** ms until the oldest routed row leaves the day. null when there is none. */
+  siteFreesInMs: number | null;
+}
+
+/** The live limit policy, first match wins. "busy" is not here: seats are Routing's. */
+export function limitStep(load: Load): StepFor<"Rate limits"> {
+  const refused = (why: LimitReason, retryMs: number) => ({ gate: "Rate limits", verdict: "refused", retryMs, why }) as const;
+  if (load.mineInFlight > 0) return refused("one at a time", LIVE.totalMs);
+  if (load.mineThisHour > LIVE.perVisitorPerHour) return refused("hourly", load.mineFreesInMs);
+  if (load.siteToday >= LIVE.sitePerDay) return refused("site daily", load.siteFreesInMs ?? 0);
+  return { gate: "Rate limits", verdict: "passed", left: LIVE.perVisitorPerHour - load.mineThisHour };
+}
+
+/** The live order up to Routing. A test pins [...PRE_ROUTING, "Routing"] to AI_GATES. */
+export const PRE_ROUTING = ["SSO", "Rate limits", "Guardrails", "Cache"] as const satisfies readonly AiGate[];
+
+/**
+ * SSO to Cache for a live call, with the simulation's walk and stop rule. `load` null means the row could not be
+ * written, which refuses at Rate limits with "unavailable". Routing is the server's: it is the only async gate.
+ */
+export function preRouting(signedIn: boolean, load: Load | null, text: PromptText): LiveStep[] {
+  return walk(PRE_ROUTING, {
+    SSO: () => (signedIn ? { gate: "SSO", verdict: "signed in", identity: "your account" } : { gate: "SSO", verdict: "anonymous" }),
+    "Rate limits": () => (load ? limitStep(load) : { gate: "Rate limits", verdict: "refused", retryMs: LIVE.totalMs, why: "unavailable" }),
+    Guardrails: () => guardrailStep(text),
+    Cache: () => ({ gate: "Cache", verdict: "off" }),
+  });
+}
+
+/**
+ * decide() for a live call: a refused step, or a routed step whose answer has a `finish`, is a verdict; anything else
+ * was cut. Not decide() itself: a live row is never "cached", and a routed step with no finish is not yet a verdict.
+ */
+export function liveDecision(steps: readonly LiveStep[], finish: Finish | null): LiveDecision {
+  const last = steps.at(-1);
+  if (last?.verdict === "refused") return { verdict: "refused", at: last.gate };
+  if (last?.gate === "Routing" && finish !== null) return { verdict: "forwarded", to: LIVE.model };
+  return { verdict: "cut" };
+}
+
+/** The row's reason, branch for branch with liveDecision(): the refusal's, the finish, or why the call was cut. */
+export function liveReason(steps: readonly LiveStep[], finish: Finish | null, stop: Stop | "error"): LiveReason | null {
+  const last = steps.at(-1);
+  if (last?.verdict === "refused") return last.gate === "Guardrails" ? last.finding.category : (last.why ?? null);
+  if (last?.gate === "Routing" && finish !== null) return finish;
+  return stop;
+}
+
+/**
+ * The `data:` payloads of an SSE byte stream, in order, `[DONE]` included. Chunks may split anywhere, inside a line or
+ * a multi-byte character; lines end in CRLF, LF or CR; comments and other fields are skipped; an event the stream
+ * ends before finishing is dropped, as the SSE spec says. The server reads llama's stream with it and the page ours.
+ */
+export async function* sseFrames(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  // getReader(), not for await: Safari cannot iterate a ReadableStream.
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let data: string[] = [];
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+      // A trailing CR may be the first half of a CRLF the next chunk completes, so it ends a line only at the end.
+      const lines = buffer.split(done ? /\r\n|\r|\n/ : /\r\n|\r(?!$)|\n/);
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (line === "") {
+          if (data.length > 0) yield data.join("\n");
+          data = [];
+        } else if (line === "data" || line.startsWith("data:")) {
+          const value = line.slice(5);
+          data.push(value.startsWith(" ") ? value.slice(1) : value);
+        }
+      }
+      if (done) return;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
 
 const toolChecks = (server: DemoServerId): Checks<McpGate> => ({
   OAuth: () => ({ gate: "OAuth", verdict: "passed" }),
@@ -383,43 +556,145 @@ export function replay(ids: readonly ScenarioId[]): readonly AuditEntry[] {
 
 type StepKind = "ok" | "bad" | "info" | "skip";
 
-/** A gate's pill. `undefined` is a gate after the stop: "not reached". */
-export function stepView(step: Step | undefined): { kind: StepKind; verdict: string; detail: string; tag: string } {
+/** Exhaustive at compile time, tolerant at run time: a page one deploy behind the server renders "" for a member it
+ *  does not know instead of throwing. */
+const never: (value: never) => string = () => "";
+
+/** A gate's pill. `undefined` is a gate after the stop: "not reached". `mode` picks the tag source. */
+export function stepView(step: Step | undefined, mode: "sim" | "live" = "sim"): { kind: StepKind; verdict: string; detail: string; tag: string } {
   if (!step) return { kind: "skip", verdict: "not reached", detail: "", tag: "" };
-  const kind = step.verdict === "refused" ? "bad" : step.verdict === "hit" ? "info" : "ok";
-  return { kind, verdict: step.verdict, detail: stepDetail(step), tag: SIM[step.gate].tag };
+  const kind = step.verdict === "refused" ? "bad" : step.verdict === "hit" ? "info" : step.verdict === "off" ? "skip" : "ok";
+  const tag = mode === "live" && step.gate !== "OAuth" && step.gate !== "Registry" ? LIVE.tags[step.gate] : SIM[step.gate].tag;
+  return { kind, verdict: step.verdict, detail: stepDetail(step), tag };
 }
 
 function stepDetail(step: Step): string {
   switch (step.gate) {
     case "SSO":
-      return step.identity;
+      switch (step.verdict) {
+        case "signed in":
+          return step.identity;
+        case "anonymous":
+          return "no session";
+        default:
+          return never(step);
+      }
     case "Rate limits":
-      return step.verdict === "passed" ? `${step.left} left` : `one back in ${Math.ceil(step.retryMs / 1000)} s`;
+      if (step.verdict === "passed") return `${step.left} left`;
+      switch (step.why) {
+        case undefined:
+          return `one back in ${Math.ceil(step.retryMs / 1000)} s`;
+        case "one at a time":
+          return "your last request is still running";
+        case "hourly":
+          return `${LIVE.perVisitorPerHour} an hour, one back in ${Math.ceil(step.retryMs / 60_000)} min`;
+        case "site daily":
+          return `the site's ${LIVE.sitePerDay} for the day are used, one back in ${Math.ceil(step.retryMs / 3_600_000)} h`;
+        case "unavailable":
+          return "the request can't be logged, so it isn't sent";
+        default:
+          return never(step);
+      }
     case "Guardrails":
       return step.verdict === "refused" ? `${step.finding.category}: ${step.finding.masked}, shaped like ${step.finding.looksLike}` : "";
+    case "Cache":
+      return step.verdict === "off" ? "live answers are not cached" : "";
     case "Routing":
-      return `→ ${step.to}`;
+      switch (step.verdict) {
+        case "routed":
+          return `→ ${step.to}`;
+        case "refused":
+          return step.why;
+        default:
+          return never(step);
+      }
+    case "OAuth":
+      return "";
     case "Registry":
       return SIM.Registry.servers[step.server].label;
     default:
-      return "";
+      return never(step);
   }
 }
 
-export function closing({ lane, decision }: AuditEntry): string {
-  if (decision.verdict === "cached") return "Answered from the cache. No model would be called.";
-  if (decision.verdict === "refused") return `Refused at ${decision.at}. Nothing reached ${lane === "tool" ? "a server" : "a model"}.`;
-  return lane === "tool"
-    ? "Forwarded to MCP servers. This page stops here: no tool is called."
-    : `Forwarded to ${decision.to}. This page stops here: no model is called, and nothing you type leaves your browser.`;
+const LOGGED = "This site logged the request without its text.";
+const UNLOGGED = "This site could not confirm its log entry.";
+const CUT = "Cut off before a verdict.";
+
+const FINISH_NOTE: Record<Finish, string> = {
+  stop: "",
+  length: ` It stopped at the ${LIVE.maxTokens}-token limit.`,
+  deadline: ` It was cut at the ${LIVE.totalMs / 1000} s limit.`,
+  dropped: " The model stopped early.",
+};
+
+const ROUTING_SENTENCE: Record<RoutingRefusal, string> = {
+  "model off": "The model is switched off.",
+  busy: `All ${LIVE.seats} seats are taken. Try again in a few seconds.`,
+  unavailable: "The model can't be reached right now.",
+  "no answer in time": `The model did not start answering within ${LIVE.firstByteMs / 1000} s.`,
+  "model error": "The model returned an error.",
+};
+
+/** The sentence under a finished live row. */
+export function liveClosing(entry: LiveEntry): string {
+  const log = entry.logged ? LOGGED : UNLOGGED;
+  const { decision } = entry;
+  switch (decision.verdict) {
+    case "forwarded":
+      return `Answered by ${decision.to}, a small self-hosted model.${entry.finish ? FINISH_NOTE[entry.finish] : ""} ${log}`;
+    case "refused": {
+      const last = entry.steps.at(-1);
+      return last?.gate === "Routing" && last.verdict === "refused"
+        ? `Refused at Routing. ${ROUTING_SENTENCE[last.why]} ${log}`
+        : `Refused at ${decision.at}. Nothing reached the model. ${log}`;
+    }
+    case "cut":
+      return `${CUT} ${log}`;
+    default:
+      return never(decision);
+  }
 }
 
-export const GLYPH: Record<Decision["verdict"], string> = { forwarded: "✓", cached: "↺", refused: "✕" };
+/**
+ * The sentence under a finished simulated row. `pageLive` changes only the two model-lane sentences that would be
+ * false on a page that also sends live requests; with it false, these are the model-off page's sentences.
+ */
+export function closing(entry: AuditEntry, pageLive = false): string {
+  const { lane, decision } = entry;
+  switch (decision.verdict) {
+    case "cached":
+      return "Answered from the cache. No model would be called.";
+    case "refused":
+      if (lane === "tool") return `Refused at ${decision.at}. Nothing reached a server.`;
+      return `Refused at ${decision.at}. Nothing reached a model.${pageLive ? " It was simulated in your browser and was not sent." : ""}`;
+    case "forwarded":
+      if (lane === "tool") return "Forwarded to MCP servers. This page stops here: no tool is called.";
+      return pageLive
+        ? `Forwarded to ${decision.to}. This request is simulated. No model is called for it, and it never left your browser.`
+        : `Forwarded to ${decision.to}. This page stops here: no model is called, and nothing you type leaves your browser.`;
+    case "cut":
+      return CUT;
+    default:
+      return never(decision);
+  }
+}
 
-/** The log's "To / stopped at" column: the target when forwarded, the gate when refused, nothing when cached. */
+export const GLYPH: Record<Decision["verdict"], string> = { forwarded: "✓", cached: "↺", refused: "✕", cut: "✂" };
+
+/** The log's "To / stopped at" column: the target when forwarded, the gate when refused, nothing otherwise. */
 export function endpoint(decision: Decision): string {
-  return decision.verdict === "forwarded" ? decision.to : decision.verdict === "refused" ? decision.at : "";
+  switch (decision.verdict) {
+    case "forwarded":
+      return decision.to;
+    case "refused":
+      return decision.at;
+    case "cached":
+    case "cut":
+      return "";
+    default:
+      return never(decision);
+  }
 }
 
 /** mm:ss of a millisecond offset. */

@@ -87,9 +87,26 @@ jobs:
           DEPLOY_TARGET=k8s aspire publish -o out/k8s --non-interactive --nologo
           scripts/check-chart.sh out/k8s
 
+      # The runs above have no model URL (the playground's off path); this one points it at the fake model server.
+      # The runner keeps a step's background process alive until the job ends.
+      - name: 🤖 Restart the stack with the fake model
+        run: |
+          nohup node web/tests/fake-llama.ts 18080 > "$RUNNER_TEMP/fake-llama.log" 2>&1 &
+          aspire stop --non-interactive --nologo
+          aspire secret set Parameters:playground-model-url http://127.0.0.1:18080 --non-interactive --nologo
+          aspire start --non-interactive --nologo
+          aspire wait web --non-interactive --nologo
+          curl -fsS --retry 10 --retry-delay 3 --retry-all-errors http://localhost:4321/api/auth/ok
+
+      # Only live.spec.ts depends on the model; the other specs already ran above.
+      - name: 🎭 Run the playground E2E with the model on
+        run: pnpm --dir web e2e e2e/live.spec.ts
+
       - name: 📜 Stack logs
         if: failure()
-        run: aspire logs web --non-interactive --nologo || true
+        run: |
+          aspire logs web --non-interactive --nologo || true
+          cat "$RUNNER_TEMP/fake-llama.log" 2>/dev/null || true
 
       - name: 📤 Upload traces
         if: failure()

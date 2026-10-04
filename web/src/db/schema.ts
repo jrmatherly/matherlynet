@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 // App tables (auth tables are generated into auth-schema.ts).
 
@@ -23,4 +23,41 @@ export const siteSettings = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [check("site_settings_single_row", sql`${table.id} = 1`)],
+);
+
+// One row per live /playground call (lib/playground-io.ts): the audit record, the limiter's counter and the seat. No
+// free text: the prompt and the answer are never stored, only their lengths. All times are Postgres's now(), so
+// replica clocks never enter a comparison.
+export const playgroundCall = pgTable(
+  "playground_call",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    // visitorKey(): "u:<user id>" or "h:<32 hex>". Never an address.
+    visitor: text("visitor").notNull(),
+    caller: text("caller").notNull(),
+    promptChars: integer("prompt_chars").notNull(),
+    // Set when the call takes a model seat at Routing, and never cleared: a row with it held a seat and counts toward
+    // the site's daily cap, whatever its decision. A call refused "busy" never gets it.
+    routedAt: timestamp("routed_at", { withTimezone: true }),
+    decision: text("decision"),
+    stoppedAt: text("stopped_at"),
+    // An enum value (a limit, a guardrail category, a routing refusal, a finish or a stop), never text.
+    reason: text("reason"),
+    replyChars: integer("reply_chars"),
+    tokensIn: integer("tokens_in"),
+    tokensOut: integer("tokens_out"),
+  },
+  (t) => [
+    check("playground_call_closed", sql`(${t.endedAt} is null) = (${t.decision} is null)`),
+    check("playground_call_decision", sql`${t.decision} in ('forwarded', 'refused', 'cut', 'lost')`),
+    index("playground_call_started_at").on(t.startedAt),
+    // The sweep reads open rows only; this keeps it off the 30-day table.
+    index("playground_call_open").on(t.startedAt).where(sql`${t.endedAt} is null`),
+    // The per-visitor counts read one visitor's last hour.
+    index("playground_call_visitor").on(t.visitor, t.startedAt),
+    // The seat count and the site's day read seated rows only.
+    index("playground_call_routed").on(t.routedAt).where(sql`${t.routedAt} is not null`),
+  ],
 );

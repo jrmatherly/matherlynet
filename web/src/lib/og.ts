@@ -12,7 +12,7 @@ export const ogCards = {
   about: { title: "Twenty years, one company, four promotions.", subtitle: "From the IT call center to company-wide AI strategy" },
   writing: { title: "Writing", subtitle: "Notes on AI platforms, governance and infrastructure" },
   changelog: { title: "Twenty years, one company, newest first.", subtitle: "Roles, platforms and what each one changed" },
-  playground: { title: "Send a request through the gateway.", subtitle: "A simulation of the checks every model call meets, in your browser" },
+  playground: { title: "Send a request through the gateway.", subtitle: "The checks every model call meets, one request at a time" },
 } satisfies Record<string, { title: string; subtitle: string }>;
 
 type CardSite = Pick<SiteThemeDefaults, "theme" | "proPalette">;
