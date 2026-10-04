@@ -227,6 +227,10 @@ out/                   aspire publish output (gitignored)
   publishes nothing; a failed chart push can't skip the source maps. CI writes the pushed image (`web@<digest>`)
   into `parameters.web.web_image` and renders the packaged chart to confirm it: `aspire publish` leaves the value
   as `web:latest`. The chart name comes from `withChartName` in `apphost.mts`; the chart is not attested.
+- Chart upgrade from 0.29.1 or earlier is not a rolling update: object names gained the `matherlynet-` prefix, so Helm
+  deletes and recreates them and the site is down until the new pod is ready. Each pod logs one better-auth "Rate
+  limiting could not determine a client IP" warning at start (the first kubelet probe has no `cf-connecting-ip`);
+  it is harmless. Cloudflare's tunnel was checked on 2026-10-04 and does not buffer the playground stream.
 - The image workflow runs only when the image, the chart or their checks can change (`web/**` minus docs, AppHost
   files, root `package*.json`, `scripts/check-chart.sh` and `smoke-image.sh`, the workflow itself);
   `workflow_dispatch` bypasses the filter. `paths-ignore` can't take `!` exceptions, so it is an include list.
