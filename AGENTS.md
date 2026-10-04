@@ -23,7 +23,7 @@ pushes it, with a Helm chart pinned to it, to `ghcr.io/jrmatherly/matherlynet`.
 | Lint Markdown | `markdownlint-cli2` (or `pre-commit run --all-files`) |
 | Check / lint / test / build the web app | `cd web && pnpm check` (astro check), `pnpm lint`, `pnpm test`, `pnpm build` |
 | Smoke test (stack running) | `curl -s http://localhost:4321/api/auth/ok` returns `{"ok":true}` |
-| E2E (stack running) | `cd web && pnpm e2e` (Playwright, Chromium; finds Mailpit via `aspire describe`) |
+| E2E (stack running) | `cd web && pnpm e2e` (Playwright, Chromium; finds Mailpit and the app database via `aspire describe`, or takes `MAILPIT_URL` and `APPDB_URI`) |
 | New auth schema / migration | `cd web && APPDB_URI=postgresql://unused pnpm db:generate` |
 | Deployment artifacts | `aspire publish -o out/compose`; `DEPLOY_TARGET=k8s aspire publish -o out/k8s` |
 | Compose web host port | `Web__HostPort=none` (default, cloudflared on the compose network) / `loopback` / `public` |
