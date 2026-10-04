@@ -188,13 +188,17 @@ if (!(await builder.executionContext().isRunMode())) {
       if (fixed === text) throw new Error('fix-probe-scheme: every probe scheme in the web Deployment is already valid; remove this step');
       await writeFile(file, fixed);
     }, { dependsOn: ['publish-k8s'], requiredBy: ['publish'] });
-    // Aspire names each object after its resource alone (web-deployment), and the TS SDK has no hook for the name.
-    // In a pod list across namespaces that says nothing, so every object name gets the chart's name in front,
-    // references to it included. Container names, labels and value paths stay as generated. A template with no
-    // such name fails the publish: the generated shape changed and the references may no longer match.
+    // Aspire.Hosting.Kubernetes 13.6.0-preview names each object after its resource alone (web-deployment), and the
+    // TS SDK's publishAsKubernetesService callback exposes no object to rename, only a read-only name(). In a pod
+    // list across namespaces that name says nothing, so every `name: "<resource>-…"` gets the chart's name in front:
+    // the objects and the envFrom references to them. The generated container names, labels and value paths don't
+    // have that shape and stay as they are; scripts/check-chart.sh fails on a reference this misses. A template with
+    // no such name fails the publish: the generated shape changed, or an earlier publish left the template behind.
     await builder.pipeline().addStep('prefix-object-names', async () => {
       const templates = join(await publishDir('prefix-object-names'), 'templates');
-      for (const resource of await readdir(templates)) {
+      // Directories only: Finder leaves a .DS_Store in a folder it has shown.
+      const resources = (await readdir(templates, { withFileTypes: true })).filter((entry) => entry.isDirectory());
+      for (const { name: resource } of resources) {
         for (const template of await readdir(join(templates, resource))) {
           const file = join(templates, resource, template);
           const text = await readFile(file, 'utf8');

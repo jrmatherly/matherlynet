@@ -151,7 +151,9 @@ helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet --versio
 The chart deploys web only: a Deployment (`matherlynet-web-deployment`) behind a ClusterIP Service
 (`matherlynet-web-service:4321`), its ConfigMap (`matherlynet-web-config`) and its Secret
 (`matherlynet-web-secrets`). The container is named `web` and pods carry `app.kubernetes.io/component: web`.
-Charts up to 0.29.1 named the four objects without the `matherlynet-` prefix. Routing to web is yours to add.
+Charts up to 0.29.1 named the four objects without the `matherlynet-` prefix: when you upgrade from one, repoint
+anything that names them (a route to `web-service:4321`, a patch on Deployment `web-deployment`) in the same change.
+Routing to web is yours to add.
 There is no Postgres and no Aspire dashboard in the chart. The chart package on GHCR is public, so a cluster pulls
 it without a secret.
 
@@ -160,9 +162,10 @@ except that `parameters.web.web_image` is `web:latest` there: set it to
 `ghcr.io/jrmatherly/matherlynet/web:<commit sha>`. Both take their settings through `values.yaml`: non-secret
 settings under `config.web` (`app_url`, `admin_email`, `mail_from`, `github_client_id`, `google_client_id`), and
 secrets under `secrets.web`: `appdb_uri` (the database, below), `better_auth_secret`, `smtp_url` and the OAuth client
-secrets. These match the Compose `.env` except for the database: the chart has no `PG_PASSWORD`, and `appdb_uri`
-has no `.env` counterpart. The live playground adds two optional values, both empty by default:
-`config.web.playground_model_url` and `secrets.web.playground_model_key` (section 8).
+secrets. An `smtp_url` that is not an `smtp://` or `smtps://` URL stops the pod at start, with the reason in its
+log; leave it blank to run without mail. These match the Compose `.env` except for the database: the chart has no
+`PG_PASSWORD`, and `appdb_uri` has no `.env` counterpart. The live playground adds two optional values, both empty
+by default: `config.web.playground_model_url` and `secrets.web.playground_model_key` (section 8).
 
 ### Database
 

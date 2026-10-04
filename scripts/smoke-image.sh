@@ -62,21 +62,26 @@ docker exec "$pg" psql -v ON_ERROR_STOP=1 -qU postgres \
   -c "create database app owner app" > /dev/null
 
 # A missing URI and a wrong password can't heal by waiting: both must fail at once, not after the 60 s retry window.
-run_web "$early"
+# SMTP_URL is blank here, as the chart's default values leave it: blank must get past the SMTP check to this error.
+run_web "$early" -e SMTP_URL=
 [ "$(exit_code_within "$early" 15)" = 1 ] || fail "with no APPDB_URI the container did not exit 1 within 15 s"
 docker logs "$early" 2>&1 | grep 'APPDB_URI is not set' > /dev/null || fail "the missing-URI error does not name APPDB_URI"
 docker rm -f "$early" > /dev/null
 run_web "$early" -e APPDB_URI=postgresql://app:wrong@$pg:5432/app
 [ "$(exit_code_within "$early" 15)" = 1 ] || fail "with a wrong password the container did not exit 1 within 15 s"
 docker rm -f "$early" > /dev/null
-# An SMTP_URL with no scheme would start, then throw on every auth request. It must stop the start, without its text.
+# An SMTP_URL with no scheme would start, then fail every request. It must stop the start, and the error must not
+# print the value.
 run_web "$early" -e "APPDB_URI=$uri" -e SMTP_URL=user:smoke-smtp-pw@smtp.example.com
 [ "$(exit_code_within "$early" 15)" = 1 ] || fail "with a scheme-less SMTP_URL the container did not exit 1 within 15 s"
-docker logs "$early" 2>&1 | grep 'SMTP_URL is not an smtp' > /dev/null || fail "the bad-SMTP_URL error does not name SMTP_URL"
-docker logs "$early" 2>&1 | grep smoke-smtp-pw > /dev/null && fail "the bad-SMTP_URL error prints the value"
+log=$(docker logs "$early" 2>&1)
+grep -q 'SMTP_URL is not an smtp' <<<"$log" || fail "the bad-SMTP_URL error does not name SMTP_URL"
+grep -q smoke-smtp-pw <<<"$log" && fail "the bad-SMTP_URL error prints the value"
 docker rm -f "$early" > /dev/null
 
-run_web "$web" -e "APPDB_URI=$uri" -p 127.0.0.1::4321
+# A valid SMTP_URL on the serving run: the check must let it through, and nodemailer must build its transport when
+# the first request loads the middleware. Nothing connects to the host; nodemailer connects only to send.
+run_web "$web" -e "APPDB_URI=$uri" -e SMTP_URL=smtp://user:smoke-smtp-pw@smtp.example.com:587 -p 127.0.0.1::4321
 port=$(docker port "$web" 4321/tcp | head -1)
 ok=
 for _ in $(seq 90); do

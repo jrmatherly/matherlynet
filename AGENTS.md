@@ -176,8 +176,9 @@ out/                   aspire publish output (gitignored)
   running stack replaced the dev server's optimized client deps: page scripts answered `504 Outdated Optimize Dep`
   and E2E form tests failed until `aspire resource web restart`.
 - `web/e2e/global-setup.ts` opens Vite's HMR socket from Node and takes the `full-reload` Vite 8.3.1 keeps for the first
-  client: Astro 7.3.5 sends it when a dev start rewrites its content store (every `aspire start`, since the port is in
-  the store's config digest). A first test's browser would otherwise take it mid-test and reload the page.
+  client: Astro 7.3.5 sends it when a dev start rewrites its content store (every `aspire start`: `astro dev` gets a
+  new port behind the 4321 proxy, and that port is in the store's config digest). A first test's browser would
+  otherwise take it mid-test and reload the page.
 - `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
   Postgres restart or failover drops idle connections and the unhandled `error` event kills the web process. Each
   pool also puts an `error` listener on every client it connects: pg-pool removes its own from a client taken with
@@ -194,10 +195,10 @@ out/                   aspire publish output (gitignored)
   dynamically imports `otel.mjs`, `migrate.mjs`, then `server.mjs` in one process: static imports would load
   `migrate.mjs`'s pg and drizzle before OpenTelemetry's hook registers, and one process means SIGTERM reaches
   `server.mjs`. Node is PID 1, which drops a signal it has no handler for, so until `server.mjs` has loaded,
-  `start.mjs`'s own handlers exit on SIGTERM (143) and SIGINT (130). It exits 1 first on an `SMTP_URL` that is
-  not an `smtp://` or `smtps://` URL: nodemailer would throw on every auth request. `migrate.mjs` fails at once
-  on a missing `APPDB_URI`, a login or unknown-database error or an unparseable URI, and retries anything else
-  for 60 s.
+  `start.mjs`'s own handlers exit on SIGTERM (143) and SIGINT (130). Before any import, `start.mjs` exits 1 on an
+  `SMTP_URL` that is not an `smtp://` or `smtps://` URL or does not parse: nodemailer would throw on every request
+  (`tests/start.test.ts`). `migrate.mjs` fails at once on a missing `APPDB_URI`, a login or unknown-database error
+  or an unparseable URI, and retries anything else for 60 s.
   `server.mjs` sets `ASTRO_NODE_AUTOSTART=disabled`, calls `startServer()`, and on SIGTERM/SIGINT drains 7 s,
   flushes Sentry 1 s and OpenTelemetry 1.5 s, then exits 0, inside Docker's 10 s stop timeout. `otel.mjs` builds
   `NodeSDK` itself because `register.js`'s SIGTERM listener never exits. `scripts/smoke-image.sh` (CI: `e2e.yml`)
