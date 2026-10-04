@@ -26,18 +26,22 @@ if ! grep -qF 'image: "pin-probe"' "$rendered"; then
   fail "the web Deployment does not render parameters.web.web_image"
 fi
 
-# The cluster supplies Postgres and its own telemetry (apphost.mts): no bundled database, no Aspire dashboard.
 if ! grep -qF 'APPDB_URI: "postgresql://uri-probe"' "$rendered"; then
   grep -n 'APPDB_URI' "$rendered" || true
   fail "web's APPDB_URI does not render secrets.web.appdb_uri"
 fi
 # helm lint and helm template don't check a manifest against the API: a lower-case probe scheme renders, and the API
-# server then rejects the Deployment at install (fix-probe-scheme in apphost.mts).
-if grep -qE 'scheme: "?https?"?$' "$rendered"; then
-  fail "a probe scheme is lower case; the API server accepts only HTTP or HTTPS"
-fi
-if grep -qE '^kind: "?StatefulSet' "$rendered"; then fail "the chart renders a StatefulSet (a bundled database?)"; fi
-if grep -qE 'dashboard|OTEL_EXPORTER_OTLP_ENDPOINT' "$rendered"; then
-  grep -nE 'dashboard|OTEL_EXPORTER_OTLP_ENDPOINT' "$rendered"
-  fail "the chart renders the Aspire dashboard or an OTLP endpoint"
+# server then rejects the Deployment at install (fix-probe-scheme in apphost.mts). An allow-list, so a quoting or
+# comment the step doesn't know can't slip through. grep -v exits 1 when every line is allowed.
+bad=$(grep -E 'scheme:' "$rendered" | grep -vE "^ *scheme: (\"HTTP\"|\"HTTPS\"|'HTTP'|'HTTPS'|HTTP|HTTPS)$" || true)
+[ -z "$bad" ] || fail "a probe scheme is not HTTP or HTTPS, the only values the API server accepts: $bad"
+
+# The cluster supplies Postgres and its own telemetry (apphost.mts): web and the opt-in Umami are the only workloads,
+# so a bundled database or the Aspire dashboard fails here whatever kind it is rendered as.
+objects=$(yq -N '.kind + "/" + .metadata.name' "$rendered")
+bad=$(grep -vE '^(ConfigMap|Secret|Service|Deployment)/(web|umami)-' <<<"$objects" || true)
+[ -z "$bad" ] || fail "the chart renders objects other than web's and Umami's: $(tr '\n' ' ' <<<"$bad")"
+if grep -qF OTEL_EXPORTER_OTLP_ENDPOINT "$rendered"; then
+  grep -nF OTEL_EXPORTER_OTLP_ENDPOINT "$rendered"
+  fail "the chart renders an OTLP endpoint"
 fi

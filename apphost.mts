@@ -15,7 +15,7 @@ const k8s = process.env.DEPLOY_TARGET === 'k8s';
 const target = k8s
   ? await builder.addKubernetesEnvironment('k8s')
       // CI pushes the chart under this name to oci://ghcr.io/jrmatherly/matherlynet/charts (publish-images.yml).
-      .withHelm({ configure: async (helm) => { await helm.withNamespace('matherlynet').withChartName('matherlynet').withChartDescription('matherlynet: Astro web app and its backing services'); } })
+      .withHelm({ configure: async (helm) => { await helm.withNamespace('matherlynet').withChartName('matherlynet').withChartDescription('matherlynet: the Astro web app (and Umami when enabled), on an external Postgres'); } })
       // The cluster has its own telemetry; the dashboard stays local and in Compose.
       .withDashboard({ enabled: false })
   : await builder.addDockerComposeEnvironment('compose');
@@ -98,7 +98,8 @@ const appdbUri = appdb ? await appdb.uriExpression() : await optionalParameter('
 // After the first start, change the default admin/umami login: `node scripts/umami-set-password.mjs`
 // (docs/deployment.md). Then create the website in Umami and enter its script URL and website id on /admin.
 // Umami lives in appdb's `umami` schema (its `user`/`session` tables would collide with better-auth's in
-// `public`); a separate database wouldn't exist in published output (see POSTGRES_DB above).
+// `public`); a separate database wouldn't exist in published Compose (see POSTGRES_DB above), and under K8s the
+// external database is web's.
 // Not withPostgreSQL(): it publishes DATABASE_URL with the Postgres password inlined as a literal.
 if (await flag('Umami:Enabled')) {
   const umamiSecret = await builder.addParameterWithGeneratedValue('umami-secret', { minLength: 32 }, { secret: true, persist: true });
@@ -176,13 +177,15 @@ const publishDir = async (step: string) => {
 if (!(await builder.executionContext().isRunMode())) {
   if (k8s) {
     // Aspire.Hosting.Kubernetes 13.6.0-preview writes probe schemes in lower case, and the API server accepts only
-    // HTTP or HTTPS: it rejects the Deployment at install. Throws when there is nothing to fix, so an Aspire that
-    // writes them correctly retires this step.
+    // HTTP or HTTPS: it rejects the Deployment at install. A scheme line in a shape this doesn't know fails the
+    // publish rather than ship a chart the cluster refuses; an Aspire that writes them correctly retires the step.
     await builder.pipeline().addStep('fix-probe-scheme', async () => {
       const file = join(await publishDir('fix-probe-scheme'), 'templates', 'web', 'deployment.yaml');
       const text = await readFile(file, 'utf8');
-      const fixed = text.replace(/^(\s*scheme: "?)(https?)("?)$/gm, (_, before: string, scheme: string, after: string) => before + scheme.toUpperCase() + after);
-      if (fixed === text) throw new Error('fix-probe-scheme: no lower-case probe scheme in the web Deployment; remove this step');
+      const fixed = text.replace(/^( *scheme: (["']?))(https?)(\2)$/gim, (_, before: string, _quote: string, scheme: string, after: string) => before + scheme.toUpperCase() + after);
+      const unknown = fixed.split('\n').filter((line) => /scheme:/i.test(line) && !/^ *scheme: (["']?)(HTTP|HTTPS)\1$/.test(line));
+      if (unknown.length) throw new Error(`fix-probe-scheme: a probe scheme was not recognised in ${file}: ${unknown.map((line) => line.trim()).join(', ')}`);
+      if (fixed === text) throw new Error('fix-probe-scheme: every probe scheme in the web Deployment is already valid; remove this step');
       await writeFile(file, fixed);
     }, { dependsOn: ['publish-k8s'], requiredBy: ['publish'] });
   } else {

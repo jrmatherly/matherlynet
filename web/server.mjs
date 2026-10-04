@@ -1,6 +1,7 @@
-// Production entry: starts Astro's standalone server ourselves so SIGTERM/SIGINT drain it, flush telemetry and
-// exit. @astrojs/node installs no signal handlers (dist/standalone.js); ASTRO_NODE_AUTOSTART and startServer are
-// confirmed in its source (dist/server.js), not in its docs: re-check them when upgrading the adapter.
+// Production server, imported last by start.mjs: starts Astro's standalone server ourselves so SIGTERM/SIGINT
+// drain it, flush telemetry and exit. @astrojs/node installs no signal handlers (dist/standalone.js);
+// ASTRO_NODE_AUTOSTART and startServer are confirmed in its source (dist/server.js), not in its docs: re-check them
+// when upgrading the adapter.
 process.env.ASTRO_NODE_AUTOSTART = "disabled";
 const { startServer } = await import("./dist/server/entry.mjs");
 const Sentry = await import("@sentry/node");

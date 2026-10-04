@@ -15,8 +15,9 @@ paths:
 - `publish-images.yml` calls `web-checks.yml` and `e2e.yml` (`needs: [checks, e2e]`) before pushing; those two run
   on their own only for pull requests or manual dispatch, so they are in its `paths:` filter. The Aspire CLI is a
   pinned, sha512-checked tarball: bump version and hash together (hash from the release's `.sha512` asset).
-- `web-checks.yml`'s "Smoke-test the production server" step is the only CI run of `web/server.mjs` (E2E uses the
-  dev server): keep it in step with the production entry, probes and origin check.
+- E2E uses the dev server. `web-checks.yml`'s "Smoke-test the production server" step runs `web/server.mjs` alone,
+  without a database (keep it in step with the probes and origin check); `e2e.yml`'s "Smoke-test the production
+  image" (`scripts/smoke-image.sh`) runs the image's real entry, `start.mjs`, against Postgres.
 - In `run:` scripts, assign command output to a variable before writing it to `$GITHUB_OUTPUT`: a failing `$(…)`
   inside `echo` doesn't fail the step.
 - `aspire do push` must stay quoted as `aspire 'do' push` (shellcheck SC1010 reads `do` as a keyword).

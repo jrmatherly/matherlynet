@@ -49,8 +49,9 @@ web/                   Astro SSR app (start.mjs entry, otel.mjs, migrate.mjs, se
                        attests the web image; a `chart` job pushes the Helm chart pinned to it, and a separate
                        no-permission job uploads Sentry source maps from the image
                        web-checks.yml: astro check, lint, test, build on PRs (web/** only) and when called
-                       e2e.yml: Playwright on `aspire start` + `aspire publish` check, then `live.spec.ts` again on
-                       a stack restarted with the fake model; PRs (web/** + AppHost), called
+                       e2e.yml: Playwright on `aspire start` + `aspire publish` check, the image smoke
+                       (scripts/smoke-image.sh), then `live.spec.ts` again on a stack restarted with the fake model;
+                       PRs (web/** + AppHost), called
 .github/pull_request_template.md  PR body: summary, verification evidence, deployment impact, docs
 .github/renovate.json5 Renovate version updates: weekly, 7-day release age, exact pins, the version caps, and
                        pins outside package.json (Sentry CLI, Aspire packages and CLI); Dependabot security
@@ -187,11 +188,16 @@ out/                   aspire publish output (gitignored)
   can spoof it through `X-Forwarded-Host`/`X-Forwarded-For`.
 - The image runs `node start.mjs` as the `node` user (`publishAsNodeServer`; `publishAsPackageScript`'s
   `pnpm run start` fails as non-root: pnpm 12 tries to reinstall into the root-owned `node_modules`). `start.mjs`
-  dynamically imports `otel.mjs`, `migrate.mjs`, then `server.mjs` in one process: static imports would load pg and
-  Astro before OpenTelemetry's hook registers, and one process means SIGTERM reaches `server.mjs`. `server.mjs` sets
-  `ASTRO_NODE_AUTOSTART=disabled`, calls `startServer()`, and on SIGTERM/SIGINT drains 7 s, flushes Sentry 1 s and
-  OpenTelemetry 1.5 s, then exits 0, inside Docker's 10 s stop timeout. `otel.mjs` builds `NodeSDK` itself because
-  `register.js`'s SIGTERM listener never exits.
+  dynamically imports `otel.mjs`, `migrate.mjs`, then `server.mjs` in one process: static imports would load
+  `migrate.mjs`'s pg and drizzle before OpenTelemetry's hook registers, and one process means SIGTERM reaches
+  `server.mjs`. Node is PID 1, which drops a signal it has no handler for, so until `server.mjs` has loaded,
+  `start.mjs`'s own handlers exit on SIGTERM (143) and SIGINT (130). `migrate.mjs` fails at once on a missing
+  `APPDB_URI`, a login or unknown-database error or an unparseable URI, and retries anything else for 60 s.
+  `server.mjs` sets `ASTRO_NODE_AUTOSTART=disabled`, calls `startServer()`, and on SIGTERM/SIGINT drains 7 s,
+  flushes Sentry 1 s and OpenTelemetry 1.5 s, then exits 0, inside Docker's 10 s stop timeout. `otel.mjs` builds
+  `NodeSDK` itself because `register.js`'s SIGTERM listener never exits. `scripts/smoke-image.sh` (CI: `e2e.yml`)
+  builds the image and runs this entry as UID 1000 on a read-only root filesystem: migrations, serving, the fast
+  failures, and a stop before and after the server is up.
 - Server Sentry is initialised once (`web/src/lib/sentry.ts`); a /admin DSN change only retargets
   `makeMultiplexedTransport` (`@sentry/core`). A second `Sentry.init` inside a request binds to that request's scope
   only and stacks process handlers, so later requests kept the old client.
@@ -216,8 +222,8 @@ out/                   aspire publish output (gitignored)
   into `parameters.web.web_image` and renders the packaged chart to confirm it: `aspire publish` leaves the value
   as `web:latest`. The chart name comes from `withChartName` in `apphost.mts`; the chart is not attested.
 - The image workflow runs only when the image, the chart or their checks can change (`web/**` minus docs, AppHost
-  files, root `package*.json`, `scripts/check-chart.sh`, the workflow itself); `workflow_dispatch` bypasses the
-  filter. `paths-ignore` can't take `!` exceptions, so it is an include list.
+  files, root `package*.json`, `scripts/check-chart.sh` and `smoke-image.sh`, the workflow itself);
+  `workflow_dispatch` bypasses the filter. `paths-ignore` can't take `!` exceptions, so it is an include list.
 - Vitest sees an empty `writing` collection on a clean checkout (the content store exists only after a dev server
   or build has synced it), so which posts the feed and sitemap carry is asserted in `e2e/public.spec.ts`.
 - Markdown is linted by markdownlint-cli2 via a pre-commit hook (staged files only).
@@ -300,8 +306,9 @@ out/                   aspire publish output (gitignored)
 - Sentry stack traces: the build emits hidden source maps with debug IDs (`@sentry/bundler-plugins/vite`,
   upload disabled: the Aspire-generated Dockerfile takes no build secrets). CI uploads from the image's `/app/dist`
   with `--no-rewrite`. The release is `SENTRY_RELEASE` = `IMAGE_TAG`, so set `IMAGE_TAG` when publishing.
-- Umami uses appdb's `umami` schema (`?schema=umami`), not its own database: published output only creates
-  `POSTGRES_DB`. Don't use the toolkit's `withPostgreSQL()`; it inlines the Postgres password when published.
+- Umami uses appdb's `umami` schema (`?schema=umami`), not its own database: published Compose only creates
+  `POSTGRES_DB`, and under Kubernetes `secrets.umami.appdb_uri` names the same external database as web's. Don't
+  use the toolkit's `withPostgreSQL()`; it inlines the Postgres password when published.
 - Umami is opt-in (`Umami:Enabled`; config keys are read with `getConfiguration()`, since parameters resolve too
   late to gate a resource). Off, it isn't in local runs or published output. Its default `admin/umami` login can
   only be changed through its API: `scripts/umami-set-password.mjs`.

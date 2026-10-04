@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     # Build only when the image, the chart or the checks that gate them can change: the web app, the AppHost that
-    # generates the Dockerfile and the Helm chart, its dependencies/config, the chart check, or this workflow.
+    # generates the Dockerfile and the Helm chart, its dependencies/config, the chart and image checks, or this workflow.
     # Docs and agent config don't.
     # (paths-ignore can't take `!` exceptions, so this is an include list.)
     paths:
@@ -19,6 +19,7 @@ on:
       - 'tsconfig.apphost.json'
       - '.github/workflows/publish-images.yml'
       - 'scripts/check-chart.sh'
+      - 'scripts/smoke-image.sh'
       # Called from here before pushing; on their own they run only for pull requests and manual dispatch.
       - '.github/workflows/web-checks.yml'
       - '.github/workflows/e2e.yml'

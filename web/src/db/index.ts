@@ -3,7 +3,7 @@ import pg from "pg";
 import * as authSchema from "./auth-schema";
 import * as appSchema from "./schema";
 
-// APPDB_URI is injected by Aspire from the `appdb` Postgres resource.
+// APPDB_URI is injected by Aspire: from the `appdb` Postgres resource, or under Kubernetes the `appdb-uri` parameter.
 // node-postgres has no connect or query timeout by default: an unreachable (or proxied, half-open) database hangs
 // requests forever. Values are this project's choice; node-postgres documents no recommendation.
 function newPool(max?: number) {
