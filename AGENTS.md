@@ -166,6 +166,10 @@ out/                   aspire publish output (gitignored)
 - Astro sessions are disabled (`session: false` in `web/astro.config.mjs`, Astro 7.2+): the Node adapter's default
   filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
+- `astro check`, `astro sync` and `astro build` keep their Vite cache in `node_modules/.vite-<command>` (an inline
+  integration in `web/astro.config.mjs`). On the default directory, which `astro dev` uses, a check run under a
+  running stack replaced the dev server's optimized client deps: page scripts answered `504 Outdated Optimize Dep`
+  and E2E form tests failed until `aspire resource web restart`.
 - `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
   Postgres restart or failover drops idle connections and the unhandled `error` event kills the web process. Each
   pool also puts an `error` listener on every client it connects: pg-pool removes its own from a client taken with

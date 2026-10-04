@@ -8,6 +8,19 @@ import { sentryVitePlugin } from "@sentry/bundler-plugins/vite";
 // Fonts come from the installed @fontsource-variable packages; builds never fetch them.
 const npmFonts = fontProviders.npm({ remote: false });
 
+// `astro check`, `astro sync` and `astro build` start a temporary Vite server whose config hash differs from the
+// dev server's. On the shared default cache directory, Vite (8.3.1) then replaces the optimized deps of a running
+// `astro dev`, which answers 504 for its client scripts until it restarts. Each command gets its own directory.
+/** @type {import("astro").AstroIntegration} */
+const viteCachePerCommand = {
+  name: "vite-cache-per-command",
+  hooks: {
+    "astro:config:setup": ({ command, updateConfig }) => {
+      if (command !== "dev") updateConfig({ vite: { cacheDir: `node_modules/.vite-${command}` } });
+    },
+  },
+};
+
 export default defineConfig({
   output: "server",
   adapter: node({ mode: "standalone" }),
@@ -18,7 +31,7 @@ export default defineConfig({
   // token classes, colored from the palette in global.css.
   markdown: { syntaxHighlight: "prism" },
   // MDX inherits the markdown config (Prism included); it lets a post embed a component such as GatewayPath.
-  integrations: [mdx()],
+  integrations: [mdx(), viteCachePerCommand],
   // Content Security Policy, sent as a response header for on-demand pages. `astro dev` doesn't apply it:
   // check against a build. Astro hashes its own scripts and styles; Telemetry.astro adds the Umami/Sentry
   // origins configured on /admin per request.
