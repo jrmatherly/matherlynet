@@ -47,8 +47,9 @@ web/                   Astro SSR app (server.mjs entry, otel.mjs, migrate.mjs, s
                        web-checks.yml: astro check, lint, test, build on PRs (web/** only) and when called
                        e2e.yml: Playwright on `aspire start` + `aspire publish` check; PRs (web/** + AppHost), called
 .github/pull_request_template.md  PR body: summary, verification evidence, deployment impact, docs
-.github/dependabot.yml weekly npm (/, /web) + actions updates, 7-day cooldown, exact pins
-                       (security updates, CodeQL default setup and private reporting are repo settings)
+.github/renovate.json5 Renovate version updates: weekly, 7-day release age, exact pins, the version caps, and
+                       pins outside package.json (Sentry CLI, Aspire packages and CLI); Dependabot security
+                       updates, CodeQL default setup and private reporting are repo settings
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported
 docs/deployment.md     production runbook: publish settings, .env, Cloudflare Tunnel + rules, Umami, Sentry, K8s
 deploy/                docker-compose.override.yaml: web healthcheck; `aspire publish` copies it next to the Compose file
@@ -233,7 +234,9 @@ out/                   aspire publish output (gitignored)
   age: pin a newer version explicitly (pnpm records `minimumReleaseAgeExclude`; npm needs
   `--min-release-age-exclude=<package-name>`). Known caps: `vscode-jsonrpc` 8.x (Aspire's generated
   transport imports `vscode-jsonrpc/node.js`), TypeScript 6.0.x (typescript-eslint and `@astrojs/check` peer ranges),
-  `@types/node` 24.x (matches the Node 24 runtime). Keep `.github/dependabot.yml` ignores in sync with these caps.
+  `@types/node` 24.x (matches the Node 24 runtime). Keep the `allowedVersions` rules in `.github/renovate.json5` in
+  sync with these caps. Renovate lists Aspire updates on its dashboard issue and opens that PR only when asked:
+  Aspire still moves through `/bump-deps`.
 - pnpm 12 blocks dependency build scripts: approve with `pnpm approve-builds <pkg>`.
 - The generated Dockerfile installs on glibc (node:24-slim) and runs on Alpine (musl). `web/pnpm-workspace.yaml`
   sets `supportedArchitectures.libc: [current, musl]` so native packages (`@takumi-rs/core`) ship musl builds;

@@ -42,8 +42,9 @@ Commit `web/drizzle/`. Migrations run on app start under a Postgres advisory loc
 
 `.github/workflows/publish-images.yml` pushes the web image to `ghcr.io/jrmatherly/matherlynet` on pushes to `main`
 that can change it, with a Helm chart pinned to that image
-(`oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`, version `0.<run number>.<run attempt>`). New GHCR
-packages start private: make each public under Package settings, Danger Zone (one-way for that package).
+(`oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`, version `0.<run number>.<run attempt>`). Both packages
+are public. If a new package comes out private, make it public under Package settings, Danger Zone (one-way for
+that package).
 
 ```sh
 aspire publish -o out/compose                  # Docker Compose: docker-compose.yaml + .env + Dockerfile
