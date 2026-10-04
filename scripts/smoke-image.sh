@@ -69,6 +69,12 @@ docker rm -f "$early" > /dev/null
 run_web "$early" -e APPDB_URI=postgresql://app:wrong@$pg:5432/app
 [ "$(exit_code_within "$early" 15)" = 1 ] || fail "with a wrong password the container did not exit 1 within 15 s"
 docker rm -f "$early" > /dev/null
+# An SMTP_URL with no scheme would start, then throw on every auth request. It must stop the start, without its text.
+run_web "$early" -e "APPDB_URI=$uri" -e SMTP_URL=user:smoke-smtp-pw@smtp.example.com
+[ "$(exit_code_within "$early" 15)" = 1 ] || fail "with a scheme-less SMTP_URL the container did not exit 1 within 15 s"
+docker logs "$early" 2>&1 | grep 'SMTP_URL is not an smtp' > /dev/null || fail "the bad-SMTP_URL error does not name SMTP_URL"
+docker logs "$early" 2>&1 | grep smoke-smtp-pw > /dev/null && fail "the bad-SMTP_URL error prints the value"
+docker rm -f "$early" > /dev/null
 
 run_web "$web" -e "APPDB_URI=$uri" -p 127.0.0.1::4321
 port=$(docker port "$web" 4321/tcp | head -1)

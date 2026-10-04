@@ -194,8 +194,10 @@ out/                   aspire publish output (gitignored)
   dynamically imports `otel.mjs`, `migrate.mjs`, then `server.mjs` in one process: static imports would load
   `migrate.mjs`'s pg and drizzle before OpenTelemetry's hook registers, and one process means SIGTERM reaches
   `server.mjs`. Node is PID 1, which drops a signal it has no handler for, so until `server.mjs` has loaded,
-  `start.mjs`'s own handlers exit on SIGTERM (143) and SIGINT (130). `migrate.mjs` fails at once on a missing
-  `APPDB_URI`, a login or unknown-database error or an unparseable URI, and retries anything else for 60 s.
+  `start.mjs`'s own handlers exit on SIGTERM (143) and SIGINT (130). It exits 1 first on an `SMTP_URL` that is
+  not an `smtp://` or `smtps://` URL: nodemailer would throw on every auth request. `migrate.mjs` fails at once
+  on a missing `APPDB_URI`, a login or unknown-database error or an unparseable URI, and retries anything else
+  for 60 s.
   `server.mjs` sets `ASTRO_NODE_AUTOSTART=disabled`, calls `startServer()`, and on SIGTERM/SIGINT drains 7 s,
   flushes Sentry 1 s and OpenTelemetry 1.5 s, then exits 0, inside Docker's 10 s stop timeout. `otel.mjs` builds
   `NodeSDK` itself because `register.js`'s SIGTERM listener never exits. `scripts/smoke-image.sh` (CI: `e2e.yml`)

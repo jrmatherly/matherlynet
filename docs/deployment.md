@@ -47,7 +47,7 @@ recorded as `REDACTED`.
 | `WEB_IMAGE` | `ghcr.io/jrmatherly/matherlynet/web:<commit sha>` |
 | `APP_URL` | `https://matherly.net` (OAuth callbacks and canonical URLs are built from it) |
 | `BETTER_AUTH_SECRET`, `PG_PASSWORD`, `UMAMI_SECRET` | `openssl rand -hex 32` each; keep them stable across deploys |
-| `SMTP_URL` | `smtp://<user>:<app password>@smtp.mail.me.com:587` (STARTTLS) |
+| `SMTP_URL` | `smtp://<user>:<app password>@smtp.mail.me.com:587` (STARTTLS). A value that is not an `smtp://` or `smtps://` URL stops the container at start; blank runs without mail |
 | `MAIL_FROM` | sender address, e.g. `MatherlyNet <…@matherly.net>` |
 | `ADMIN_EMAIL` | the admin's address, set **before** that account's email is verified (see below) |
 | `GITHUB_*`, `GOOGLE_*` | optional; a provider is enabled only when both its id and secret are set |
