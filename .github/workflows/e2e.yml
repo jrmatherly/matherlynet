@@ -84,6 +84,7 @@ jobs:
           test -f out/compose/docker-compose.override.yaml
           WEB_IMAGE=x PG_PASSWORD=x docker compose --project-directory out/compose config | grep -q 'start_period: 1m30s'
           DEPLOY_TARGET=k8s aspire publish -o out/k8s --non-interactive --nologo
+          helm lint out/k8s
 
       - name: 📜 Stack logs
         if: failure()

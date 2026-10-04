@@ -14,7 +14,8 @@ const builder = await createBuilder();
 const k8s = process.env.DEPLOY_TARGET === 'k8s';
 const target = k8s
   ? await builder.addKubernetesEnvironment('k8s')
-      .withHelm({ configure: async (helm) => { await helm.withNamespace('matherlynet'); } })
+      // CI pushes the chart under this name to oci://ghcr.io/jrmatherly/matherlynet/charts (publish-images.yml).
+      .withHelm({ configure: async (helm) => { await helm.withNamespace('matherlynet').withChartName('matherlynet').withChartDescription('matherlynet: Astro web app and PostgreSQL'); } })
   : await builder.addDockerComposeEnvironment('compose');
 
 const ghcr = await builder.addContainerRegistry('ghcr', 'ghcr.io', { repository: 'jrmatherly/matherlynet' });
