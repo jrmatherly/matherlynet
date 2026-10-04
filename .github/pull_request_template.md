@@ -23,7 +23,7 @@
 - [ ] `apphost.mts` / publish output changes (checked with `aspire publish`, Compose and `DEPLOY_TARGET=k8s`)
 - [ ] New Aspire parameter, config key or environment variable (documented in `docs/deployment.md`)
 - [ ] Database migration (`pnpm db:generate` output committed)
-- [ ] Dependencies changed (exact pins; caps in AGENTS.md and `.github/dependabot.yml` still hold)
+- [ ] Dependencies changed (exact pins; caps in AGENTS.md and `.github/renovate.json5` still hold)
 - [ ] CSP, security headers, auth or telemetry behavior changes
 - [ ] Manual step needed at deploy
 

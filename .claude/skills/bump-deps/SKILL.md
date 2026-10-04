@@ -25,6 +25,8 @@ Bring every direct dependency to its latest stable version as an exact pin, then
 
 ## Version caps (verified 2026-09-30; re-check when the reason may have changed)
 
+Renovate enforces the first three as `allowedVersions` rules in `.github/renovate.json5`; change a cap in both places.
+
 | Package | Cap | Reason |
 | :--- | :--- | :--- |
 | `vscode-jsonrpc` (root) | 8.x | Aspire 13.6's generated `transport.mts` imports `vscode-jsonrpc/node.js`, removed in 9.x |

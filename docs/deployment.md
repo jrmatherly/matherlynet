@@ -146,8 +146,7 @@ helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet --versio
 
 The chart deploys web, Postgres and the Aspire dashboard (OTLP receiver and trace UI), each behind a ClusterIP
 Service only (`web-service:4321`, `pg-service:5432`, `k8s-dashboard-service:18888`); routing to web is yours to
-add. The chart package starts private on GHCR, like any new package: make it public once (README, Deploy) or give the
-cluster a pull secret.
+add. The chart package on GHCR is public, so a cluster pulls it without a secret.
 
 The chart holds no secret values, so an install has to supply them. `out/k8s` is the same chart built locally,
 except that `parameters.web.web_image` is `web:latest` there: set it to

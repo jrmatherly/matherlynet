@@ -1,0 +1,93 @@
+// Renovate version updates. Security fixes are separate: GitHub's Dependabot alerts and security updates
+// (repository settings), which ignore the release-age wait.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    // Workflow actions stay pinned to commit SHAs with a "# vX.Y.Z" comment.
+    "helpers:pinGitHubActionDigests",
+    // Exact pins in both package.json files: a bump rewrites 1.2.3 to 1.2.4.
+    ":pinAllExceptPeerDependencies",
+    ":configMigration",
+    "schedule:weekly",
+  ],
+  timezone: "America/New_York",
+  // Matches the 7-day minimum release age in ~/.npmrc and pnpm.
+  minimumReleaseAge: "7 days",
+  // Dependabot security updates raise the fix PRs; Renovate would raise each one again.
+  vulnerabilityAlerts: { enabled: false },
+  packageRules: [
+    {
+      description: "AppHost (root npm project): one PR for minor and patch updates",
+      matchFileNames: ["package.json"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "apphost minor and patch",
+    },
+    {
+      description: "Web app (pnpm): one PR for minor and patch updates",
+      matchFileNames: ["web/**"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "web minor and patch",
+    },
+    {
+      description: "Workflow actions: one PR",
+      matchManagers: ["github-actions"],
+      groupName: "actions",
+    },
+    {
+      description: "Aspire's generated transport imports vscode-jsonrpc/node.js, which 9.x removed",
+      matchPackageNames: ["vscode-jsonrpc"],
+      allowedVersions: "<9",
+    },
+    {
+      description: "typescript-eslint and @astrojs/check peer ranges cap TypeScript at 6.0.x",
+      matchPackageNames: ["typescript"],
+      allowedVersions: "<6.1",
+    },
+    {
+      description: "Types track the Node 24 runtime (CI, the Docker images)",
+      matchPackageNames: ["@types/node"],
+      allowedVersions: "<25",
+    },
+    {
+      description: "Runner toolchain versions float on purpose (Node 24, .NET 10.0.x)",
+      matchManagers: ["github-actions"],
+      matchDepNames: ["node", "dotnet-sdk"],
+      enabled: false,
+    },
+    {
+      description: "Aspire moves as one set through `aspire update` (/bump-deps), and the CLI pin has a checksum: list updates on the dashboard, open a PR only when asked",
+      matchPackageNames: ["/^Aspire\\./", "/^CommunityToolkit\\.Aspire\\./", "microsoft/aspire"],
+      groupName: "aspire",
+      dependencyDashboardApproval: true,
+    },
+  ],
+  // Pins no built-in manager reads.
+  customManagers: [
+    {
+      description: "The Sentry CLI that the image workflow runs with npx",
+      customType: "regex",
+      managerFilePatterns: ["/^\\.github/workflows/publish-images\\.yml$/"],
+      matchStrings: ["npx --yes sentry@(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      depNameTemplate: "sentry",
+      datasourceTemplate: "npm",
+    },
+    {
+      description: "Aspire hosting packages",
+      customType: "jsonata",
+      fileFormat: "json",
+      managerFilePatterns: ["/^aspire\\.config\\.json$/"],
+      matchStrings: ['$each(packages, function($v, $k) { {"depName": $k, "currentValue": $v} })'],
+      datasourceTemplate: "nuget",
+    },
+    {
+      description: "The Aspire CLI pinned in the workflows (bump ASPIRE_SHA512 with it)",
+      customType: "regex",
+      managerFilePatterns: ["/^\\.github/workflows/.+\\.yml$/"],
+      matchStrings: ["ASPIRE_VERSION: '(?<currentValue>[^']+)'"],
+      depNameTemplate: "microsoft/aspire",
+      datasourceTemplate: "github-releases",
+      extractVersionTemplate: "^v(?<version>.+)$",
+    },
+  ],
+}
