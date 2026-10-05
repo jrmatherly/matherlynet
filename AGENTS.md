@@ -230,7 +230,8 @@ out/                   aspire publish output (gitignored)
 - Chart upgrade from 0.29.1 or earlier is not a rolling update: object names gained the `matherlynet-` prefix, so Helm
   deletes and recreates them and the site is down until the new pod is ready. Each pod logs one better-auth "Rate
   limiting could not determine a client IP" warning at start (the first kubelet probe has no `cf-connecting-ip`);
-  it is harmless. Cloudflare's tunnel was checked on 2026-10-04 and does not buffer the playground stream.
+  it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not buffer the playground stream, and a
+  disconnect reaches web (the row closed as `cut` / `left`).
 - The image workflow runs only when the image, the chart or their checks can change (`web/**` minus docs, AppHost
   files, root `package*.json`, `scripts/check-chart.sh` and `smoke-image.sh`, the workflow itself);
   `workflow_dispatch` bypasses the filter. `paths-ignore` can't take `!` exceptions, so it is an include list.
