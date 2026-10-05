@@ -157,14 +157,14 @@ out/                   aspire publish output (gitignored)
   page script must not import it. Prompt text must never be bound to a query or logged (a failed query's error
   quotes its parameters).
   `data/gateway.ts` is the one list of gates, callers and targets that the home figure and the playground share.
+  The scenario chips switch panels with generated CSS (`scenarioCss()`, an inline `<style>` whose hash
+  `GatewayConsole.astro` registers with `Astro.csp`). Without script each panel shows its scenario's `replay()`
+  and the log shows `RECORDED_TOUR`.
 - The writing post on the three gateway generations draws the two retired ones with `GatewayMap.astro` (static SVG,
   one `generation` prop; data in `data/gateway-generations.ts`). Its geometry is `lib/gateway-map.ts`, pure: `layout()`
   measures labels with Geist advance widths and throws, naming the label, when text would not fit its box or would
   cross a lane, node, label or region edge, so a copy edit that overflows fails `gateway-map.test.ts` rather than
   rendering badly. `W` (600) must match the component's `min-w-[600px]`; below `sm` it scrolls like `GatewayPath`.
-  The scenario chips switch panels with generated CSS (`scenarioCss()`, an inline `<style>` whose hash
-  `GatewayConsole.astro` registers with `Astro.csp`). Without script each panel shows its scenario's `replay()`
-  and the log shows `RECORDED_TOUR`.
 
 <!-- END AUTO-MANAGED -->
 
