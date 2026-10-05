@@ -198,7 +198,8 @@ export function layout(gen: Generation<string>): Drawing {
   const hub: Placed = { node: gen.hub, col: "hub", ...COL.hub, y: -hubH / 2, h: hubH };
   const [above, below] = gen.services;
   const services: (Placed<Party<string>> & { above: boolean })[] = [];
-  // Across a region boundary the stem gets REGION_GAP more, as stack() gives the side columns, so two outlines never share an edge.
+  // A service in a region of its own gets REGION_GAP more stem, as stack() gives the side columns, so its outline and
+  // the hub's never share an edge. A service outside every region draws no outline, so it needs none.
   const gap = (s: Party<string>) => SERVICE_GAP + (s.region && s.region !== gen.hub.region ? REGION_GAP : 0);
   if (above) {
     const h = height(above);

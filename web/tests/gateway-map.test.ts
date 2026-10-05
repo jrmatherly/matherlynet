@@ -82,7 +82,7 @@ describe("layout", () => {
     expect(() => layout({ ...apim, upstreams: [foundry, anthropic, mcp, usage] })).toThrow(/"Azure subscription" would enclose Anthropic/);
   });
 
-  it("refuses a name wider than its box and a wire label that would cross the drawing", () => {
+  it("refuses a name wider than its box and a wire label that would touch the hub or a region edge", () => {
     expect(() => layout({ ...litellm, callers: [{ ...litellm.callers[0], label: "OpenAI-compatible clients" }] })).toThrow(/"OpenAI-compatible clients" is [\d.]+px, wider than its 110px box/);
     expect(() => layout({ ...litellm, callers: [{ ...litellm.callers[0], via: "a much longer credential" }] })).toThrow(/"a much longer credential" (touches|crosses)/);
   });
