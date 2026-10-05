@@ -8,7 +8,7 @@ export const headline = "Every AI request at a 15,000‑person company runs thro
 // One paragraph each for what was built and what comes next. Asterisks mark the phrases the home page sets in the
 // foreground color, so a skim of those alone still tells the story.
 export const intro = [
-  "Over *twenty years* at The Aaron's Company I designed and built its primary and disaster recovery *data centers*, the infrastructure for three corporate offices, and SD‑WAN to every store.",
+  "In *twenty years* at The Aaron's Company I designed and built its primary and disaster recovery *data centers*, the infrastructure for three corporate offices, and SD‑WAN to every store.",
   "Now I lead its move into *agentic AI*: a gateway carrying about *2 billion tokens a month*, built in-house to take projected licensing from $100K+ a year to near zero.",
 ];
 // Rendered only when set. Jason supplies the wording (roles, remote/Atlanta, timing).
@@ -113,7 +113,7 @@ export const work: WorkItem[] = [
   {
     title: "AI Gateway",
     summary:
-      "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic and written to the audit log, with cost tracked per user and team.",
+      "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team.",
     period: "2024 to now",
     result: "About 2 billion tokens a month; projected licensing from $100K+ a year to near zero",
   },
@@ -126,7 +126,8 @@ export const work: WorkItem[] = [
   },
   {
     title: "AI chat platform & agents",
-    summary: "An internal AI chat platform and agents grounded in company knowledge through RAG and Graph-RAG, with model evaluations, built in Python, TypeScript and Go.",
+    summary:
+      "An internal AI chat platform and agents on third-party and open-source agent frameworks, with prompt composition, agent memory, multi-step orchestration with tool use, and model evaluations, built in Python, TypeScript and Go. Designed the retrieval pipeline that grounds the agents in company knowledge: source documents are curated, chunked, embedded and indexed for RAG and Graph-RAG over a vector store.",
     period: "2025 to now",
     result: "About 30 agents grounded in company knowledge, 400 users across 14 teams",
   },
@@ -172,10 +173,10 @@ export const career: Role[] = [
     highlights: [
       "Leads company-wide AI strategy and adoption. Built the AI Gateway single-handedly and grew it from 15 million tokens a month at launch to about 2 billion, across 400 users and 14 teams; also delivered the MCP Gateway, Registry and Portal and the internal AI chat platform",
       "Rolled out Microsoft Copilot and Copilot Studio to 600 users, and packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune for 400; since early 2026, hosts a weekly AI community of practice",
-      "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime; leads a team of 4",
+      "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime while supporting PCI DSS and SOX requirements; leads a team of 4",
       "After the BrandsMart USA acquisition, also led its 4-person infrastructure team from March 2023 to March 2026 (8 direct reports in all), standardizing policies and tooling across a data center and 12 sites",
       "Designed and built the disaster recovery data center (2021) and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime",
-      "With no standing annual budget through downsizing and acquisitions, funds each project on its own business case; replaced paid tools with in-house platforms (SolarWinds with Zabbix and Grafana, ADAudit Plus with a custom auditing platform), saving $80K a year in licensing",
+      "With no standing annual budget through downsizing and acquisitions, funds each project on its own business case; replaced paid tools with in-house platforms (SolarWinds with Zabbix and Grafana, ADAudit Plus with a custom auditing platform), saving $100K a year in licensing",
       "Rolled out self-service automation for VMs, storage, VDI, accounts and firewall changes, saving 10 minutes to several hours per request",
     ],
     heading: "One gateway, three generations",
@@ -221,10 +222,10 @@ export const career: Role[] = [
 ];
 
 export const skills: { group: string; items: string[] }[] = [
-  { group: "AI platform engineering", items: ["AI gateways & Model Context Protocol (MCP)", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure APIM", "AI agents & agent skills", "RAG & Graph-RAG", "Model evaluations", "LLMOps", "AI security & governance", "Responsible AI policy", "AI cost management", "AI enablement & adoption"] },
-  { group: "Platform engineering & cloud", items: ["Kubernetes", "Docker", "Talos Linux", "GitOps (Flux & Argo CD)", "Cilium", "External Secrets Operator", "Observability (Grafana & Zabbix)", "Azure & ExpressRoute"] },
+  { group: "AI platform engineering", items: ["AI gateways & Model Context Protocol (MCP)", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure API Management (APIM)", "AI agents & agent skills", "Agent frameworks (Microsoft, Anthropic, OpenAI, open source)", "Agent memory & orchestration", "Prompt composition", "RAG, Graph-RAG & vector stores", "Model evaluations", "LLMOps", "AI security & governance", "Responsible AI policy", "AI cost management", "AI enablement & adoption"] },
+  { group: "Platform engineering & cloud", items: ["Kubernetes", "Docker", "Talos Linux", "Helm", "Terraform", "GitOps (Flux & Argo CD)", "CI/CD (GitHub Actions)", "Cilium", "External Secrets Operator", "Observability (OpenTelemetry, Grafana & Zabbix)", "ITIL", "Azure & ExpressRoute"] },
   { group: "Networking", items: ["Cisco ASR & Nexus 9K", "Aruba / Meraki / Ubiquiti", "SD-WAN", "F5", "Infoblox", "Wireless", "WAN circuits"] },
-  { group: "Security & identity", items: ["Palo Alto & GlobalProtect", "Meraki firewalls", "Aruba ClearPass (802.1X)", "Secret Server (PAM)", "Active Directory & Entra ID", "Microsoft 365", "Intune"] },
+  { group: "Security & identity", items: ["Palo Alto & GlobalProtect", "Meraki firewalls", "Aruba ClearPass (802.1X)", "Secret Server (PAM)", "Active Directory & Entra ID", "Microsoft 365", "Intune", "PCI DSS & SOX"] },
   { group: "Data center", items: ["VMware & Hyper-V", "Cisco UCS", "HPE Nimble & Pure Storage", "Rubrik", "Zerto DR"] },
   { group: "Programming", items: ["Python", "TypeScript", "Go"] },
 ];
