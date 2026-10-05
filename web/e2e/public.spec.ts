@@ -39,7 +39,10 @@ test("the case study opens from Writing with its figure and table", async ({ pag
   await page.goto("/writing");
   await page.getByRole("link", { name: /One gateway, three generations/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "One gateway, three generations" })).toBeVisible();
-  await expect(page.locator('article [role="img"]')).toBeVisible();
+  // One figure per generation.
+  const figures = page.locator('article [role="img"]');
+  await expect(figures).toHaveCount(3);
+  for (const figure of await figures.all()) await expect(figure).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
   // The CSP blocks inline styles, and the dev server this runs against doesn't send the CSP.
   await expect(page.locator("article [style]")).toHaveCount(0);

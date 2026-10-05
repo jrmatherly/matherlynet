@@ -1,5 +1,6 @@
 ---
 import { AI_GATES, CALLERS, MCP_GATES, MODEL_TARGETS, TOOL_TARGET } from "../data/gateway";
+import { figureBox as box, figureCard, figureNode as node, figureScroll, figureWire as wire } from "../lib/form";
 // How requests move through the AI Gateway and the MCP Gateway: drawn, not a screenshot, so it follows the palette.
 // Below the sm breakpoint (640px) the SVG keeps its 520px drawing width and scrolls inside the card (with an edge
 // fade and a caption saying so): shrinking it makes the labels unreadable.
@@ -146,20 +147,17 @@ const recent = marks.slice(-pulses.length);
 const finished = [...pulses].sort((a, b) => a.end - b.end);
 const mark = (p: (typeof pulses)[number]) => recent[finished.indexOf(p)];
 
-const node = "fill-surface-2 stroke-border";
 const lit = "fill-none stroke-accent stroke-[1.5]";
 const text = "fill-foreground text-[12px]";
-const wire = "fill-none stroke-border stroke-[1.5]";
-const box = "fill-accent-soft stroke-accent stroke-[1.5]";
 const ring = "fill-surface stroke-accent stroke-[1.5]";
 ---
 
-<figure class="m-0 grid gap-2 rounded-2xl border border-border bg-surface p-5">
+<figure class={figureCard}>
   <!-- Phones: the right edge fades and a caption says the drawing scrolls. The end padding matches the fade, so once
        scrolled to the end the fade covers padding, not the drawing. A named, focusable region so a keyboard can
        scroll it too (Safari doesn't make scrollers focusable on its own). -->
   {/* eslint-disable-next-line astro/jsx-a11y/no-noninteractive-tabindex -- a scrollable region must take focus (axe scrollable-region-focusable) */}
-  <div role="region" aria-label="Request path diagram" tabindex="0" class="overflow-x-auto pr-6 [mask-image:linear-gradient(to_left,transparent,#000_1.5rem)] sm:overflow-visible sm:pr-0 sm:[mask-image:none]">
+  <div role="region" aria-label="Request path diagram" tabindex="0" class={figureScroll}>
   <svg viewBox="0 0 520 308" role="img" aria-labelledby="path-title path-desc" class="block h-auto w-full min-w-[520px] font-sans sm:min-w-0">
     <title id="path-title">How a request moves through the AI Gateway</title>
     <desc id="path-desc">Claude Code, Claude Desktop, agents and end users call models through the AI Gateway and tools through the MCP Gateway. A model request passes SSO, rate limits, guardrails, the cache and routing, then goes to Azure AI Foundry or Anthropic; a request that fails the guardrails goes no further, and one the cache can answer never reaches a model. Tool calls pass OAuth and the registry of approved servers on the MCP Gateway, then reach the MCP servers. Every call through either gateway, passed or refused, is written to the audit log.</desc>

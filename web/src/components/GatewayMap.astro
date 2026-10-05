@@ -1,0 +1,47 @@
+---
+import { GENERATIONS, type GenerationKey } from "../data/gateway-generations";
+import { figureBox as box, figureCard, figureNode as node, figureScroll, figureWire as wire } from "../lib/form";
+import { W, layout, type Tone } from "../lib/gateway-map";
+// A retired gateway generation as a map (layout in ../lib/gateway-map.ts). Static: these generations are gone, so
+// nothing moves. Same card, tokens and phone behaviour as GatewayPath; below sm it keeps its 600px and scrolls.
+interface Props {
+  generation: GenerationKey;
+}
+const { generation } = Astro.props;
+const gen = GENERATIONS[generation];
+const d = layout(gen);
+// The post shows two maps, and ids are global on the page.
+const id = `gateway-${generation}`;
+
+const tone: Record<Tone, string> = {
+  hub: "fill-foreground text-[13px] font-bold",
+  name: "fill-foreground text-[12px]",
+  small: "fill-muted text-[11px]",
+};
+const boundary = "fill-none stroke-border";
+---
+
+<figure class={figureCard}>
+  {/* eslint-disable-next-line astro/jsx-a11y/no-noninteractive-tabindex -- a scrollable region must take focus (axe scrollable-region-focusable) */}
+  <div role="region" aria-label={`${gen.title} diagram`} tabindex="0" class={figureScroll}>
+  <svg viewBox={`0 0 ${W} ${d.height}`} role="img" aria-labelledby={`${id}-title ${id}-desc`} class="block h-auto w-full min-w-[600px] font-sans sm:min-w-0">
+    <title id={`${id}-title`}>{gen.title}</title>
+    <desc id={`${id}-desc`}>{gen.desc}</desc>
+    <defs>
+      <marker id={`${id}-arrow`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="fill-border" d="M0 0 L8 4 L0 8 Z" /></marker>
+    </defs>
+    <!-- Paint order: boundaries, wires, boxes, then every label on top. -->
+    {d.regions.map((r) => <path class={boundary} stroke-dasharray="2 4" d={r.d} />)}
+    {d.wires.map((w) => <path class={wire} data-to={w.to} d={w.d} marker-end={`url(#${id}-arrow)`} stroke-dasharray={w.failover ? "6 4" : undefined} />)}
+    {d.nodes.map((n) => <rect class={n.hub ? box : node} x={n.x} y={n.y} width={n.w} height={n.h} rx={n.hub ? 14 : 8} />)}
+    {
+      d.texts.map((t) => (
+        <text class={tone[t.tone]} text-anchor={t.anchor}>
+          {t.lines.map((l) => <tspan x={t.x} y={l.y}>{l.text}</tspan>)}
+        </text>
+      ))
+    }
+  </svg>
+  </div>
+  <figcaption class="text-xs text-muted sm:hidden">Swipe to see the whole map.</figcaption>
+</figure>
