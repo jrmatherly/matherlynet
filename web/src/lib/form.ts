@@ -14,6 +14,15 @@ export const choice =
   "cursor-pointer rounded-lg border border-border/60 font-medium text-muted transition-[color,background-color] hover:text-foreground has-checked:border-border has-checked:bg-surface has-checked:text-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent";
 export const badge = "ms-1 inline-block rounded-full border border-border px-1.5 text-[10px] font-medium whitespace-nowrap not-italic";
 
+// SVG figures (GatewayPath, GatewayMap): the card, the strip that scrolls the drawing on phones (its right edge fades
+// over the same 1.5rem the padding reserves), and the shapes.
+export const figureCard = "m-0 grid gap-2 rounded-2xl border border-border bg-surface p-5";
+export const figureScroll =
+  "overflow-x-auto pr-6 [mask-image:linear-gradient(to_left,transparent,#000_1.5rem)] sm:overflow-visible sm:pr-0 sm:[mask-image:none]";
+export const figureNode = "fill-surface-2 stroke-border";
+export const figureBox = "fill-accent-soft stroke-accent stroke-[1.5]";
+export const figureWire = "fill-none stroke-border stroke-[1.5]";
+
 // Page scripts: the submit button stays disabled while the request runs, so a double tap sends it once.
 export async function whileBusy<T>(form: HTMLFormElement, work: () => Promise<T>): Promise<T> {
   const button = form.querySelector<HTMLButtonElement>("button:not([type=button])");

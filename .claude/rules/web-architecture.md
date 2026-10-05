@@ -55,8 +55,12 @@ web/
                        reported), run() (one row, one decision; reports a 200 with no usable frame),
                        respond() (text/event-stream, the 6 s deadline, 503 past 6 calls per process), report() (a
                        code to Sentry and the log, never the caught error)
-  src/data/gateway.ts  gates, callers, targets, guardrail categories, audit retention: shared by GatewayPath and the
-                       playground
+  src/lib/gateway-map.ts  GatewayMap's geometry (pure): layout() places nodes, wires, labels and region outlines and
+                       throws when a label would not fit or would cross a lane, node or region edge (Geist widths)
+  src/data/gateway.ts  gates, callers, targets, guardrail categories, audit retention: shared by GatewayPath, GatewayMap
+                       and the playground
+  src/data/gateway-generations.ts  the two retired generations GatewayMap draws: hub, callers, services, upstreams,
+                       each wire's label, and regions (checked by the compiler)
   src/data/profile.ts  all résumé-derived copy (headline, intro, availability, contact, gateway case study,
                        perspectives, recruiterFacts, work, career, bio, skills); edit facts here
   src/content/writing/  posts: .md, or .mdx to embed a component (schema in src/content.config.ts; `draft: true`
@@ -81,6 +85,7 @@ web/
                         name), Telemetry (Umami tag + lazy @sentry/browser, both from site settings); home:
                         GatewayPath (SVG request path), Perspectives (no-JS radio switcher), CaseStudy,
                         PlatformList, AboutStrip, Cta, Availability (renders only when set);
+                        writing: GatewayMap (static SVG map of a retired gateway generation, `generation` prop);
                         changelog: RailEntry; work: WorkCard (a row, slot for extra detail);
                         playground: GatewayConsole (chips, panels, form, page script), TraceRow (one request's gates;
                         `entry={null}` is the script's template), FlowTable (the audit log table), LogRow (one log

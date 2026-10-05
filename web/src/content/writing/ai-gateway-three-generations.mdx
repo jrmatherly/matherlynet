@@ -5,6 +5,7 @@ pubDate: 2026-10-02
 tags: [ai, platforms, governance]
 ---
 
+import GatewayMap from "../../components/GatewayMap.astro";
 import GatewayPath from "../../components/GatewayPath.astro";
 
 Every model call at The Aaron's Company, a 15,000-person retailer, goes through one gateway. Claude Code, Claude
@@ -26,10 +27,14 @@ generation was retired when it could no longer answer them.
 
 ## Generation 1: LiteLLM (December 2024)
 
+<GatewayMap generation="litellm" />
+
 LiteLLM was fast to stand up and proved the demand. It couldn't attribute cost per team or enforce policy per use
 case, and its licensing was projected at more than $100,000 a year.
 
 ## Generation 2: Azure API Management (February 2026)
+
+<GatewayMap generation="apim" />
 
 Moving to Azure API Management added single sign-on and rate limits, and cut projected licensing to about $38,000 a
 year. But routing and guardrails were awkward to express in it, and those were exactly the parts the business

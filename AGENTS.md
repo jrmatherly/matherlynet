@@ -91,7 +91,8 @@ out/                   aspire publish output (gitignored)
   its real `width`/`height` for layout shift and `h-auto` so they don't stretch it. SVG figures take color from
   `fill-*`/`stroke-*` token utilities, not `fill="#…"` or `style`.
 - Shared Tailwind class strings live in `web/src/lib/form.ts` (`inlineLink` for prose links, `choice` for radio-chip
-  labels, `badge` for small tag pills); reuse them rather than copying the classes.
+  labels, `badge` for small tag pills, `figureCard`/`figureScroll`/`figureNode`/`figureBox`/`figureWire` for SVG
+  figures); reuse them rather than copying the classes.
 
 <!-- END AUTO-MANAGED -->
 
@@ -159,6 +160,11 @@ out/                   aspire publish output (gitignored)
   The scenario chips switch panels with generated CSS (`scenarioCss()`, an inline `<style>` whose hash
   `GatewayConsole.astro` registers with `Astro.csp`). Without script each panel shows its scenario's `replay()`
   and the log shows `RECORDED_TOUR`.
+- The writing post on the three gateway generations draws the two retired ones with `GatewayMap.astro` (static SVG,
+  one `generation` prop; data in `data/gateway-generations.ts`). Its geometry is `lib/gateway-map.ts`, pure: `layout()`
+  measures labels with Geist advance widths and throws, naming the label, when text would not fit its box or would
+  cross a lane, node, label or region edge, so a copy edit that overflows fails `gateway-map.test.ts` rather than
+  rendering badly. `W` (600) must match the component's `min-w-[600px]`; below `sm` it scrolls like `GatewayPath`.
 
 <!-- END AUTO-MANAGED -->
 
