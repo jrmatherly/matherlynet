@@ -146,6 +146,11 @@ out/                   aspire publish output (gitignored)
   a list of paragraphs where `*word*` marks emphasis (home page splits on `*`); `og.ts` reuses `headline` for the home
   card, swapping U+2011 (non-breaking hyphen, which keeps "15,000‑person" together) for "-": the card font lacks it.
   `sameAs` holds LinkedIn only (the footer and JSON-LD read it).
+- `aboutHeadline` in `profile.ts` is /about's h1, its share card title (`og.ts`) and the home recruiters headline.
+  `currentTitle` (not exported) feeds `career[0].title`, the recruiter facts and the recruiters perspective, so a
+  retitle is one edit; `pages.test.ts` bans "Manager of Infrastructure" and "nearly 17" across pages, data and cards.
+  /about's header carries the portrait and the availability line, like home and /changelog, and its skills are ruled
+  rows (group name, then pills) as on /work.
 - The home gateway figure (`GatewayPath.astro`) animates with SMIL, not script or inline style, so the CSP holds. Pulse
   timings are computed in the frontmatter from lane lengths at one `SPEED`; `home.test.ts` pins the pulse counts and
   that every `keyTimes` list runs 0 to 1 in order (a bad list makes the browser drop the animation).
