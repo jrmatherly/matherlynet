@@ -119,7 +119,8 @@ out/                   aspire publish output (gitignored)
   local font provider on the `@fontsource-variable/newsreader` files (the npm provider parses one CSS file per family,
   and none declares both normal and italic) and is preloaded only when serif is active.
   Cross-document view transitions are on (`@view-transition` in `global.css`); the header keeps its own
-  `view-transition-name`.
+  `view-transition-name`. `Base.astro` marks the outgoing page's transition `ready` promise handled on `pageswap`:
+  Safari rejects it at teardown and browser Sentry reported the unhandled rejection (WebKit bug 289078).
 - Visitor theme choices are cookies written by page script (`remember()` in `lib/theme-cookie.ts`): the header's
   `ModeToggle` sets color mode; the footer's `ThemeControls` sets Brand/Pro and Sans/Serif. The server reads them back
   into `Astro.locals.theme`.

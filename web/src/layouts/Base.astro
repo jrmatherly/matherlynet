@@ -45,5 +45,11 @@ const themeColor = themeColorFor(mode, (side) => paletteColors(palette, side).bg
       <slot />
     </main>
     {chrome === "full" && <SiteFooter />}
+    <script>
+      // Safari rejects the outgoing page's cross-document view transition `ready` promise when that page is torn down
+      // and reports it as an unhandled rejection, which browser Sentry then sends (WebKit bug 289078, csswg-drafts
+      // #13726). Nothing here waits on it, so it is marked handled.
+      addEventListener("pageswap", (event) => event.viewTransition?.ready.catch(() => {}));
+    </script>
   </body>
 </html>
