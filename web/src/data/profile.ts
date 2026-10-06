@@ -5,6 +5,10 @@ import { person } from "../lib/site";
 export const resumeUrl = "https://resume.matherly.net/jason/matherly";
 
 export const headline = "Every AI request at a 15,000‑person company runs through the platform I built."; // ‑: non-breaking hyphen
+export const aboutHeadline = "Twenty years, one company, four promotions.";
+// The current role's title, as the résumé writes it; career[0].title, recruiterFacts and the recruiters perspective
+// read it, so a retitle is one edit.
+const currentTitle = "Manager, Infrastructure Services";
 // One paragraph each for what was built and what comes next. Asterisks mark the phrases the home page sets in the
 // foreground color, so a skim of those alone still tells the story.
 export const intro = [
@@ -37,7 +41,7 @@ export const gateway = {
 } as const;
 
 export const recruiterFacts = [
-  { term: "Current title", detail: "Manager, Infrastructure Services" },
+  { term: "Current title", detail: currentTitle },
   { term: "Reports to", detail: "Director of IT" },
   { term: "Team", detail: "4 direct reports; 8 while also leading BrandsMart's team, 2023 to 2026" },
   { term: "Built", detail: "Two data centers, three corporate offices, SD-WAN to 2,300+ stores (at the time), and the AI platform" },
@@ -66,8 +70,8 @@ export const perspectives: Perspective[] = [
   {
     id: "recruiters",
     label: "Recruiters",
-    headline: "Twenty years, one company, four promotions.",
-    body: "From the IT call center in 2006 to Manager, Infrastructure Services at The Aaron's Company. I now lead company-wide AI strategy and adoption, along with the infrastructure behind 15,000+ employees and 1,200+ stores.",
+    headline: aboutHeadline,
+    body: `From the IT call center in 2006 to ${currentTitle} at The Aaron's Company. I now lead company-wide AI strategy and adoption, along with the infrastructure behind 15,000+ employees and 1,200+ stores.`,
     points: [
       "AI platform engineering: gateways, MCP, agents, Copilot and Claude rollouts",
       "Infrastructure leadership: data centers, network, security, DR and identity",
@@ -238,7 +242,7 @@ export const employer = { name: person.worksFor };
 
 export const career: Role[] = [
   {
-    title: "Manager, Infrastructure Services",
+    title: currentTitle,
     start: "Jul 2021",
     highlights: [
       "Designed and built the disaster recovery data center (2021) and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime",
@@ -323,7 +327,7 @@ export const career: Role[] = [
 ];
 
 export const skills: { group: string; items: string[] }[] = [
-  { group: "AI platform engineering", items: ["AI gateways & Model Context Protocol (MCP)", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure API Management (APIM)", "AI agents & agent skills", "Agent frameworks (Microsoft, Anthropic, OpenAI, open source)", "Agent memory & orchestration", "Prompt composition", "RAG, Graph-RAG & vector stores", "Model evaluations", "LLMOps", "AI security & governance", "Responsible AI policy", "AI cost management", "AI enablement & adoption"] },
+  { group: "AI platform engineering", items: ["AI gateways & Model Context Protocol (MCP)", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure API Management (APIM)", "AI agents & agent skills", "Agent frameworks (Microsoft, Anthropic, OpenAI, open source)", "Agent memory & orchestration", "Prompt composition", "RAG, Graph-RAG & vector stores", "Model evaluations", "LLMOps", "AI security & governance", "Responsible AI policy", "AI cost management (FinOps)", "AI enablement & adoption"] },
   { group: "Platform engineering & cloud", items: ["Kubernetes", "Docker", "Talos Linux", "Helm", "Terraform", "GitOps (Flux & Argo CD)", "CI/CD (GitHub Actions)", "Cilium", "External Secrets Operator", "Observability (OpenTelemetry, Grafana & Zabbix)", "ITIL", "Azure & ExpressRoute"] },
   { group: "Networking", items: ["Cisco ASR & Nexus 9K", "Aruba / Meraki / Ubiquiti", "SD-WAN", "F5", "Infoblox", "Wireless", "WAN circuits"] },
   { group: "Security & identity", items: ["Palo Alto & GlobalProtect", "Meraki firewalls", "Aruba ClearPass (802.1X)", "Secret Server (PAM)", "Active Directory & Entra ID", "Microsoft 365", "Intune", "PCI DSS & SOX"] },

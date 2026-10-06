@@ -31,6 +31,37 @@ describe("About", () => {
     expect(html).toMatch(/<a[^>]*href="https:\/\/resume\.matherly\.net[^"]*"[^>]*target="_blank"[^>]*rel="noopener"/);
     expect(html).not.toMatch(/font-mono[^"]*uppercase|uppercase[^"]*font-mono/);
   });
+
+  it("titles the page with the about headline", async () => {
+    const html = await page(About, "/about");
+    expect(html.match(/<h1[^>]*>([^<]*)<\/h1>/)?.[1]).toBe(esc(profile.aboutHeadline));
+  });
+
+  it("shows one eager portrait and the availability line", async () => {
+    const html = await page(About, "/about");
+    const main = html.match(/<main[\s\S]*<\/main>/)?.[0] ?? "";
+    const portraits = portraitTags(main);
+    expect(portraits).toHaveLength(1);
+    expect(portraits[0]).toContain('alt="Portrait of Jason Matherly"');
+    expect(portraits[0]).not.toContain("loading=");
+    if (profile.availability === null) expect(main).not.toContain("bg-success");
+    else expect(main).toContain(esc(profile.availability));
+  });
+});
+
+// The /about portrait is above the fold and eager; the other two are lazy so a phone never downloads the one
+// /changelog hides below md, and the home strip's loads when scrolled to.
+const portraitTags = (html: string) => html.match(/<img[^>]*alt="Portrait of[^>]*>/g) ?? [];
+
+describe("portraits elsewhere", () => {
+  it("lazy-load, and /changelog hides its 132px one below md", async () => {
+    const [home] = portraitTags(await page(Home, "/"));
+    expect(home).toContain('loading="lazy"');
+    const [changelog] = portraitTags(await page(Changelog, "/changelog"));
+    expect(changelog).toContain('loading="lazy"');
+    expect(changelog).toContain('sizes="132px"');
+    expect(changelog).toMatch(/class="[^"]*\bhidden\b[^"]*\bmd:block\b/);
+  });
 });
 
 describe("inner pages", () => {
@@ -46,9 +77,9 @@ describe("inner pages", () => {
 });
 
 describe("tenure copy", () => {
-  it("never says \"nearly 17\" on a page, in the profile data or on a share card", async () => {
-    const pages = await Promise.all([page(About, "/about"), page(Home, "/"), page(Changelog, "/changelog")]);
-    for (const text of [...pages, JSON.stringify(profile), JSON.stringify(ogCards)]) expect(text).not.toMatch(/nearly 17/i);
+  it("never says \"nearly 17\" or \"Manager of\" on a page, in the profile data or on a share card", async () => {
+    const pages = await Promise.all([page(About, "/about"), page(Home, "/"), page(Changelog, "/changelog"), page(Work, "/work")]);
+    for (const text of [...pages, JSON.stringify(profile), JSON.stringify(ogCards)]) expect(text).not.toMatch(/nearly 17|Manager of Infrastructure/i);
   });
 });
 

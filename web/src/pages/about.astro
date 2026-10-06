@@ -1,6 +1,8 @@
 ---
+import Availability from "../components/Availability.astro";
 import Cta from "../components/Cta.astro";
-import { employer, resumeUrl, skills, volunteer, education } from "../data/profile";
+import Portrait from "../components/Portrait.astro";
+import { aboutHeadline, availability, career, employer, resumeUrl, skills, volunteer, education } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { inlineLink } from "../lib/form";
 import { ogImage } from "../lib/og";
@@ -10,33 +12,37 @@ import { ogImage } from "../lib/og";
 
 <Base
   title="About"
-  description={`Twenty years at ${employer.name}, from the IT call center to Manager of Infrastructure Services: skills, education and volunteer work.`}
+  description={`Skills, education and volunteer work. Twenty years at ${employer.name}, from the IT call center to ${career[0].title}.`}
   image={ogImage("about", Astro.locals.siteSettings)}
   type="profile"
 >
   <div class="mx-auto grid max-w-6xl gap-16 px-4 pt-16 sm:px-6 sm:pt-20">
-    <header class="grid max-w-3xl gap-4">
-      <h1 class="display text-4xl sm:text-5xl">About</h1>
-      <p class="text-lg text-muted">
-        Twenty years at {employer.name}, <a href="/changelog" class={inlineLink}>from the IT call center to Manager of Infrastructure Services</a>. I lead its
-        company-wide AI strategy and adoption, and I designed <a href="/work" class={inlineLink}>the AI Gateway and MCP platform</a>, on top of the
-        networks, data centers and disaster recovery I built before them.
-      </p>
-      <p>
-        <a href={resumeUrl} target="_blank" rel="noopener" class="inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground">Read the résumé</a>
-      </p>
+    <header class="grid gap-8 md:grid-cols-[auto_1fr] md:gap-10">
+      <Portrait />
+      <div class="grid max-w-3xl content-start gap-4">
+        <h1 class="display text-4xl sm:text-5xl">{aboutHeadline}</h1>
+        <p class="text-lg text-muted">
+          At {employer.name} I went <a href="/changelog" class={inlineLink}>from the IT call center to {career[0].title}</a>. I lead its
+          company-wide AI strategy and adoption, and I designed <a href="/work" class={inlineLink}>the AI Gateway and MCP platform</a>, on top of the
+          networks, data centers and disaster recovery I built before them.
+        </p>
+        <Availability text={availability} />
+        <p>
+          <a href={resumeUrl} target="_blank" rel="noopener" class="inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground">Read the résumé</a>
+        </p>
+      </div>
     </header>
 
     <section aria-labelledby="skills" class="grid gap-6">
       <h2 id="skills" class="display text-3xl sm:text-4xl">Skills</h2>
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="grid border-b border-border">
         {
           skills.map((s) => (
-            <div class="grid content-start gap-3 rounded-2xl border border-border bg-surface p-5">
+            <div class="grid gap-2 border-t border-border py-5 md:grid-cols-[14rem_1fr] md:gap-6">
               <h3 class="font-bold">{s.group}</h3>
               <ul class="flex flex-wrap gap-1.5">
                 {s.items.map((item) => (
-                  <li class="rounded-full border border-border px-2.5 py-1 text-xs">{item}</li>
+                  <li class="rounded-full border border-border px-2.5 py-1 text-sm">{item}</li>
                 ))}
               </ul>
             </div>
@@ -45,8 +51,8 @@ import { ogImage } from "../lib/og";
       </div>
     </section>
 
-    <section aria-labelledby="beyond" class="grid gap-6">
-      <h2 id="beyond" class="display text-3xl sm:text-4xl">Education and volunteering</h2>
+    <section aria-labelledby="education" class="grid gap-6">
+      <h2 id="education" class="display text-3xl sm:text-4xl">Education and volunteering</h2>
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="grid content-start gap-1 rounded-2xl border border-border p-5">
           <p class="text-sm text-muted">Education</p>

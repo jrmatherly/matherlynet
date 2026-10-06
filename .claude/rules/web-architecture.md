@@ -83,8 +83,9 @@ web/
   src/components/       Seo (canonical, OG, Person JSON-LD, noindex, theme-color), SiteHeader (nav, ModeToggle,
                         Let's talk), SiteFooter (ThemeControls: Brand/Pro + Sans/Serif, page links from publicRoutes,
                         LinkedIn, RSS, sign in), Logo (monogram at header size; `decorative` hides it beside the
-                        name), Telemetry (Umami tag + lazy @sentry/browser, both from site settings); home:
-                        GatewayPath (SVG request path), Perspectives (no-JS radio switcher), CaseStudy,
+                        name), Telemetry (Umami tag + lazy @sentry/browser, both from site settings), Portrait (the
+                        portrait <img>: home strip, /about header, /changelog header; `lazy` below the fold or hidden);
+                        home: GatewayPath (SVG request path), Perspectives (no-JS radio switcher), CaseStudy,
                         PlatformList (AI platform items minus the gateway), AboutStrip, Cta,
                         Availability (renders only when set);
                         writing: GatewayMap (static SVG map of a retired gateway generation, `generation` prop);
@@ -96,8 +97,8 @@ web/
                         visitor's own request to /api/playground
   src/pages/           one job each: index (overview, perspectives), changelog (timeline: recruiter facts, roles with
                         highlights and their milestones), work (platforms by `workGroups`, newest first;
-                        gateway generations), about (person: skills, education,
-                        volunteering), playground (the gateway simulation, `?try=<scenario>`; passes `live` when
+                        gateway generations), about (person: aboutHeadline, portrait, availability, skills,
+                        education, volunteering), playground (the gateway simulation, `?try=<scenario>`; passes `live` when
                         liveModelOn()), writing/ (+[slug]),
                         404 (links the nav pages); robots/sitemap/rss per request
   src/pages/ (account)  sign-in, sign-up, forgot/reset-password, account (sessions), admin (role-gated, 404

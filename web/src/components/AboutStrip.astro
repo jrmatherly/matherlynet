@@ -1,24 +1,12 @@
 ---
 import { bio, resumeUrl } from "../data/profile";
-import { person } from "../lib/site";
+import Portrait from "./Portrait.astro";
 
 const btn = "rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-semibold";
 ---
 
 <section aria-labelledby="about-title" class="grid gap-8 md:grid-cols-[auto_1fr] md:gap-10">
-  <!-- Size by class, never a style attribute (the CSP blocks it); h-auto stops height="648" stretching it.
-       Below the fold, so lazy. -->
-  <img
-    src="/portrait.jpg"
-    srcset="/portrait-320.jpg 320w, /portrait.jpg 648w"
-    sizes="160px"
-    width="648"
-    height="648"
-    alt={`Portrait of ${person.name}`}
-    loading="lazy"
-    decoding="async"
-    class="aspect-square h-auto w-40 rounded-xl border border-border object-cover"
-  />
+  <Portrait lazy />
   <div class="grid gap-4">
     <h2 id="about-title" class="display text-3xl sm:text-4xl">About</h2>
     <p class="max-w-2xl text-lg">{bio}</p>
