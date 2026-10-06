@@ -78,6 +78,10 @@ export const auth = betterAuth({
       sendMail(user.email, "Verify your email", `Confirm your email to finish signing up for matherlynet:\n\n${url}`),
   },
   socialProviders,
+  // No freshness rule: /account lists sessions through listSessions, which better-auth 1.7.7 refuses once the session
+  // is older than freshAge (default one day), so anyone signed in longer saw a 500 there. The rule also gated
+  // /unlink-account and a password-less /delete-user; the site has no UI for either and delete-user is not enabled.
+  session: { freshAge: 0 },
   // Shared across replicas; better-auth enables limiting in production only. /ok is the K8s probe path: limiting
   // it would read and write rate_limit on every probe and fail the probes whenever Postgres is down.
   rateLimit: { storage: "database", customRules: { "/ok": false } },

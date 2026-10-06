@@ -3,6 +3,7 @@ import { setTimeout as wait } from "node:timers/promises";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import pg from "pg";
 import { LIVE, sseFrames } from "../src/lib/playground";
+import { localAppDb } from "./db";
 
 // /playground's live path. The suite runs against either stack: with the model URL unset (the off pass) or pointed at
 // web/tests/fake-llama.ts (the live pass), and a test for one mode skips itself on the other. Every test calls as its own
@@ -16,8 +17,6 @@ test.describe.configure({ mode: "default" });
 const db = new pg.Pool({ connectionString: process.env.APPDB_URI, max: 2 });
 test.afterAll(() => db.end());
 
-// The cleanup deletes by id range, so it runs only against a local database.
-const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 // The default visitor of the rows a test inserts.
 const SEED = "e2e-seed";
 
@@ -137,11 +136,8 @@ test.describe("model on", () => {
   test.beforeEach(async ({ request }) => {
     test.skip(!(live ??= await liveStack(request)), "the stack has no model URL");
     if (firstId !== null) return;
-    const appdb = URL.parse(process.env.APPDB_URI ?? "");
-    // pg takes a ?host= parameter over the URL's host, so a loopback hostname alone proves nothing.
-    if (!LOOPBACK.has(appdb?.hostname ?? "") || appdb?.searchParams.has("host")) {
-      throw new Error("live.spec.ts reads and deletes playground_call rows: set APPDB_URI to a database on localhost, 127.0.0.1 or ::1, with no host parameter.");
-    }
+    // The cleanup deletes by id range, so it runs only against a local database.
+    localAppDb();
     // A run killed mid-test leaves its seeds, and 300 of them would refuse every local live call for a day.
     await query("delete from playground_call where visitor = $1", [SEED]);
     firstId = await lastId();
