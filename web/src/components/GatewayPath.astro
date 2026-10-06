@@ -1,273 +1,119 @@
 ---
-import { AI_GATES, CALLERS, MCP_GATES, MODEL_TARGETS, TOOL_TARGET } from "../data/gateway";
-import { figureBox as box, figureCard, figureNode as node, figureScroll, figureWire as wire } from "../lib/form";
+import { figureBox as box, figureCard, figureNode as node, figureWire as wire } from "../lib/form";
+import { FIGURES } from "../lib/gateway-path";
+import GatewayLabel from "./GatewayLabel.astro";
 // How requests move through the AI Gateway and the MCP Gateway: drawn, not a screenshot, so it follows the palette.
-// Below the sm breakpoint (640px) the SVG keeps its 520px drawing width and scrolls inside the card (with an edge
-// fade and a caption saying so): shrinking it makes the labels unreadable.
-// The motion is SMIL (no script, no inline style, so the CSP holds): one loop in which seven model requests cross
-// the AI Gateway's checks (one is refused at the guardrails, one is answered from the cache), three tool calls
-// cross the MCP Gateway, and each leaves a mark in the audit log.
-const LOOP = 12; // seconds
-const SPEED = 100; // drawing units per second
-const LEFT = 130; // where lanes leave the callers
-const RIGHT = 396; // where lanes reach the targets
-
-interface Gate {
-  label: string;
-  x: number;
-  above?: boolean;
-}
-// Each gateway: the line its checks sit on, and the checks in the order a request meets them.
-const AI = {
-  y: 110,
-  from: 176,
-  to: 344,
-  gates: AI_GATES.map((label, i) => ({ label, x: 196 + 32 * i, above: i % 2 === 0 })) as Gate[],
-};
-// The registry check: only servers approved into the registry are reachable.
-const MCP = {
-  y: 222,
-  from: 170,
-  to: 318,
-  gates: MCP_GATES.map((label, i) => ({ label, x: 212 + 64 * i })) as Gate[],
-};
-const at = (label: string) => AI.gates.find((g) => g.label === label)!.x;
-const GUARDRAILS = at("Guardrails");
-const CACHE = at("Cache");
-const CACHE_HOLD = 0.4; // seconds a cache hit rests on the gate before the answer heads back
-
-const callers = CALLERS.map((label, i) => ({ label, y: 44 + 48 * i }));
-const targets = [
-  { label: MODEL_TARGETS[0], y: 70 },
-  { label: MODEL_TARGETS[1], y: 130 },
-  { label: TOOL_TARGET, y: MCP.y },
-];
-const TOOLS = 2; // index of the MCP target
-// caller index; target index, or how the AI Gateway ends it early; start second.
-const requests: { from: number; to: number | "refused" | "cached"; start: number }[] = [
-  { from: 0, to: 0, start: 0.3 },
-  { from: 2, to: TOOLS, start: 0.7 },
-  { from: 2, to: 1, start: 1.6 },
-  { from: 1, to: "cached", start: 2.9 },
-  { from: 3, to: 0, start: 4.2 },
-  { from: 0, to: TOOLS, start: 4.6 },
-  { from: 3, to: "refused", start: 5.5 },
-  { from: 0, to: 1, start: 6.8 },
-  { from: 3, to: TOOLS, start: 7.4 },
-  { from: 2, to: 0, start: 8.1 },
-];
-
-type Point = [number, number];
-// An S-curve between two points that leaves and arrives horizontally.
-const curve = ([x0, y0]: Point, [x1, y1]: Point): Point[] => [[x0, y0], [(x0 + x1) / 2, y0], [(x0 + x1) / 2, y1], [x1, y1]];
-const curveTo = ([, a, b, c]: Point[]) => `C${a.join(" ")} ${b.join(" ")} ${c.join(" ")}`;
-const lane = (points: Point[]) => `M${points[0].join(" ")} ${curveTo(points)}`;
-// A cubic's length, by sampling: the pulses move at one speed, so gate timings need real distances.
-const length = ([p0, p1, p2, p3]: Point[]) => {
-  const at = (t: number, i: 0 | 1) => (1 - t) ** 3 * p0[i] + 3 * (1 - t) ** 2 * t * p1[i] + 3 * (1 - t) * t ** 2 * p2[i] + t ** 3 * p3[i];
-  let total = 0;
-  for (let s = 1; s <= 32; s++) total += Math.hypot(at(s / 32, 0) - at((s - 1) / 32, 0), at(s / 32, 1) - at((s - 1) / 32, 1));
-  return total;
-};
-const laneIn = (y: number, gateway: typeof AI) => curve([LEFT, y], [gateway.from, gateway.y]);
-const laneOut = (y: number) => curve([AI.to, AI.y], [RIGHT, y]);
-
-const pulses = requests.map(({ from, to, start }) => {
-  const y = callers[from].y;
-  const gateway = to === TOOLS ? MCP : AI;
-  const lead = length(laneIn(y, gateway));
-  const reach = (x: number) => start + (lead + x - gateway.from) / SPEED;
-  // Where the run along the gateway's line ends: at the check that stops it, or the far side.
-  const stop = to === "refused" ? GUARDRAILS : to === "cached" ? CACHE : gateway.to;
-  const pulse = {
-    from,
-    to,
-    kind: to === TOOLS ? "tool" : typeof to === "number" ? "passed" : to,
-    start,
-    end: reach(stop),
-    d: `${lane(laneIn(y, gateway))} H${stop}`,
-    // Path fractions (keyPoints) at the seconds in `stops`.
-    keyPoints: "0;0;1;1",
-    stops: [start, reach(stop)],
-    // When this request crosses each check it passes.
-    crossings: gateway.gates.filter((g) => g.x < stop).map((gate) => ({ gate, at: reach(gate.x) })),
-  };
-  if (to === TOOLS) {
-    pulse.d += ` H${RIGHT}`;
-    pulse.end = reach(RIGHT);
-    pulse.stops = [start, pulse.end];
-  } else if (typeof to === "number") {
-    const out = laneOut(targets[to].y);
-    pulse.d += ` ${curveTo(out)}`;
-    pulse.end += length(out) / SPEED;
-    pulse.stops = [start, pulse.end];
-  } else if (to === "cached") {
-    // A cache hit never reaches a model: the answer goes back the way the request came.
-    const arrive = pulse.end;
-    pulse.d += ` H${AI.from} ${curveTo(curve([AI.from, AI.y], [LEFT, y]))}`;
-    pulse.end = arrive + CACHE_HOLD + (arrive - start);
-    pulse.keyPoints = "0;0;0.5;0.5;1;1";
-    pulse.stops = [start, arrive, arrive + CACHE_HOLD, pulse.end];
-  }
-  return pulse;
-});
-const refusal = pulses.find((p) => p.kind === "refused")!;
-const hit = pulses.find((p) => p.kind === "cached")!;
-
-// SMIL keyTimes: fractions of the loop, in order, from 0 to 1.
-const times = (seconds: number[]) => [0, ...seconds.map((s) => +(s / LOOP).toFixed(4)), 1].join(";");
-const loop = { dur: `${LOOP}s`, repeatCount: "indefinite" };
-// An opacity animation that lights at each of the given seconds and fades over `hold`.
-const flash = (at: number[], hold = 0.5) => ({
-  ...loop,
-  attributeName: "opacity",
-  values: `0;${at.map(() => "0;1;0").join(";")};0`,
-  keyTimes: times(at.sort((a, b) => a - b).flatMap((t) => [t - 0.05, t, t + hold])),
-});
-// An opacity animation that shows from `from` to `to`.
-const show = (from: number, to: number, fade = 0.15) => ({
-  ...loop,
-  attributeName: "opacity",
-  values: "0;0;1;1;0;0",
-  keyTimes: times([from, from + fade, to, to + fade]),
-});
-const crossed = (gate: Gate) => pulses.flatMap((p) => p.crossings.filter((c) => c.gate === gate).map((c) => c.at));
-// A pulse is a head and two fainter followers on the same path, each a beat behind: a comet, not a dot.
-const TAIL = [
-  { r: 4, lag: 0, shade: "" },
-  { r: 3, lag: 0.07, shade: "opacity-50" },
-  { r: 2, lag: 0.14, shade: "opacity-25" },
-];
-
-// The audit log's marks: older ones are fixed, the last ten are this loop's requests, in the order they finish.
-const BASELINE = 293;
-const marks = Array.from({ length: 38 }, (_, i) => ({ x: 236 + i * 7, h: 3 + ((i * 7) % 5) * 1.5 }));
-const history = marks.slice(0, -pulses.length);
-const recent = marks.slice(-pulses.length);
-const finished = [...pulses].sort((a, b) => a.end - b.end);
-const mark = (p: (typeof pulses)[number]) => recent[finished.indexOf(p)];
+// Two drawings of the same traffic, one shown at a time: the wide one from the sm breakpoint (640px) up, and below it
+// a stacked one (callers on top, the gateways as columns of checks, targets below) that fits a 320px phone at full
+// size, so nothing scrolls. The motion is SMIL (no script, no inline style, so the CSP holds): one loop in which
+// seven model requests cross the AI Gateway's checks (one is refused at the guardrails, one is answered from the
+// cache), three tool calls cross the MCP Gateway, and each leaves a mark in the audit log. Both figures come
+// render-ready from ../lib/gateway-path.ts; this template does no arithmetic. The SMIL clock is document-wide, so the
+// hidden drawing keeps time and a rotation across sm neither restarts nor desyncs the loop.
 
 const lit = "fill-none stroke-accent stroke-[1.5]";
-const text = "fill-foreground text-[12px]";
 const ring = "fill-surface stroke-accent stroke-[1.5]";
 ---
 
 <figure class={figureCard}>
-  <!-- Phones: the right edge fades and a caption says the drawing scrolls. The end padding matches the fade, so once
-       scrolled to the end the fade covers padding, not the drawing. A named, focusable region so a keyboard can
-       scroll it too (Safari doesn't make scrollers focusable on its own). -->
-  {/* eslint-disable-next-line astro/jsx-a11y/no-noninteractive-tabindex -- a scrollable region must take focus (axe scrollable-region-focusable) */}
-  <div role="region" aria-label="Request path diagram" tabindex="0" class={figureScroll}>
-  <svg viewBox="0 0 520 308" role="img" aria-labelledby="path-title path-desc" class="block h-auto w-full min-w-[520px] font-sans sm:min-w-0">
-    <title id="path-title">How a request moves through the AI Gateway</title>
-    <desc id="path-desc">Claude Code, Claude Desktop, agents and end users call models through the AI Gateway and tools through the MCP Gateway. A model request passes SSO, rate limits, guardrails, the cache and routing, then goes to Azure AI Foundry or Anthropic; a request that fails the guardrails goes no further, and one the cache can answer never reaches a model. Tool calls pass OAuth and the registry of approved servers on the MCP Gateway, then reach the MCP servers. Every call through either gateway, passed or refused, is written to the audit log.</desc>
-    <defs>
-      <filter id="path-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"></feGaussianBlur></filter>
-    </defs>
+  {
+    FIGURES.map((f) => (
+      <div class={f.wrap}>
+        <svg viewBox={f.viewBox} role="img" aria-labelledby={`${f.id}-title ${f.id}-desc`} class="block h-auto w-full font-sans">
+          <title id={`${f.id}-title`}>How a request moves through the AI Gateway</title>
+          <desc id={`${f.id}-desc`}>Claude Code, Claude Desktop, agents and end users call models through the AI Gateway and tools through the MCP Gateway. A model request passes SSO, rate limits, guardrails, the cache and routing, then goes to Azure AI Foundry or Anthropic; a request that fails the guardrails goes no further, and one the cache can answer never reaches a model. Tool calls pass OAuth and the registry of approved servers on the MCP Gateway, then reach the MCP servers. Every call through either gateway, passed or refused, is written to the audit log.</desc>
+          <defs>
+            <filter id={`${f.id}-glow`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"></feGaussianBlur></filter>
+          </defs>
 
-    {callers.map((c) => <path class={wire} d={`${lane(laneIn(c.y, AI))} ${lane(laneIn(c.y, MCP))}`} />)}
-    {targets.map((t, i) => <path class={wire} d={i === TOOLS ? `M${MCP.to} ${MCP.y} H${RIGHT}` : lane(laneOut(t.y))} />)}
-    <path class={wire} d="M334 164 V268 M244 250 V268" />
+          {f.wires.map((d) => <path class={wire} d={d} />)}
 
-    {
-      callers.map((c) => (
-        <>
-          <rect class={node} x="6" y={c.y - 20} width="124" height="40" rx="8" />
-          <text class={text} x="68" y={c.y + 4} text-anchor="middle">{c.label}</text>
-        </>
-      ))
-    }
-
-    <rect class="fill-accent opacity-20" x="182" y="40" width="156" height="108" rx="24" filter="url(#path-glow)" />
-    <rect class={box} x="170" y="24" width="180" height="140" rx="14" />
-    <text class="fill-foreground text-[15px] font-bold" x="260" y="52" text-anchor="middle">AI Gateway</text>
-    <rect class={box} x={MCP.from} y="180" width={MCP.to - MCP.from} height="70" rx="12" />
-    <text class="fill-foreground text-[13px] font-bold" x={(MCP.from + MCP.to) / 2} y="201" text-anchor="middle">MCP Gateway</text>
-    {
-      [AI, MCP].map((gateway) => (
-        <>
-          <path class="fill-none stroke-accent stroke-2 opacity-60" d={`M${gateway.from} ${gateway.y} H${gateway.to}`} />
-          {gateway.gates.map((g) => (
+          {f.callers.map((c) => (
             <>
-              <text class="fill-foreground text-[11px]" x={g.x} y={g.above ? gateway.y - 16 : gateway.y + 20} text-anchor="middle">{g.label}</text>
-              <circle class={ring} cx={g.x} cy={gateway.y} r="6" />
+              <rect class={node} x={c.rect.x} y={c.rect.y} width={c.rect.w} height={c.rect.h} rx="8" />
+              <GatewayLabel label={c.label} />
             </>
           ))}
-        </>
-      ))
-    }
 
-    {
-      targets.map((t) => (
-        <>
-          <rect class={node} x={RIGHT} y={t.y - 20} width="118" height="40" rx="8" />
-          <text class={text} x="455" y={t.y + 4} text-anchor="middle">{t.label}</text>
-        </>
-      ))
-    }
-
-    <rect class={node} x="6" y="268" width="508" height="34" rx="8" />
-    <text class={text} x="20" y="289">Audit log</text>
-    {history.map((m) => <rect class="fill-muted opacity-40" x={m.x} y={BASELINE - m.h} width="3" height={m.h} rx="1" />)}
-
-    <!-- Everything that moves. Hidden under reduced motion, which leaves the diagram above complete. -->
-    <g class="motion-reduce:hidden">
-      {
-        callers.map((c, i) => (
-          <rect class={lit} x="6" y={c.y - 20} width="124" height="40" rx="8" opacity="0">
-            <animate {...flash(pulses.filter((p) => p.from === i).map((p) => p.start), 0.7)} />
-          </rect>
-        ))
-      }
-      {
-        targets.map((t, i) => (
-          <rect class={lit} x={RIGHT} y={t.y - 20} width="118" height="40" rx="8" opacity="0">
-            <animate {...flash(pulses.filter((p) => p.to === i).map((p) => p.end), 0.7)} />
-          </rect>
-        ))
-      }
-      {
-        [AI, MCP].map((gateway) =>
-          gateway.gates.map((g) => (
-            <circle class="fill-accent" cx={g.x} cy={gateway.y} r="6" opacity="0">
-              <animate {...flash(crossed(g))} />
-            </circle>
-          )),
-        )
-      }
-      {
-        pulses.map((p) => (
-          <>
-            <g data-pulse={p.kind}>
-              {TAIL.map(({ r, lag, shade }) => (
-                <g opacity="0">
-                  <circle class:list={["fill-accent", shade]} r={r} />
-                  <animateMotion {...loop} calcMode="linear" keyPoints={p.keyPoints} keyTimes={times(p.stops.map((s) => s + lag))} path={p.d} />
-                  <animate {...show(p.start + lag, p.end + lag + (p.kind === "refused" ? 0.1 : -0.15), p.kind === "refused" ? 0.3 : 0.15)} />
-                </g>
+          <rect class="fill-accent opacity-20" x={f.glow.x} y={f.glow.y} width={f.glow.w} height={f.glow.h} rx="24" filter={`url(#${f.id}-glow)`} />
+          {f.gateways.map((g) => (
+            <>
+              <rect class={box} x={g.box.x} y={g.box.y} width={g.box.w} height={g.box.h} rx={g.box.rx} />
+              <GatewayLabel label={g.title} />
+            </>
+          ))}
+          {f.gateways.map((g) => (
+            <>
+              <path class="fill-none stroke-accent stroke-2 opacity-60" d={g.line} />
+              {g.checks.map((c) => (
+                <>
+                  <GatewayLabel label={c.label} />
+                  <circle class={ring} cx={c.at[0]} cy={c.at[1]} r="6" />
+                </>
               ))}
+            </>
+          ))}
+
+          {f.targets.map((t) => (
+            <>
+              <rect class={node} x={t.rect.x} y={t.rect.y} width={t.rect.w} height={t.rect.h} rx="8" />
+              <GatewayLabel label={t.label} />
+            </>
+          ))}
+
+          <rect class={node} x={f.audit.box.x} y={f.audit.box.y} width={f.audit.box.w} height={f.audit.box.h} rx="8" />
+          <GatewayLabel label={f.audit.label} />
+          {f.audit.history.map((m) => <rect class="fill-muted opacity-40" x={m.x} y={m.y} width="3" height={m.h} rx="1" />)}
+
+          {/* Everything that moves. Hidden under reduced motion, which leaves the diagram above complete. */}
+          <g class="motion-reduce:hidden">
+            {f.motion.callers.map((c) => (
+              <rect class={lit} x={c.rect.x} y={c.rect.y} width={c.rect.w} height={c.rect.h} rx="8" opacity="0">
+                <animate {...c.flash} />
+              </rect>
+            ))}
+            {f.motion.targets.map((t) => (
+              <rect class={lit} x={t.rect.x} y={t.rect.y} width={t.rect.w} height={t.rect.h} rx="8" opacity="0">
+                <animate {...t.flash} />
+              </rect>
+            ))}
+            {f.motion.checks.map((c) => (
+              <circle class="fill-accent" cx={c.at[0]} cy={c.at[1]} r="6" opacity="0">
+                <animate {...c.flash} />
+              </circle>
+            ))}
+            {f.motion.pulses.map((p) => (
+              <>
+                <g data-pulse={p.kind}>
+                  {p.dots.map((d) => (
+                    <g opacity="0">
+                      <circle class:list={["fill-accent", d.shade]} r={d.r} />
+                      <animateMotion {...d.motion} />
+                      <animate {...d.show} />
+                    </g>
+                  ))}
+                </g>
+                {/* Hollow, not just red: in red-accent palettes danger and accent are close hues. */}
+                <rect class={p.kind === "refused" ? "fill-none stroke-danger" : "fill-accent"} x={p.mark.x} y={p.mark.y} width="3" height={p.mark.h} rx="1" opacity="0">
+                  <animate {...p.mark.anim} />
+                </rect>
+              </>
+            ))}
+            {/* The refused request: a cross on the guardrails check. */}
+            <g class="fill-none stroke-danger stroke-2" stroke-linecap="round" opacity="0">
+              <circle class="fill-surface" cx={f.motion.refusal.at[0]} cy={f.motion.refusal.at[1]} r="8" />
+              <path d={f.motion.refusal.cross} />
+              <animate {...f.motion.refusal.show} />
             </g>
-            {/* Hollow, not just red: in red-accent palettes danger and accent are close hues. */}
-            <rect class={p.kind === "refused" ? "fill-none stroke-danger" : "fill-accent"} x={mark(p).x} y={BASELINE - mark(p).h} width="3" height={mark(p).h} rx="1" opacity="0">
-              <animate {...loop} attributeName="opacity" values="0;0;1;1;0" keyTimes={times([p.end, p.end + 0.1, LOOP - 0.1])} />
-            </rect>
-          </>
-        ))
-      }
-      <!-- The refused request: a cross on the guardrails check. -->
-      <g class="fill-none stroke-danger stroke-2" stroke-linecap="round" opacity="0">
-        <circle class="fill-surface" cx={GUARDRAILS} cy={AI.y} r="8" />
-        <path d={`M${GUARDRAILS - 3} ${AI.y - 3} l6 6 m0 -6 l-6 6`} />
-        <animate {...show(refusal.end, refusal.end + 0.8)} />
-      </g>
-      <!-- The cache hit: a tick on the cache check while the answer turns back. -->
-      <g class="fill-none stroke-success stroke-2" stroke-linecap="round" stroke-linejoin="round" opacity="0">
-        <circle class="fill-surface" cx={CACHE} cy={AI.y} r="8" />
-        <path d={`M${CACHE - 3.5} ${AI.y} l2.5 2.5 l4.5 -5`} />
-        <animate {...show(hit.stops[1], hit.stops[2] + 0.5)} />
-      </g>
-    </g>
-  </svg>
-  </div>
-  <figcaption class="text-xs text-muted sm:hidden">Swipe to see where requests go.</figcaption>
+            {/* The cache hit: a tick on the cache check while the answer turns back. */}
+            <g class="fill-none stroke-success stroke-2" stroke-linecap="round" stroke-linejoin="round" opacity="0">
+              <circle class="fill-surface" cx={f.motion.hit.at[0]} cy={f.motion.hit.at[1]} r="8" />
+              <path d={f.motion.hit.tick} />
+              <animate {...f.motion.hit.show} />
+            </g>
+          </g>
+        </svg>
+      </div>
+    ))
+  }
 </figure>
