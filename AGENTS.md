@@ -152,6 +152,10 @@ out/                   aspire publish output (gitignored)
   (/, /about, /changelog, /work), in the profile data and on the share cards. /about's header carries the portrait
   and the availability line (/changelog's header has both; home has the line in its hero and the portrait in
   `AboutStrip`), and its skills are ruled rows with a label column like /work's: group name, then pills.
+- All three portraits (/about, /changelog, home `AboutStrip`) are `Portrait.astro`, with a 320w and a 648w `srcset`.
+  A caller that changes the width class passes the matching `sizes` with it (the props type requires both or
+  neither); `lazy` adds `loading="lazy"` and `decoding="async"`. /about's is eager (above the fold); the other two are
+  lazy, so a phone never downloads the one /changelog hides below `md`. `pages.test.ts` pins this.
 - The home gateway figure (`GatewayPath.astro`) animates with SMIL, not script or inline style, so the CSP holds. Pulse
   timings are computed in the frontmatter from lane lengths at one `SPEED`; `home.test.ts` pins the pulse counts and
   that every `keyTimes` list runs 0 to 1 in order (a bad list makes the browser drop the animation).
