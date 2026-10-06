@@ -30,6 +30,13 @@ describe("breached-password check", () => {
   });
 });
 
+describe("session freshness", () => {
+  // Read the resolved value, so a changed better-auth default fails here too (why: the comment on freshAge in auth.ts).
+  it("is never required, so a long-lived session still reaches the account page", async () => {
+    expect((await auth.$context).sessionConfig.freshAge).toBe(0);
+  });
+});
+
 describe("password length", () => {
   // The limits better-auth enforces (resolved from options and its defaults); the breached-password hook applies them
   // to /admin/create-user too. Reading the resolved values catches a changed default, not just a changed option.

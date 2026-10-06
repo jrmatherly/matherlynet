@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import pg from "pg";
 import { linkFromEmail } from "./mail";
 
 // One account per run, walked through its whole life in order.
@@ -42,6 +43,24 @@ test("the emailed link verifies the address and signs the visitor in", async ({ 
   // Not the admin-email account, so no admin link and no /admin.
   await expect(page.getByRole("link", { name: "Site settings" })).toHaveCount(0);
   expect((await page.goto("/admin"))?.status()).toBe(404);
+});
+
+test("a session older than a day still opens the account page", async ({ page }) => {
+  // The page lists sessions through better-auth, which refuses a stale one unless freshAge is 0 (auth.ts).
+  // Unset, pg would fall back to libpq's defaults (localhost:5432) rather than the stack's database.
+  if (!process.env.APPDB_URI) throw new Error("account.spec.ts ages a session row: set APPDB_URI to the stack's database.");
+  await signIn(page, password);
+  await expect(page).toHaveURL(/\/account$/);
+  const db = new pg.Client({ connectionString: process.env.APPDB_URI });
+  await db.connect();
+  const { rowCount } = await db.query(
+    `update session set created_at = now() - interval '2 days' where user_id = (select id from "user" where email = $1)`,
+    [email],
+  );
+  await db.end();
+  expect(rowCount).toBeGreaterThan(0);
+  expect((await page.goto("/account"))?.status()).toBe(200);
+  await expect(page.getByText("(this device)")).toBeVisible();
 });
 
 test("signing out ends the session", async ({ page }) => {
