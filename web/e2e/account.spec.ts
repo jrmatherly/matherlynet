@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import pg from "pg";
+import { localAppDb } from "./db";
 import { linkFromEmail } from "./mail";
 
 // One account per run, walked through its whole life in order.
@@ -47,11 +48,10 @@ test("the emailed link verifies the address and signs the visitor in", async ({ 
 
 test("a session older than a day still opens the account page", async ({ page }) => {
   // The page lists sessions through better-auth, which refuses a stale one unless freshAge is 0 (auth.ts).
-  // Unset, pg would fall back to libpq's defaults (localhost:5432) rather than the stack's database.
-  if (!process.env.APPDB_URI) throw new Error("account.spec.ts ages a session row: set APPDB_URI to the stack's database.");
+  const appdb = localAppDb();
   await signIn(page, password);
   await expect(page).toHaveURL(/\/account$/);
-  const db = new pg.Client({ connectionString: process.env.APPDB_URI });
+  const db = new pg.Client({ connectionString: appdb });
   await db.connect();
   const { rowCount } = await db.query(
     `update session set created_at = now() - interval '2 days' where user_id = (select id from "user" where email = $1)`,
