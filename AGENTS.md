@@ -166,16 +166,24 @@ out/                   aspire publish output (gitignored)
   flow coordinates, so both frames share one requests table and `SPEED`, and pulse timings are computed there from
   lane lengths. `Rect`, `Point`, `Segment`, `overlaps()`, `path()` and the Geist `width()` come from `gateway-map.ts`.
   `draw()` wraps a name onto two lines or throws naming it; `check()` throws when a label leaves its box or touches
-  another label, a box or a lane, a gateway line leaves its box, an audit drop does not run from a gateway box's edge
-  to the audit log's top, or a phone frame is wider than `PHONE_MAX_W`; `flash()` throws for a check no request
-  crosses, and `times()` on keyTimes outside the 12 s loop or out of order (either makes the browser drop the
-  animation). If `times()` throws, move geometry, never the requests or `SPEED`. `tests/gateway-path.test.ts` pins
-  those throws; `home.test.ts` pins each frame's pulse counts, labels and check order, and that every `keyTimes` list
-  runs 0 to 1 in order.
-- `web/tests/__snapshots__/gateway-path-wide.svg` pins the home gateway figure's wide SVG, SMIL timings included
-  (`home.test.ts`, `toMatchFileSnapshot`). Astro's dev `data-astro-source-file`/`-loc` attributes (an absolute path and
-  a line number) are stripped before comparing. Never run `vitest -u` to make a layout change pass: a diff means the
-  wide drawing changed, so fix the change, and update the file only for an intended change to the wide figure.
+  another label, a box, a lane or a check's dot (the drawn r=6 ring, under the same `CLEAR`), a check sits off its
+  line, two boxes overlap, a gateway line leaves its box or passes through another, an audit drop bends diagonally
+  (`path()` would draw it as a plain H), leaves the drawing or does not run from a gateway box's edge to the audit
+  log's top, the audit log has fewer marks than requests or its marks leave it or touch its label, or a phone frame
+  is wider than `PHONE_MAX_W`; `draw()` also throws when the requests table lacks exactly one refused and one cached
+  request, or a request's keyPoints and keyTimes differ in count; `flash()` throws for a check no request crosses, and
+  `times()` on keyTimes outside the 12 s loop or out of order (each makes the browser drop the animation). The gate
+  and party counts are types (`Per<typeof AI_GATES, Check>`, `Per<typeof CALLERS, number>`), so a frame with the
+  wrong number fails `astro check`. If `times()` throws, move geometry, never the requests or `SPEED`. `FIGURES` is
+  computed at import, so a broken frame fails `pnpm test` in CI before an image exists. `tests/gateway-path.test.ts`
+  pins those throws; `home.test.ts` pins each frame's pulse counts, labels and check order, that every `keyTimes` list
+  runs 0 to 1 in order and matches its `values` or `keyPoints` in length, and that nothing under
+  `motion-reduce:hidden` is text or a node rect.
+- `web/tests/__snapshots__/gateway-path-wide.svg` and `gateway-path-stacked.svg` pin the home gateway figure's two
+  SVGs, SMIL timings included (`home.test.ts`, `toMatchFileSnapshot`). Astro's dev `data-astro-source-file`/`-loc`
+  attributes (an absolute path and a line number) are stripped before comparing. Never run `vitest -u` to make a
+  layout change pass: a diff means that drawing changed, so fix the change, and update a file only for an intended
+  change to its figure.
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
 - /playground is a browser simulation of the gateway, with a live path when `PLAYGROUND_MODEL_URL` is set. Live, the
   page POSTs the visitor's own request to `/api/playground`, and the server checks it, sends it to a self-hosted

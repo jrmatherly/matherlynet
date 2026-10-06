@@ -2,6 +2,7 @@ import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { describe, expect, it } from "vitest";
 import Availability from "../src/components/Availability.astro";
 import GatewayPath from "../src/components/GatewayPath.astro";
+import { figureNode } from "../src/lib/form";
 
 const render = async (Component: Parameters<AstroContainer["renderToString"]>[0], props: Record<string, unknown> = {}) =>
   (await AstroContainer.create()).renderToString(Component, { props });
@@ -23,11 +24,16 @@ describe("GatewayPath", () => {
   const joined = (svg: string) => svg.replace(/<\/tspan><tspan[^>]*>/g, " ").replace(/<\/?tspan[^>]*>/g, "");
   const ids = (svg: string) => [...svg.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 
-  // The whole wide SVG, SMIL timings included; update the file only for an intended change to the wide figure.
+  // Each whole SVG, SMIL timings included; update a file only for an intended change to that figure.
   it("pins the wide SVG", async () => {
     const [wide] = svgs(await render(GatewayPath));
     expect(wide).toBeDefined();
     await expect(wide).toMatchFileSnapshot("./__snapshots__/gateway-path-wide.svg");
+  });
+  it("pins the stacked SVG", async () => {
+    const [, stacked] = svgs(await render(GatewayPath));
+    expect(stacked).toBeDefined();
+    await expect(stacked).toMatchFileSnapshot("./__snapshots__/gateway-path-stacked.svg");
   });
 
   it("shows one accessible drawing per side of the sm breakpoint, with nothing to scroll", async () => {
@@ -44,13 +50,18 @@ describe("GatewayPath", () => {
       // Everything that moves sits in the one reduced-motion group, so the drawing above it is complete without it.
       expect(svg.match(/motion-reduce:hidden/g)).toHaveLength(1);
       expect(svg.indexOf("<animate")).toBeGreaterThan(svg.indexOf("motion-reduce:hidden"));
+      const moving = svg.slice(svg.indexOf("motion-reduce:hidden"));
+      expect(moving).not.toContain("<text");
+      expect(moving).not.toContain(figureNode);
     }
     expect(html).not.toContain("tabindex=");
     expect(html).not.toContain("Swipe");
   });
 
   it("shows the real callers, each gateway's checks in order, and where requests go, in both drawings", async () => {
-    for (const svg of svgs(await render(GatewayPath)).map(joined)) {
+    const drawings = svgs(await render(GatewayPath));
+    expect(drawings).toHaveLength(2);
+    for (const svg of drawings.map(joined)) {
       for (const label of ["Claude Code", "Claude Desktop", "Agents", "End users", "Azure AI Foundry", "Anthropic", "MCP servers", "Audit log", "AI Gateway", "MCP Gateway"])
         expect(svg, label).toContain(`>${label}</text>`);
       const checks = ["SSO", "Rate limits", "Guardrails", "Cache", "Routing", "OAuth", "Registry"].map((check) => svg.indexOf(`>${check}</text>`));
@@ -61,6 +72,7 @@ describe("GatewayPath", () => {
 
   it("keeps several requests in motion, refuses one at the guardrails and answers one from the cache, in both drawings", async () => {
     const html = await render(GatewayPath);
+    expect(svgs(html)).toHaveLength(2);
     for (const svg of svgs(html)) {
       // Five requests reach a model; one stops at the guardrails and one turns back at the cache.
       expect(svg.match(/data-pulse="passed"/g)).toHaveLength(5);
@@ -75,6 +87,25 @@ describe("GatewayPath", () => {
       expect(times[0]).toBe(0);
       expect(times.at(-1)).toBe(1);
       expect(times).toEqual([...times].sort((a, b) => a - b));
+    }
+  });
+
+  it("gives every animation as many values or keyPoints as keyTimes, in both drawings", async () => {
+    const drawings = svgs(await render(GatewayPath));
+    expect(drawings).toHaveLength(2);
+    for (const svg of drawings) {
+      const animations = [...svg.matchAll(/<(animate|animateMotion) ([^>]*)>/g)];
+      // 4 callers, 3 targets and 7 checks flash; each of 10 requests has 3 dots (a motion and a show each) and a mark; the cross and the tick.
+      expect(animations.filter(([, tag]) => tag === "animate")).toHaveLength(56);
+      expect(animations.filter(([, tag]) => tag === "animateMotion")).toHaveLength(30);
+      for (const [, tag, attrs] of animations) {
+        const count = (name: string) => {
+          const list = attrs.match(new RegExp(` ${name}="([^"]*)"`))?.[1];
+          if (list === undefined) throw new Error(`no ${name} in <${tag} ${attrs}>`);
+          return list.split(";").length;
+        };
+        expect(count(tag === "animate" ? "values" : "keyPoints"), attrs).toBe(count("keyTimes"));
+      }
     }
   });
 });

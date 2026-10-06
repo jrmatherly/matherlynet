@@ -33,7 +33,8 @@ describe("draw", () => {
 
   it("refuses a label that touches a lane or another label, naming both", () => {
     const onLine = { dx: 0, dy: 4, anchor: "end" } as const;
-    expect(() => draw({ ...stacked, ai: { ...stacked.ai, gates: [[stacked.ai.gates[0][0], onLine], ...stacked.ai.gates.slice(1)] } })).toThrow(/"SSO" touches a lane/);
+    const [[sso], ...rest] = stacked.ai.gates;
+    expect(() => draw({ ...stacked, ai: { ...stacked.ai, gates: [[sso, onLine], ...rest] } })).toThrow(/"SSO" touches a lane/);
     const lower = { ...stacked.mcp.title, lines: [{ text: "MCP", y: 140 }, { text: "Gateway", y: 154 }] };
     expect(() => draw({ ...stacked, mcp: { ...stacked.mcp, title: lower } })).toThrow(/"MCP Gateway" touches "OAuth"/);
   });
@@ -47,8 +48,8 @@ describe("draw", () => {
   });
 
   it("refuses a check that no request crosses: a gate at the line's end is never passed", () => {
-    const gates = [...stacked.ai.gates.slice(0, -1), [stacked.ai.to, stacked.ai.gates[4][1]] as const];
-    expect(() => draw({ ...stacked, ai: { ...stacked.ai, gates } })).toThrow(/no request lights Routing/);
+    const [sso, rate, guardrails, cache, [, place]] = stacked.ai.gates;
+    expect(() => draw({ ...stacked, ai: { ...stacked.ai, gates: [sso, rate, guardrails, cache, [stacked.ai.to, place]] } })).toThrow(/no request lights Routing/);
   });
 
   it("refuses a frame whose lanes run so long that a request ends after the loop", () => {
@@ -65,5 +66,41 @@ describe("draw", () => {
   it("refuses a drawing that leaves its viewBox or has too few audit marks for its requests", () => {
     expect(() => draw({ ...wide, view: { w: 500, h: 308 } })).toThrow(/leaves the 500x308 drawing/);
     expect(() => draw({ ...wide, audit: { ...wide.audit, marks: { ...wide.audit.marks, count: 9 } } })).toThrow(/9 marks for 10 requests/);
+  });
+
+  it("refuses a drop that bends diagonally, leaves the drawing or lands beside the audit log", () => {
+    const diagonal = [[118, 266], [150, 362]] as const;
+    expect(() => draw({ ...stacked, drops: [diagonal, stacked.drops[1]] })).toThrow(/drop 1 runs diagonally from \[118, 266\] to \[150, 362\]/);
+    const high = [[244, 250], [244, -10], [244, 268]] as const;
+    expect(() => draw({ ...wide, drops: [wide.drops[0], high] })).toThrow(/drop 2 has a point at \[244, -10\] outside the 520x308 drawing/);
+    const beside = [[160, 256], [160, 300], [239, 300], [239, 362]] as const;
+    expect(() => draw({ ...stacked, drops: [stacked.drops[0], beside] })).toThrow(/drop 2 ends at x 239, beside the audit log \(x 6 to 234\)/);
+  });
+
+  it("refuses audit marks that leave the log or touch its label", () => {
+    const marksAt = (x0: number) => ({ ...wide, audit: { ...wide.audit, marks: { ...wide.audit.marks, x0 } } });
+    expect(() => draw(marksAt(260))).toThrow(/the audit marks leave the audit log/);
+    expect(() => draw(marksAt(40))).toThrow(/the audit marks touch "Audit log"/);
+  });
+
+  it("refuses two boxes that overlap and a gateway line that passes through another box", () => {
+    expect(() => draw({ ...wide, targets: { ...wide.targets, across: [70, 100, 222] } })).toThrow(/the "Azure AI Foundry" box overlaps the "Anthropic" box/);
+    expect(() => draw({ ...wide, mcp: { ...wide.mcp, box: { ...wide.mcp.box, y: 100 } } })).toThrow(/"AI Gateway"'s line passes through the "MCP Gateway" box/);
+  });
+
+  it("refuses a check label that reaches its dot", () => {
+    const close = { dx: 0, dy: 14, anchor: "middle" } as const;
+    const [sso, [rate], ...rest] = wide.ai.gates;
+    expect(() => draw({ ...wide, ai: { ...wide.ai, gates: [sso, [rate, close], ...rest] } })).toThrow(/"Rate limits" touches the "Rate limits" dot/);
+  });
+
+  it("rejects a frame with the wrong number of callers, targets or checks at compile time", () => {
+    // @ts-expect-error three positions for four callers
+    const callers: typeof wide.callers = { ...wide.callers, across: [44, 92, 140] };
+    // @ts-expect-error two positions for three targets
+    const targets: typeof wide.targets = { ...wide.targets, across: [70, 222] };
+    // @ts-expect-error one check for two MCP gates
+    const mcp: typeof wide.mcp = { ...wide.mcp, gates: [wide.mcp.gates[0]] };
+    expect([callers.across.length, targets.across.length, mcp.gates.length]).toEqual([3, 2, 1]);
   });
 });

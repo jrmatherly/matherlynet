@@ -62,9 +62,13 @@ web/
   src/lib/gateway-path.ts  GatewayPath's geometry and timing (pure): FRAMES.wide and FRAMES.stacked (phone: true, 240
                        wide), one requests table and SPEED; FIGURES is both drawn; draw(frame) returns a render-ready
                        Figure (FONT[tone].class gives each label its classes) and throws when a name would not fit its
-                       box on two lines, a label would touch another label, a box or a lane, a gateway line or an
-                       audit drop would leave its box, a phone frame would be wider than PHONE_MAX_W (246), no request
-                       would light a check, or an animation's keyTimes would leave the 12 s loop
+                       box on two lines, a label would touch another label, a box, a lane or a check's dot, a check
+                       would sit off its line, boxes would overlap, a gateway line would leave its box or pass through
+                       another, an audit drop would not run from a gateway box's edge to the audit log's top in
+                       horizontals and verticals, the log would have fewer marks than requests, a phone frame would be
+                       wider than PHONE_MAX_W (246), no request would light a check, or an animation's keyTimes would
+                       leave the 12 s loop or not match its keyPoints, among others (check() is the list); FIGURES is
+                       computed at import, so a broken frame fails pnpm test before an image exists
   src/data/gateway.ts  gates, callers, targets, guardrail categories, audit retention: shared by GatewayPath, GatewayMap
                        and the playground
   src/data/gateway-generations.ts  the two retired generations GatewayMap draws: hub, callers, services, upstreams,
