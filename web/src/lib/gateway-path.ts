@@ -108,7 +108,7 @@ export const FRAMES: Record<"wide" | "stacked", Frame> = {
   wide: {
     id: "path",
     wrap: "hidden sm:block",
-    svgClass: "block h-auto w-full min-w-[520px] font-sans sm:min-w-0",
+    svgClass: "block h-auto w-full font-sans",
     view: { w: 520, h: 308 },
     axis: "H",
     start: 130,
