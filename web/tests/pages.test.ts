@@ -1,5 +1,6 @@
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { describe, expect, it } from "vitest";
+import PlatformList from "../src/components/PlatformList.astro";
 import WorkCard from "../src/components/WorkCard.astro";
 import * as profile from "../src/data/profile";
 import { ogCards } from "../src/lib/og";
@@ -11,6 +12,8 @@ import Work from "../src/pages/work.astro";
 import { SITE_DEFAULTS, resolveTheme } from "../src/theme/palettes";
 
 const { work } = profile;
+// Text as Astro renders it into HTML.
+const esc = (s: string) => s.replaceAll("&", "&amp;").replaceAll("'", "&#39;").replaceAll('"', "&quot;");
 
 const locals = {
   user: null,
@@ -53,14 +56,15 @@ describe("Changelog", () => {
   it("has one h1 and puts each milestone's and role's heading after its year, newest first", async () => {
     const html = await page(Changelog, "/changelog");
     expect(html.match(/<h1/g)).toHaveLength(1);
-    expect([...html.matchAll(/>(20\d\d)<\/span>/g)].map((m) => m[1])).toEqual(["2026", "2025", "2024", "2023", "2021", "2015", "2012", "2009", "2006"]);
-    const entries = profile.career.flatMap((role) => [...(role.milestones ?? []), { year: role.start.slice(-4), heading: role.heading }]);
+    expect(html.match(/data-now="true"/g)).toHaveLength(1);
+    const entries = profile.career.flatMap((role) => [...(role.milestones ?? []), { year: role.start.slice(-4), heading: role.heading, summary: undefined, highlights: role.highlights }]);
     let from = 0;
     for (const entry of entries) {
-      const year = html.indexOf(`>${entry.year}`, from);
-      const heading = html.indexOf(entry.heading, year);
+      const year = html.indexOf(`>${entry.year}</span>`, from);
+      const heading = html.indexOf(esc(entry.heading), year);
       expect(year, `${entry.heading} year`).toBeGreaterThan(-1);
       expect(heading, `${entry.heading} heading`).toBeGreaterThan(year);
+      for (const text of [entry.summary, ...entry.highlights]) if (text) expect(html.indexOf(esc(text), heading), `${entry.heading}: ${text.slice(0, 40)}`).toBeGreaterThan(heading);
       from = heading;
     }
   });
@@ -86,10 +90,23 @@ describe("WorkCard", () => {
 });
 
 describe("Work", () => {
-  it("lists the platforms newest first within each group, from 2026 back to 2012", async () => {
+  it("puts each platform in its group's section, in the data's order", async () => {
     const html = await page(Work, "/work");
-    const periods = [...html.matchAll(/<p class="text-sm text-muted tabular-nums"[^>]*>([^<]*)</g)].map((m) => m[1]);
-    expect(periods).toEqual(work.map((w) => w.period));
-    expect([...html.matchAll(/<section aria-label="([^"]*)"/g)].map((m) => m[1])).toEqual([...profile.workGroups]);
+    const sections = html.split(/<section aria-label="/).slice(1);
+    expect(sections.map((s) => s.slice(0, s.indexOf('"')))).toEqual([...profile.workGroups]);
+    for (const [i, group] of profile.workGroups.entries()) {
+      const titles = [...sections[i].matchAll(/<h3[^>]*>([^<]*)<\/h3>/g)].map((m) => m[1]);
+      expect(titles).toEqual(work.filter((w) => w.group === group).map((w) => esc(w.title)));
+    }
+  });
+});
+
+describe("PlatformList", () => {
+  it("lists the AI platform items except the gateway, in the data's order", async () => {
+    const html = await (await AstroContainer.create()).renderToString(PlatformList);
+    const titles = [...html.matchAll(/<h3[^>]*>([^<]*)<\/h3>/g)].map((m) => m[1]);
+    const expected = work.filter((w) => w.group === "AI platform" && w.title !== profile.gateway.title).map((w) => esc(w.title));
+    expect(expected.length).toBeGreaterThan(0);
+    expect(titles).toEqual(expected);
   });
 });

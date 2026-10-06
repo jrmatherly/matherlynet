@@ -50,6 +50,7 @@ describe("profile data", () => {
     expect(work.map(rank)).toEqual([...work].sort((a, b) => rank(a) - rank(b)).map(rank));
     for (const group of workGroups) {
       const starts = work.filter((w) => w.group === group).map((w) => Number(w.period.slice(0, 4)));
+      expect(starts.length, group).toBeGreaterThan(0);
       expect(starts).toEqual([...starts].sort((a, b) => b - a));
     }
   });

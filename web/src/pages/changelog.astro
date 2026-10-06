@@ -8,7 +8,7 @@ import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 
 // The timeline page, newest first: each role's milestones (the years since it started), then the role at its start
-// year. The perspectives live on the home page and the gateway's generations on /work.
+// year. The perspectives live on the home page and the gateway's generations on /work and in the home case study.
 const entries = career.flatMap((role): (Milestone & { meta?: string })[] => {
   const year = role.start.slice(-4);
   const meta = `${role.title}, ${year} to ${role.end?.slice(-4) ?? "now"}`;

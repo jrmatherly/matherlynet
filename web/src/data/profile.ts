@@ -103,16 +103,17 @@ export const perspectives: Perspective[] = [
 export interface WorkItem {
   title: string;
   summary: string;
-  // "2024 to now", "2015 to 2021", or one year, "2022". Newest first within a group.
+  // "2024 to now", "2015 to 2021", or one year, "2022".
   period: string;
   // One short line: the outcome a reader should remember.
   result: string;
   group: (typeof workGroups)[number];
 }
 
-// /work's sections, in page order. The home page's "Also built" is the AI platform minus the gateway.
+// /work's sections, in page order.
 export const workGroups = ["AI platform", "Infrastructure"] as const;
 
+// In workGroups order, then newest start year first: /work and PlatformList render this order as is.
 export const work: WorkItem[] = [
   {
     title: "MCP Gateway, Registry & Portal",
@@ -131,7 +132,7 @@ export const work: WorkItem[] = [
     group: "AI platform",
   },
   {
-    title: "AI Gateway",
+    title: gateway.title,
     summary:
       "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team.",
     period: "2024 to now",
@@ -217,6 +218,7 @@ export interface Milestone {
   // "YYYY": the year the rail shows.
   year: string;
   heading: string;
+  // A paragraph only when the heading needs one (the gateway milestone); highlights usually say it.
   summary?: string;
   highlights: string[];
 }
@@ -228,7 +230,7 @@ export interface Role {
   end?: string;
   heading: string;
   highlights: string[];
-  // Newest first, between the role's start and end.
+  // Newest first; years after the role's start year (that year is the role's own entry) and no later than its end.
   milestones?: Milestone[];
 }
 
@@ -253,8 +255,7 @@ export const career: Role[] = [
         summary:
           "The company's single path to large language models since December 2024. Each generation was retired when it couldn't answer the business's questions: who is spending what, on which model, under which rules.",
         highlights: [
-          "Moved the gateway from LiteLLM to Azure API Management in February, then to the in-house platform in June: cost per user and team, routing across Azure AI Foundry and Anthropic, and guardrails, rate limits and an audit log on every call. Projected licensing went from $100K+ a year to about $38K to near zero",
-          "About 2 billion tokens a month, across 400 users and 14 teams",
+          "Moved the gateway from LiteLLM to Azure API Management in February, then to the in-house platform in June",
           "Packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune for 400 users, and hosts a weekly AI community of practice",
         ],
       },
@@ -262,16 +263,16 @@ export const career: Role[] = [
         year: "2025",
         heading: "Tools and agents behind a gateway, too",
         highlights: [
-          "Designed and delivered the MCP Gateway, Registry and Portal: about 20 MCP servers, each approved into the registry before any agent can call it, behind OAuth",
-          "Built the internal AI chat platform and about 30 agents, grounded in company knowledge by a retrieval pipeline for RAG and Graph-RAG over a vector store",
+          "Designed and delivered the MCP Gateway, Registry and Portal",
+          "Built the internal AI chat platform and its agents, grounded in company knowledge",
         ],
       },
       {
         year: "2024",
         heading: "The first gateway",
         highlights: [
-          "Built the AI Gateway single-handedly and launched it on LiteLLM in December at 15 million tokens a month. It proved demand, but couldn't attribute cost per team or enforce policy per use case, and licensing was projected at $100K+ a year",
-          "Stood up on-prem Talos Linux Kubernetes clusters run with GitOps (Flux and Argo CD), Cilium networking and External Secrets Operator; they run the gateway and the MCP platform",
+          "Built the AI Gateway single-handedly and launched it on LiteLLM in December at 15 million tokens a month",
+          "Stood up the on-prem Kubernetes platform that runs the gateway and the MCP platform",
         ],
       },
       {
