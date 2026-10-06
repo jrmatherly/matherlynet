@@ -210,6 +210,9 @@ out/                   aspire publish output (gitignored)
   `NodeSDK` itself because `register.js`'s SIGTERM listener never exits. `scripts/smoke-image.sh` (CI: `e2e.yml`)
   builds the image and runs this entry as UID 1000 on a read-only root filesystem: migrations, serving, the fast
   failures, and a stop before and after the server is up.
+- `session.freshAge` is 0 in `web/src/lib/auth.ts`: better-auth 1.7.7 gates `listSessions` (the /account page) on a
+  session created within `freshAge` (default one day), so a visitor signed in longer got a 500 there. The E2E suite
+  ages a session row through `APPDB_URI` to keep the page open (`account.spec.ts`).
 - Server Sentry is initialised once (`web/src/lib/sentry.ts`); a /admin DSN change only retargets
   `makeMultiplexedTransport` (`@sentry/core`). A second `Sentry.init` inside a request binds to that request's scope
   only and stacks process handlers, so later requests kept the old client.
