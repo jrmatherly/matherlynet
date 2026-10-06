@@ -31,6 +31,21 @@ describe("About", () => {
     expect(html).toMatch(/<a[^>]*href="https:\/\/resume\.matherly\.net[^"]*"[^>]*target="_blank"[^>]*rel="noopener"/);
     expect(html).not.toMatch(/font-mono[^"]*uppercase|uppercase[^"]*font-mono/);
   });
+
+  it("titles the page with the about headline", async () => {
+    const html = await page(About, "/about");
+    expect(html.match(/<h1[^>]*>([^<]*)<\/h1>/)?.[1]).toBe(esc(profile.aboutHeadline));
+  });
+
+  it("shows one portrait and the availability line", async () => {
+    const html = await page(About, "/about");
+    const main = html.match(/<main[\s\S]*<\/main>/)?.[0] ?? "";
+    const imgs = main.match(/<img[^>]*>/g) ?? [];
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0]).toContain('alt="Portrait of Jason Matherly"');
+    if (profile.availability === null) expect(main).not.toContain("bg-success");
+    else expect(html).toContain(esc(profile.availability));
+  });
 });
 
 describe("inner pages", () => {
@@ -46,9 +61,9 @@ describe("inner pages", () => {
 });
 
 describe("tenure copy", () => {
-  it("never says \"nearly 17\" on a page, in the profile data or on a share card", async () => {
-    const pages = await Promise.all([page(About, "/about"), page(Home, "/"), page(Changelog, "/changelog")]);
-    for (const text of [...pages, JSON.stringify(profile), JSON.stringify(ogCards)]) expect(text).not.toMatch(/nearly 17/i);
+  it("never says \"nearly 17\" or \"Manager of\" on a page, in the profile data or on a share card", async () => {
+    const pages = await Promise.all([page(About, "/about"), page(Home, "/"), page(Changelog, "/changelog"), page(Work, "/work")]);
+    for (const text of [...pages, JSON.stringify(profile), JSON.stringify(ogCards)]) expect(text).not.toMatch(/nearly 17|Manager of Infrastructure/i);
   });
 });
 
