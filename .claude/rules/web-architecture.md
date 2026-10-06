@@ -57,7 +57,13 @@ web/
                        respond() (text/event-stream, the 6 s deadline, 503 past 6 calls per process), report() (a
                        code to Sentry and the log, never the caught error)
   src/lib/gateway-map.ts  GatewayMap's geometry (pure): layout() places nodes, wires, labels and region outlines and
-                       throws when a label would not fit or would cross a lane, node or region edge (Geist widths)
+                       throws when a label would not fit or would cross a lane, node or region edge (Geist widths,
+                       width() exported for gateway-path.ts)
+  src/lib/gateway-path.ts  GatewayPath's geometry and timing (pure): FRAMES.wide and FRAMES.stacked (phones, 240
+                       wide), one requests table and SPEED; draw(frame) returns a render-ready Figure and throws when a
+                       name would not fit its box on two lines, a label would touch another label, a box or a lane, a
+                       phone frame would be wider than PHONE_MAX_W (246), or an animation's keyTimes would leave the
+                       12 s loop
   src/data/gateway.ts  gates, callers, targets, guardrail categories, audit retention: shared by GatewayPath, GatewayMap
                        and the playground
   src/data/gateway-generations.ts  the two retired generations GatewayMap draws: hub, callers, services, upstreams,
@@ -85,7 +91,9 @@ web/
                         LinkedIn, RSS, sign in), Logo (monogram at header size; `decorative` hides it beside the
                         name), Telemetry (Umami tag + lazy @sentry/browser, both from site settings), Portrait (the
                         portrait <img>: home strip, /about header, /changelog header; `lazy` below the fold or hidden);
-                        home: GatewayPath (SVG request path), Perspectives (no-JS radio switcher), CaseStudy,
+                        home: GatewayPath (SVG request path: the wide frame from sm up, the stacked one below;
+                        GatewayLabel renders one of its labels, bare text or one tspan per line), Perspectives
+                        (no-JS radio switcher), CaseStudy,
                         PlatformList (AI platform items minus the gateway), AboutStrip, Cta,
                         Availability (renders only when set);
                         writing: GatewayMap (static SVG map of a retired gateway generation, `generation` prop);

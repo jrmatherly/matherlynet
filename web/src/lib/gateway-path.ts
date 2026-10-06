@@ -4,19 +4,27 @@ import { width } from "./gateway-map";
 /**
  * GatewayPath's geometry and timing (pure, so a frame's invariants are testable against bad fixtures). The engine
  * works in flow coordinates, [along, across], where along is the direction a request travels: the wide figure is
- * that engine with along = x. Only xy(), run() and rect() know the axis, so a transposed frame reuses every rule.
- * draw() throws, naming the offender, when a name would not fit its box, a label or box would leave the drawing, or
- * an animation's keyTimes would fall outside the loop (the browser drops such an animation silently).
+ * that engine with along = x, the stacked one (phones) the same engine with along = y. Only xy(), run() and rect()
+ * know the axis, so both frames share every rule and the one requests table.
+ * draw() throws, naming the offender, when a name would not fit its box, a label or box would leave the drawing, a
+ * label would touch another label, a box it is not in or a lane, a phone frame would be wider than its drawing area,
+ * or an animation's keyTimes would fall outside the loop (the browser drops such an animation silently).
  */
 
 export const LOOP = 12; // seconds; every animation shares this clock
 export const SPEED = 100; // drawing units per second
+/** The drawing area on a 320px phone: 320 minus the page's px-4, the card's p-5 and its border. A frame shown below sm may be no wider. */
+export const PHONE_MAX_W = 246;
 const CACHE_HOLD = 0.4; // seconds a cache hit rests on the gate before the answer heads back
 const INSET = 6; // text to box edge, each side
+const CLEAR = 2; // least space between a label and anything it must not touch
 const LINE = 15; // baseline pitch of a two-line name
 const PITCH = 7; // between audit marks
-/** ai and mcp: the gateway titles; name: a node's name; check: a gate's label. */
-const FONT = { ai: { px: 15, weight: 700 }, mcp: { px: 13, weight: 700 }, name: { px: 12, weight: 400 }, check: { px: 11, weight: 400 } } as const;
+/**
+ * ai and mcp: the gateway titles (on phones the AI title takes mcp too: at 15px it would reach the lanes entering
+ * its box); name: a node's name; small: a node's name on a phone; check: a gate's label.
+ */
+const FONT = { ai: { px: 15, weight: 700 }, mcp: { px: 13, weight: 700 }, name: { px: 12, weight: 400 }, small: { px: 11, weight: 400 }, check: { px: 11, weight: 400 } } as const;
 export type Tone = keyof typeof FONT;
 
 const TOOLS = 2; // index of the MCP target
@@ -56,7 +64,9 @@ interface Row {
   depth: number;
   size: number;
   across: readonly number[];
+  names: Tone;
 }
+type Segment = readonly [Point, Point];
 /**
  * A gateway: the line its checks sit on, in flow coordinates (`gates` are along-positions in AI_GATES / MCP_GATES
  * order), and its drawn box and title in SVG coordinates. `labelAt` places each check's label beside its dot.
@@ -73,6 +83,8 @@ interface Gateway {
 /** Everything one orientation decides. Hand-placed: the wide numbers are today's constants, and check() keeps a frame honest. */
 export interface Frame {
   id: string;
+  /** Tailwind classes for the wrapper div; the two frames share the sm breakpoint, so one is shown at a time. */
+  wrap: "hidden sm:block" | "sm:hidden";
   svgClass: string;
   view: { w: number; h: number };
   axis: "H" | "V"; // H: along = x (wide). V: along = y (stacked).
@@ -83,23 +95,26 @@ export interface Frame {
   ai: Gateway;
   mcp: Gateway;
   glow: Rect;
-  drops: string; // the wires from the gateway boxes into the audit log
+  drops: readonly Segment[]; // the wires from the gateway boxes into the audit log, each horizontal or vertical
   audit: { box: Rect; label: Label; marks: { x0: number; count: number; baseline: number } };
 }
 
-// The AI labels alternate above and below the line: at a 32-unit pitch neighbours would otherwise touch.
+// The wide AI labels alternate above and below the line: at a 32-unit pitch neighbours would otherwise touch.
 const above = { dx: 0, dy: -16, anchor: "middle" } as const;
 const below = { dx: 0, dy: 20, anchor: "middle" } as const;
-export const FRAMES: Record<"wide", Frame> = {
+// Stacked: every label ends left of its line, so a long one grows away from the dots, never into them.
+const beside = { dx: -12, dy: 4, anchor: "end" } as const;
+export const FRAMES: Record<"wide" | "stacked", Frame> = {
   wide: {
     id: "path",
+    wrap: "hidden sm:block",
     svgClass: "block h-auto w-full min-w-[520px] font-sans sm:min-w-0",
     view: { w: 520, h: 308 },
     axis: "H",
     start: 130,
     end: 396,
-    callers: { depth: 124, size: 40, across: [44, 92, 140, 188] },
-    targets: { depth: 118, size: 40, across: [70, 130, 222] },
+    callers: { depth: 124, size: 40, across: [44, 92, 140, 188], names: "name" },
+    targets: { depth: 118, size: 40, across: [70, 130, 222], names: "name" },
     ai: {
       across: 110,
       from: 176,
@@ -120,8 +135,52 @@ export const FRAMES: Record<"wide", Frame> = {
       labelAt: [below, below],
     },
     glow: { x: 182, y: 40, w: 156, h: 108 },
-    drops: "M334 164 V268 M244 250 V268",
+    drops: [
+      [[334, 164], [334, 268]],
+      [[244, 250], [244, 268]],
+    ],
     audit: { box: { x: 6, y: 268, w: 508, h: 34 }, label: { tone: "name", x: 20, lines: [{ text: "Audit log", y: 289 }] }, marks: { x0: 236, count: 38, baseline: 293 } },
+  },
+  // Phones: the wide topology transposed. Callers across the top, the two gateways as columns of checks, targets
+  // below, the audit log a bar at the bottom. Azure AI Foundry sits under the AI line: the 8.1 s request to it
+  // has the least loop left, and a longer lane out would carry its target flash past 12 s.
+  stacked: {
+    id: "path-stacked",
+    wrap: "sm:hidden",
+    svgClass: "block h-auto w-full font-sans",
+    view: { w: 240, h: 402 },
+    axis: "V",
+    start: 48,
+    end: 312,
+    callers: { depth: 40, size: 56, across: [30, 90, 150, 210], names: "small" },
+    targets: { depth: 40, size: 64, across: [110, 39, 200], names: "small" },
+    ai: {
+      across: 106,
+      from: 100,
+      to: 268,
+      gates: [120, 152, 184, 216, 248],
+      box: { x: 6, y: 84, w: 112, h: 192, rx: 14 },
+      title: { tone: "mcp", x: 12, anchor: "start", lines: [{ text: "AI Gateway", y: 104 }] },
+      labelAt: [beside, beside, beside, beside, beside],
+    },
+    mcp: {
+      across: 200,
+      from: 100,
+      to: 248,
+      gates: [142, 206],
+      box: { x: 126, y: 84, w: 108, h: 172, rx: 12 },
+      title: { tone: "mcp", x: 132, anchor: "start", lines: [{ text: "MCP", y: 112 }, { text: "Gateway", y: 126 }] },
+      labelAt: [beside, beside],
+    },
+    glow: { x: 18, y: 100, w: 88, h: 160 },
+    // The AI drop leaves the box sideways and falls through the gap between the Foundry and MCP server boxes: a
+    // straight drop would cross the lane out to Anthropic.
+    drops: [
+      [[118, 286], [150, 286]],
+      [[150, 286], [150, 362]],
+      [[160, 256], [160, 362]],
+    ],
+    audit: { box: { x: 6, y: 362, w: 228, h: 34 }, label: { tone: "small", x: 18, lines: [{ text: "Audit log", y: 383 }] }, marks: { x0: 76, count: 22, baseline: 387 } },
   },
 };
 
@@ -156,6 +215,7 @@ export interface Pulse {
 /** Render-ready: every number, string and class final, so the template does no arithmetic. */
 export interface Figure {
   id: string;
+  wrap: Frame["wrap"];
   viewBox: string;
   svgClass: string;
   wires: readonly string[];
@@ -177,12 +237,31 @@ export interface Figure {
 
 // An S-curve between two points that leaves and arrives along the travel axis.
 const curve = ([a0, c0]: Flow, [a1, c1]: Flow): Flow[] => [[a0, c0], [(a0 + a1) / 2, c0], [(a0 + a1) / 2, c1], [a1, c1]];
-// A cubic's length, by sampling: the pulses move at one speed, so gate timings need real distances.
-const length = ([p0, p1, p2, p3]: readonly Flow[]) => {
+// A cubic as 33 points, 32 steps apart in t: the polyline length() measures and check() tests labels against.
+const sample = ([p0, p1, p2, p3]: readonly Flow[]): Flow[] => {
   const at = (t: number, i: 0 | 1) => (1 - t) ** 3 * p0[i] + 3 * (1 - t) ** 2 * t * p1[i] + 3 * (1 - t) * t ** 2 * p2[i] + t ** 3 * p3[i];
+  return Array.from({ length: 33 }, (_, s) => [at(s / 32, 0), at(s / 32, 1)]);
+};
+// A cubic's length: the pulses move at one speed, so gate timings need real distances.
+const length = (points: readonly Flow[]) => {
+  const p = sample(points);
   let total = 0;
-  for (let s = 1; s <= 32; s++) total += Math.hypot(at(s / 32, 0) - at((s - 1) / 32, 0), at(s / 32, 1) - at((s - 1) / 32, 1));
+  for (let s = 1; s <= 32; s++) total += Math.hypot(p[s][0] - p[s - 1][0], p[s][1] - p[s - 1][1]);
   return total;
+};
+// Whether a segment passes through a rectangle (Liang-Barsky clipping); endpoints on the edge count.
+const crosses = ([[x0, y0], [x1, y1]]: Segment, r: Rect): boolean => {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  let t0 = 0;
+  let t1 = 1;
+  for (const [p, q] of [[-dx, x0 - r.x], [dx, r.x + r.w - x0], [-dy, y0 - r.y], [dy, r.y + r.h - y0]]) {
+    if (p === 0) {
+      if (q < 0) return false;
+    } else if (p < 0) t0 = Math.max(t0, q / p);
+    else t1 = Math.min(t1, q / p);
+  }
+  return t0 <= t1;
 };
 
 const loop = { dur: `${LOOP}s`, repeatCount: "indefinite" } as const;
@@ -228,10 +307,10 @@ function wrap(text: string, maxPx: number, px: number): string[] {
   throw new Error(`gateway-path: "${text}" does not fit ${maxPx}px wide on two lines`);
 }
 /** A node's name centred in its box: one line at cy + 4, two at cy - 3 and cy + 12. */
-function name(r: Rect, text: string): Label {
-  const lines = wrap(text, r.w - 2 * INSET, FONT.name.px);
+function name(r: Rect, text: string, tone: Tone): Label {
+  const lines = wrap(text, r.w - 2 * INSET, FONT[tone].px);
   const first = r.y + r.h / 2 + (lines.length === 1 ? 4 : -3);
-  return { tone: "name", x: r.x + r.w / 2, anchor: "middle", lines: lines.map((line, k) => ({ text: line, y: first + LINE * k })) };
+  return { tone, x: r.x + r.w / 2, anchor: "middle", lines: lines.map((line, k) => ({ text: line, y: first + LINE * k })) };
 }
 /** The area a label covers: cap height above the first baseline, a descender below the last. */
 function bounds(l: Label): Rect {
@@ -258,12 +337,14 @@ interface Raw {
 
 /**
  * The static drawing must hold what it draws: every label sits inside its box (INSET from the sides, as in
- * gateway-map), every check sits on its line, and every box, label and mark stays inside the viewBox. Timing
- * problems surface from times() as draw() builds the animations.
+ * gateway-map), every check sits on its line, every box, label and mark stays inside the viewBox, no label comes
+ * within CLEAR of another label, a box it is not in, or a lane (`lanes`: every wire as a polyline), and a frame shown
+ * on phones is no wider than PHONE_MAX_W. Timing problems surface from times() as draw() builds the animations.
  */
-function check(f: Frame, fig: Omit<Figure, "motion">): void {
+function check(f: Frame, fig: Omit<Figure, "motion">, lanes: readonly (readonly Point[])[]): void {
   const problems: string[] = [];
   const { w: W, h: H } = f.view;
+  if (f.wrap === "sm:hidden" && W > PHONE_MAX_W) problems.push(`a ${W}-unit frame is wider than ${PHONE_MAX_W}, the drawing area on a 320px phone`);
   const within = (r: Rect, box: Rect, pad: number) => r.x >= box.x + pad && r.y >= box.y && r.x + r.w <= box.x + box.w - pad && r.y + r.h <= box.y + box.h;
   const view = { x: 0, y: 0, w: W, h: H };
   const said = (l: Label) => `"${l.lines.map((n) => n.text).join(" ")}"`;
@@ -274,23 +355,36 @@ function check(f: Frame, fig: Omit<Figure, "motion">): void {
     inside(bounds(l), said(l));
     if (!within(bounds(l), box, INSET)) problems.push(`${said(l)} does not sit inside its ${box.w}x${box.h} box`);
   };
+  const boxes: { rect: Rect; label: Label }[] = [...fig.callers, ...fig.targets, { rect: fig.audit.box, label: fig.audit.label }];
   for (const { rect, label } of [...fig.callers, ...fig.targets]) {
     inside(rect, `the ${said(label)} box`);
     fits(label, rect);
   }
   inside(fig.glow, "the glow");
+  const labels: Label[] = [...boxes.map((b) => b.label)];
   for (const [g, drawn] of [f.ai, f.mcp].map((g, i) => [g, fig.gateways[i]] as const)) {
     inside(g.box, `the ${said(g.title)} box`);
     fits(g.title, g.box);
     if (g.labelAt.length !== g.gates.length) problems.push(`${said(g.title)} places ${g.labelAt.length} check labels for ${g.gates.length} checks`);
     if (g.gates.some((a) => a < g.from || a > g.to)) problems.push(`${said(g.title)} has a check off its line`);
     for (const c of drawn.checks) fits(c.label, g.box);
+    boxes.push({ rect: g.box, label: g.title });
+    labels.push(g.title, ...drawn.checks.map((c) => c.label));
   }
   inside(fig.audit.box, "the audit log");
   fits(fig.audit.label, fig.audit.box);
   if (f.audit.marks.count < requests.length) problems.push(`the audit log has ${f.audit.marks.count} marks for ${requests.length} requests`);
   const last = fig.audit.history.length + requests.length - 1;
   inside({ x: f.audit.marks.x0, y: f.audit.marks.baseline - 9, w: last * PITCH + 3, h: 9 }, "the audit marks");
+
+  const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  labels.forEach((l, i) => {
+    const r = bounds(l);
+    const room = { x: r.x - CLEAR, y: r.y - CLEAR, w: r.w + 2 * CLEAR, h: r.h + 2 * CLEAR };
+    for (const other of labels.slice(i + 1)) if (overlaps(room, bounds(other))) problems.push(`${said(l)} touches ${said(other)}`);
+    for (const b of boxes) if (!within(r, b.rect, 0) && overlaps(room, b.rect)) problems.push(`${said(l)} touches the ${said(b.label)} box`);
+    if (lanes.some((lane) => lane.some((p, k) => k > 0 && crosses([lane[k - 1], p], room)))) problems.push(`${said(l)} touches a lane`);
+  });
   if (problems.length) throw new Error(`gateway-path: ${problems.join("; ")}`);
 }
 
@@ -363,8 +457,18 @@ export function draw(f: Frame): Figure {
   const party = (row: Row, a0: number, a1: number, names: readonly string[]) =>
     row.across.map((c, i) => {
       const r = rect(a0, a1, c - row.size / 2, c + row.size / 2);
-      return { rect: r, label: name(r, names[i]) };
+      return { rect: r, label: name(r, names[i], row.names) };
     });
+  // Every wire as a polyline in SVG coordinates, for check()'s label-on-lane rule.
+  const trace = (points: readonly Flow[]) => sample(points).map(xy);
+  const straight = (a0: number, a1: number, c: number): Point[] => [xy([a0, c]), xy([a1, c])];
+  const lanes: Point[][] = [
+    ...f.callers.across.flatMap((c) => [trace(laneIn(c, f.ai)), trace(laneIn(c, f.mcp))]),
+    ...f.targets.across.map((c, i) => (i === TOOLS ? straight(f.mcp.to, f.end, f.mcp.across) : trace(laneOut(c)))),
+    straight(f.ai.from, f.ai.to, f.ai.across),
+    straight(f.mcp.from, f.mcp.to, f.mcp.across),
+    ...f.drops.map((s) => [...s]),
+  ];
   const targetNames = [...MODEL_TARGETS, TOOL_TARGET];
   const callers = party(f.callers, f.start - f.callers.depth, f.start, CALLERS);
   const targets = party(f.targets, f.end, f.end + f.targets.depth, targetNames);
@@ -374,12 +478,13 @@ export function draw(f: Frame): Figure {
   ] as const;
   const figure: Omit<Figure, "motion"> = {
     id: f.id,
+    wrap: f.wrap,
     viewBox: `0 0 ${f.view.w} ${f.view.h}`,
     svgClass: f.svgClass,
     wires: [
       ...f.callers.across.map((c) => `${lane(laneIn(c, f.ai))} ${lane(laneIn(c, f.mcp))}`),
       ...f.targets.across.map((c, i) => (i === TOOLS ? `M${xy([f.mcp.to, f.mcp.across]).join(" ")} ${run(f.end)}` : lane(laneOut(c)))),
-      f.drops,
+      f.drops.map(([[x0, y0], [x1, y1]]) => `M${x0} ${y0} ${x0 === x1 ? `V${y1}` : `H${x1}`}`).join(" "),
     ],
     callers,
     targets,
@@ -396,7 +501,7 @@ export function draw(f: Frame): Figure {
     })),
     audit: { box: f.audit.box, label: f.audit.label, history },
   };
-  check(f, figure);
+  check(f, figure, lanes);
 
   const [gx, gy] = xy([GUARDRAILS, f.ai.across]);
   const [cx, cy] = xy([CACHE, f.ai.across]);

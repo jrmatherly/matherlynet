@@ -3,7 +3,8 @@ import { GENERATIONS, type GenerationKey } from "../data/gateway-generations";
 import { figureBox as box, figureCard, figureNode as node, figureScroll, figureWire as wire } from "../lib/form";
 import { W, layout, type Tone } from "../lib/gateway-map";
 // A retired gateway generation as a map (layout in ../lib/gateway-map.ts). Static: these generations are gone, so
-// nothing moves. Same card, tokens and phone behaviour as GatewayPath; below sm it keeps its 600px and scrolls.
+// nothing moves. Same card and tokens as GatewayPath, but below sm it keeps its 600px and scrolls (with an edge fade
+// and a caption saying so) where GatewayPath draws a stacked frame.
 interface Props {
   generation: GenerationKey;
 }

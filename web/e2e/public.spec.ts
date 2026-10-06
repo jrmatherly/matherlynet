@@ -39,14 +39,33 @@ test("the case study opens from Writing with its figure and table", async ({ pag
   await page.goto("/writing");
   await page.getByRole("link", { name: /One gateway, three generations/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "One gateway, three generations" })).toBeVisible();
-  // One figure per generation.
-  const figures = page.locator('article [role="img"]');
-  await expect(figures).toHaveCount(3);
-  for (const figure of await figures.all()) await expect(figure).toBeVisible();
+  // One visible figure per generation (getByRole skips the gateway drawing hidden at this width).
+  await expect(page.locator("article").getByRole("img")).toHaveCount(3);
   await expect(page.getByRole("table")).toBeVisible();
   // The CSP blocks inline styles, and the dev server this runs against doesn't send the CSP.
   await expect(page.locator("article [style]")).toHaveCount(0);
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /\/og\/writing\.png\?v=/);
+});
+
+test("the gateway figure stacks on phones and stays wide from sm up", async ({ page }) => {
+  const wide = page.locator('svg[viewBox="0 0 520 308"]');
+  const stacked = page.locator('svg[viewBox^="0 0 240 "]');
+  for (const path of ["/", "/writing/ai-gateway-three-generations"]) {
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(path);
+      await page.evaluate(() => document.fonts.ready);
+      await expect(stacked, `${path} at ${width}`).toBeVisible();
+      await expect(wide, `${path} at ${width}`).toBeHidden();
+      expect(await page.evaluate(sidewaysScroll), `${path} at ${width}`).toBe(0);
+      // Drawn at full size or larger, so its 11-unit names render at 11px or more.
+      expect((await stacked.boundingBox())!.width / 240, `${path} at ${width}`).toBeGreaterThanOrEqual(1);
+    }
+    await page.setViewportSize({ width: 640, height: 844 });
+    await page.goto(path);
+    await expect(wide, `${path} at 640`).toBeVisible();
+    await expect(stacked, `${path} at 640`).toBeHidden();
+  }
 });
 
 test("the feed and sitemap carry the case study and no drafts", async ({ request }) => {

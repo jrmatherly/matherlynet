@@ -1,123 +1,120 @@
 ---
-import { figureBox as box, figureCard, figureNode as node, figureScroll, figureWire as wire } from "../lib/form";
+import { figureBox as box, figureCard, figureNode as node, figureWire as wire } from "../lib/form";
 import { FRAMES, draw } from "../lib/gateway-path";
 import GatewayLabel from "./GatewayLabel.astro";
 // How requests move through the AI Gateway and the MCP Gateway: drawn, not a screenshot, so it follows the palette.
-// Below the sm breakpoint (640px) the SVG keeps its 520px drawing width and scrolls inside the card (with an edge
-// fade and a caption saying so): shrinking it makes the labels unreadable.
-// The motion is SMIL (no script, no inline style, so the CSP holds): one loop in which seven model requests cross
-// the AI Gateway's checks (one is refused at the guardrails, one is answered from the cache), three tool calls
-// cross the MCP Gateway, and each leaves a mark in the audit log. Geometry and timing: ../lib/gateway-path.ts.
-const figures = [draw(FRAMES.wide)];
+// Two drawings of the same traffic, one shown at a time: the wide one from the sm breakpoint (640px) up, and below it
+// a stacked one (callers on top, the gateways as columns of checks, targets below) that fits a 320px phone at full
+// size, so nothing scrolls. The motion is SMIL (no script, no inline style, so the CSP holds): one loop in which
+// seven model requests cross the AI Gateway's checks (one is refused at the guardrails, one is answered from the
+// cache), three tool calls cross the MCP Gateway, and each leaves a mark in the audit log. Both figures come
+// render-ready from ../lib/gateway-path.ts; this template does no arithmetic. The SMIL clock is document-wide, so the
+// hidden drawing keeps time and a rotation across sm neither restarts nor desyncs the loop.
+const figures = [draw(FRAMES.wide), draw(FRAMES.stacked)];
 
 const lit = "fill-none stroke-accent stroke-[1.5]";
 const ring = "fill-surface stroke-accent stroke-[1.5]";
 ---
 
 <figure class={figureCard}>
-  <!-- Phones: the right edge fades and a caption says the drawing scrolls. The end padding matches the fade, so once
-       scrolled to the end the fade covers padding, not the drawing. A named, focusable region so a keyboard can
-       scroll it too (Safari doesn't make scrollers focusable on its own). -->
-  {/* eslint-disable-next-line astro/jsx-a11y/no-noninteractive-tabindex -- a scrollable region must take focus (axe scrollable-region-focusable) */}
-  <div role="region" aria-label="Request path diagram" tabindex="0" class={figureScroll}>
   {
     figures.map((f) => (
-      <svg viewBox={f.viewBox} role="img" aria-labelledby={`${f.id}-title ${f.id}-desc`} class={f.svgClass}>
-        <title id={`${f.id}-title`}>How a request moves through the AI Gateway</title>
-        <desc id={`${f.id}-desc`}>Claude Code, Claude Desktop, agents and end users call models through the AI Gateway and tools through the MCP Gateway. A model request passes SSO, rate limits, guardrails, the cache and routing, then goes to Azure AI Foundry or Anthropic; a request that fails the guardrails goes no further, and one the cache can answer never reaches a model. Tool calls pass OAuth and the registry of approved servers on the MCP Gateway, then reach the MCP servers. Every call through either gateway, passed or refused, is written to the audit log.</desc>
-        <defs>
-          <filter id={`${f.id}-glow`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"></feGaussianBlur></filter>
-        </defs>
+      <div class={f.wrap}>
+        <svg viewBox={f.viewBox} role="img" aria-labelledby={`${f.id}-title ${f.id}-desc`} class={f.svgClass}>
+          <title id={`${f.id}-title`}>How a request moves through the AI Gateway</title>
+          <desc id={`${f.id}-desc`}>Claude Code, Claude Desktop, agents and end users call models through the AI Gateway and tools through the MCP Gateway. A model request passes SSO, rate limits, guardrails, the cache and routing, then goes to Azure AI Foundry or Anthropic; a request that fails the guardrails goes no further, and one the cache can answer never reaches a model. Tool calls pass OAuth and the registry of approved servers on the MCP Gateway, then reach the MCP servers. Every call through either gateway, passed or refused, is written to the audit log.</desc>
+          <defs>
+            <filter id={`${f.id}-glow`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"></feGaussianBlur></filter>
+          </defs>
 
-        {f.wires.map((d) => <path class={wire} d={d} />)}
+          {f.wires.map((d) => <path class={wire} d={d} />)}
 
-        {f.callers.map((c) => (
-          <>
-            <rect class={node} x={c.rect.x} y={c.rect.y} width={c.rect.w} height={c.rect.h} rx="8" />
-            <GatewayLabel label={c.label} />
-          </>
-        ))}
-
-        <rect class="fill-accent opacity-20" x={f.glow.x} y={f.glow.y} width={f.glow.w} height={f.glow.h} rx="24" filter={`url(#${f.id}-glow)`} />
-        {f.gateways.map((g) => (
-          <>
-            <rect class={box} x={g.box.x} y={g.box.y} width={g.box.w} height={g.box.h} rx={g.box.rx} />
-            <GatewayLabel label={g.title} />
-          </>
-        ))}
-        {f.gateways.map((g) => (
-          <>
-            <path class="fill-none stroke-accent stroke-2 opacity-60" d={g.line} />
-            {g.checks.map((c) => (
-              <>
-                <GatewayLabel label={c.label} />
-                <circle class={ring} cx={c.at[0]} cy={c.at[1]} r="6" />
-              </>
-            ))}
-          </>
-        ))}
-
-        {f.targets.map((t) => (
-          <>
-            <rect class={node} x={t.rect.x} y={t.rect.y} width={t.rect.w} height={t.rect.h} rx="8" />
-            <GatewayLabel label={t.label} />
-          </>
-        ))}
-
-        <rect class={node} x={f.audit.box.x} y={f.audit.box.y} width={f.audit.box.w} height={f.audit.box.h} rx="8" />
-        <GatewayLabel label={f.audit.label} />
-        {f.audit.history.map((m) => <rect class="fill-muted opacity-40" x={m.x} y={m.y} width="3" height={m.h} rx="1" />)}
-
-        <!-- Everything that moves. Hidden under reduced motion, which leaves the diagram above complete. -->
-        <g class="motion-reduce:hidden">
-          {f.motion.callers.map((c) => (
-            <rect class={lit} x={c.rect.x} y={c.rect.y} width={c.rect.w} height={c.rect.h} rx="8" opacity="0">
-              <animate {...c.flash} />
-            </rect>
-          ))}
-          {f.motion.targets.map((t) => (
-            <rect class={lit} x={t.rect.x} y={t.rect.y} width={t.rect.w} height={t.rect.h} rx="8" opacity="0">
-              <animate {...t.flash} />
-            </rect>
-          ))}
-          {f.motion.checks.map((c) => (
-            <circle class="fill-accent" cx={c.at[0]} cy={c.at[1]} r="6" opacity="0">
-              <animate {...c.flash} />
-            </circle>
-          ))}
-          {f.motion.pulses.map((p) => (
+          {f.callers.map((c) => (
             <>
-              <g data-pulse={p.kind}>
-                {p.dots.map((d) => (
-                  <g opacity="0">
-                    <circle class:list={["fill-accent", d.shade]} r={d.r} />
-                    <animateMotion {...d.motion} />
-                    <animate {...d.show} />
-                  </g>
-                ))}
-              </g>
-              {/* Hollow, not just red: in red-accent palettes danger and accent are close hues. */}
-              <rect class={p.mark.refused ? "fill-none stroke-danger" : "fill-accent"} x={p.mark.x} y={p.mark.y} width="3" height={p.mark.h} rx="1" opacity="0">
-                <animate {...p.mark.anim} />
-              </rect>
+              <rect class={node} x={c.rect.x} y={c.rect.y} width={c.rect.w} height={c.rect.h} rx="8" />
+              <GatewayLabel label={c.label} />
             </>
           ))}
-          <!-- The refused request: a cross on the guardrails check. -->
-          <g class="fill-none stroke-danger stroke-2" stroke-linecap="round" opacity="0">
-            <circle class="fill-surface" cx={f.motion.refusal.at[0]} cy={f.motion.refusal.at[1]} r="8" />
-            <path d={f.motion.refusal.cross} />
-            <animate {...f.motion.refusal.show} />
+
+          <rect class="fill-accent opacity-20" x={f.glow.x} y={f.glow.y} width={f.glow.w} height={f.glow.h} rx="24" filter={`url(#${f.id}-glow)`} />
+          {f.gateways.map((g) => (
+            <>
+              <rect class={box} x={g.box.x} y={g.box.y} width={g.box.w} height={g.box.h} rx={g.box.rx} />
+              <GatewayLabel label={g.title} />
+            </>
+          ))}
+          {f.gateways.map((g) => (
+            <>
+              <path class="fill-none stroke-accent stroke-2 opacity-60" d={g.line} />
+              {g.checks.map((c) => (
+                <>
+                  <GatewayLabel label={c.label} />
+                  <circle class={ring} cx={c.at[0]} cy={c.at[1]} r="6" />
+                </>
+              ))}
+            </>
+          ))}
+
+          {f.targets.map((t) => (
+            <>
+              <rect class={node} x={t.rect.x} y={t.rect.y} width={t.rect.w} height={t.rect.h} rx="8" />
+              <GatewayLabel label={t.label} />
+            </>
+          ))}
+
+          <rect class={node} x={f.audit.box.x} y={f.audit.box.y} width={f.audit.box.w} height={f.audit.box.h} rx="8" />
+          <GatewayLabel label={f.audit.label} />
+          {f.audit.history.map((m) => <rect class="fill-muted opacity-40" x={m.x} y={m.y} width="3" height={m.h} rx="1" />)}
+
+          <!-- Everything that moves. Hidden under reduced motion, which leaves the diagram above complete. -->
+          <g class="motion-reduce:hidden">
+            {f.motion.callers.map((c) => (
+              <rect class={lit} x={c.rect.x} y={c.rect.y} width={c.rect.w} height={c.rect.h} rx="8" opacity="0">
+                <animate {...c.flash} />
+              </rect>
+            ))}
+            {f.motion.targets.map((t) => (
+              <rect class={lit} x={t.rect.x} y={t.rect.y} width={t.rect.w} height={t.rect.h} rx="8" opacity="0">
+                <animate {...t.flash} />
+              </rect>
+            ))}
+            {f.motion.checks.map((c) => (
+              <circle class="fill-accent" cx={c.at[0]} cy={c.at[1]} r="6" opacity="0">
+                <animate {...c.flash} />
+              </circle>
+            ))}
+            {f.motion.pulses.map((p) => (
+              <>
+                <g data-pulse={p.kind}>
+                  {p.dots.map((d) => (
+                    <g opacity="0">
+                      <circle class:list={["fill-accent", d.shade]} r={d.r} />
+                      <animateMotion {...d.motion} />
+                      <animate {...d.show} />
+                    </g>
+                  ))}
+                </g>
+                {/* Hollow, not just red: in red-accent palettes danger and accent are close hues. */}
+                <rect class={p.mark.refused ? "fill-none stroke-danger" : "fill-accent"} x={p.mark.x} y={p.mark.y} width="3" height={p.mark.h} rx="1" opacity="0">
+                  <animate {...p.mark.anim} />
+                </rect>
+              </>
+            ))}
+            <!-- The refused request: a cross on the guardrails check. -->
+            <g class="fill-none stroke-danger stroke-2" stroke-linecap="round" opacity="0">
+              <circle class="fill-surface" cx={f.motion.refusal.at[0]} cy={f.motion.refusal.at[1]} r="8" />
+              <path d={f.motion.refusal.cross} />
+              <animate {...f.motion.refusal.show} />
+            </g>
+            <!-- The cache hit: a tick on the cache check while the answer turns back. -->
+            <g class="fill-none stroke-success stroke-2" stroke-linecap="round" stroke-linejoin="round" opacity="0">
+              <circle class="fill-surface" cx={f.motion.hit.at[0]} cy={f.motion.hit.at[1]} r="8" />
+              <path d={f.motion.hit.tick} />
+              <animate {...f.motion.hit.show} />
+            </g>
           </g>
-          <!-- The cache hit: a tick on the cache check while the answer turns back. -->
-          <g class="fill-none stroke-success stroke-2" stroke-linecap="round" stroke-linejoin="round" opacity="0">
-            <circle class="fill-surface" cx={f.motion.hit.at[0]} cy={f.motion.hit.at[1]} r="8" />
-            <path d={f.motion.hit.tick} />
-            <animate {...f.motion.hit.show} />
-          </g>
-        </g>
-      </svg>
+        </svg>
+      </div>
     ))
   }
-  </div>
-  <figcaption class="text-xs text-muted sm:hidden">Swipe to see where requests go.</figcaption>
 </figure>
