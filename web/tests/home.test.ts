@@ -16,6 +16,15 @@ describe("Availability", () => {
 });
 
 describe("GatewayPath", () => {
+  // The wide drawing as rendered today, SMIL timings included. A layout change for phones must leave it untouched.
+  it("draws the wide figure exactly as before", async () => {
+    const html = await render(GatewayPath);
+    // Astro's dev annotations carry an absolute path and a line number, neither of which is part of the drawing.
+    const svg = html.match(/<svg[\s\S]*?<\/svg>/)?.[0]?.replace(/ data-astro-source-(?:file|loc)="[^"]*"/g, "");
+    expect(svg).toBeDefined();
+    await expect(svg).toMatchFileSnapshot("./__snapshots__/gateway-path-wide.svg");
+  });
+
   it("is an accessible figure that scrolls rather than shrinks on phones", async () => {
     const html = await render(GatewayPath);
     expect(html).toContain('role="img"');

@@ -159,6 +159,10 @@ out/                   aspire publish output (gitignored)
 - The home gateway figure (`GatewayPath.astro`) animates with SMIL, not script or inline style, so the CSP holds. Pulse
   timings are computed in the frontmatter from lane lengths at one `SPEED`; `home.test.ts` pins the pulse counts and
   that every `keyTimes` list runs 0 to 1 in order (a bad list makes the browser drop the animation).
+- `web/tests/__snapshots__/gateway-path-wide.svg` pins the home gateway figure's wide SVG, SMIL timings included
+  (`home.test.ts`, `toMatchFileSnapshot`). Astro's dev `data-astro-source-file`/`-loc` attributes (an absolute path and
+  a line number) are stripped before comparing. Never run `vitest -u` to make a layout change pass: a diff means the
+  wide drawing changed, so fix the change, and update the file only for an intended change to the wide figure.
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
 - /playground is a browser simulation of the gateway, with a live path when `PLAYGROUND_MODEL_URL` is set. Live, the
   page POSTs the visitor's own request to `/api/playground`, and the server checks it, sends it to a self-hosted
