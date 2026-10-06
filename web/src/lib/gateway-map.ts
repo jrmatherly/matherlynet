@@ -76,8 +76,8 @@ interface Placed<N extends Node<string> = Node<string>> extends Rect {
   node: N;
   col: Col;
 }
-type Point = readonly [number, number];
-type Segment = readonly [Point, Point];
+export type Point = readonly [number, number];
+export type Segment = readonly [Point, Point];
 
 const lines = (v: Lines | undefined): readonly string[] => (v === undefined ? [] : typeof v === "string" ? [v] : v);
 export const name = (n: Node<string>) => lines(n.label).join(" ");
@@ -88,15 +88,17 @@ export function width(text: string, px: number, weight: 400 | 700 = 400): number
   let em = 0;
   for (const ch of text) {
     const w = ADVANCE[weight][ch.charCodeAt(0) - 32];
-    if (w === undefined) throw new Error(`gateway-map: no Geist width for "${ch}" in "${text}"`);
+    if (w === undefined) throw new Error(`no Geist width for "${ch}" in "${text}"`);
     em += w;
   }
   return em * px;
 }
 
-const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+export const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 // Inclusive, so two zero-width rects (a lane and a region edge) register when they cross.
 const touches = (a: Rect, b: Rect) => a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
+/** A horizontal or vertical segment as a path. */
+export const path = ([[x1, y1], [x2, y2]]: Segment) => `M${x1} ${y1} ${x1 === x2 ? `V${y2}` : `H${x2}`}`;
 const segmentRect = ([[x1, y1], [x2, y2]]: Segment): Rect => ({
   x: Math.min(x1, x2),
   y: Math.min(y1, y2),
@@ -282,7 +284,6 @@ export function layout(gen: Generation<string>): Drawing {
     }
   if (problems.length) throw new Error(`${gen.title}: ${problems.join("; ")}`);
 
-  const path = ([[x1, y1], [x2, y2]]: Segment) => `M${x1} ${y1} ${x1 === x2 ? `V${y2}` : `H${x2}`}`;
   return {
     height: H,
     regions: regions.map((g) => ({ d: `M${g.points.map((p) => p.join(" ")).join(" L")} Z` })),

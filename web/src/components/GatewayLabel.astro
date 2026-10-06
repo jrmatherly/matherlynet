@@ -1,23 +1,17 @@
 ---
-import type { Label, Tone } from "../lib/gateway-path";
-// One SVG label from GatewayPath's figure. A one-line label is bare text; a wrapped name is one tspan per line.
+import { FONT, type Label } from "../lib/gateway-path";
+// One SVG label from GatewayPath's figure.
 interface Props {
   label: Label;
 }
 const { label: t } = Astro.props;
-const tone: Record<Tone, string> = {
-  ai: "fill-foreground text-[15px] font-bold",
-  mcp: "fill-foreground text-[13px] font-bold",
-  name: "fill-foreground text-[12px]",
-  small: "fill-foreground text-[11px]",
-  check: "fill-foreground text-[11px]",
-};
+const cls = FONT[t.tone].class;
 ---
 
 {
   t.lines.length === 1 ? (
-    <text class={tone[t.tone]} x={t.x} y={t.lines[0].y} text-anchor={t.anchor}>{t.lines[0].text}</text>
+    <text class={cls} x={t.x} y={t.lines[0].y} text-anchor={t.anchor}>{t.lines[0].text}</text>
   ) : (
-    <text class={tone[t.tone]} text-anchor={t.anchor}>{t.lines.map((l) => <tspan x={t.x} y={l.y}>{l.text}</tspan>)}</text>
+    <text class={cls} text-anchor={t.anchor}>{t.lines.map((l) => <tspan x={t.x} y={l.y}>{l.text}</tspan>)}</text>
   )
 }

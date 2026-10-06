@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { FRAMES, draw, type Frame } from "../src/lib/gateway-path";
+import { FRAMES, draw } from "../src/lib/gateway-path";
 
-const wide: Frame = FRAMES.wide;
-const stacked: Frame = FRAMES.stacked;
+const { wide, stacked } = FRAMES;
 const texts = (lines: readonly { text: string }[]) => lines.map((l) => l.text);
 const kinds = ["passed", "tool", "passed", "cached", "passed", "tool", "refused", "passed", "tool", "passed"];
 
@@ -13,16 +12,19 @@ describe("draw", () => {
     expect(figure.motion.pulses.map((p) => p.kind)).toEqual(kinds);
     expect(figure.motion.pulses[0].dots[0].motion.path).toBe("M130 44 C153 44 153 110 176 110 H344 C370 110 370 70 396 70");
     expect(figure.motion.pulses[3].dots[0].motion.keyPoints).toBe("0;0;0.5;0.5;1;1");
-    expect(figure.callers[1].label).toEqual({ tone: "name", x: 68, anchor: "middle", lines: [{ text: "Claude Desktop", y: 96 }] });
+    expect(figure.callers[1].label).toEqual({ tone: "text12", x: 68, anchor: "middle", lines: [{ text: "Claude Desktop", y: 96 }] });
+    expect(figure.glow).toEqual({ x: 182, y: 40, w: 156, h: 108 });
   });
 
   it("draws the stacked frame from the same table, with the lanes running down the page and names at 11px on two lines", () => {
     const figure = draw(stacked);
     expect(figure.viewBox).toBe("0 0 240 402");
+    expect(figure.wrap).toBe("sm:hidden");
     expect(figure.motion.pulses.map((p) => p.kind)).toEqual(kinds);
     expect(figure.motion.pulses[0].dots[0].motion.path).toBe("M30 48 C30 74 106 74 106 100 V268 C106 290 110 290 110 312");
-    expect(figure.callers[1].label).toEqual({ tone: "small", x: 90, anchor: "middle", lines: [{ text: "Claude", y: 25 }, { text: "Desktop", y: 40 }] });
-    expect(figure.wires.at(-1)).toBe("M118 286 H150 M150 286 V362 M160 256 V362");
+    expect(figure.callers[1].label).toEqual({ tone: "text11", x: 90, anchor: "middle", lines: [{ text: "Claude", y: 25 }, { text: "Desktop", y: 40 }] });
+    // The AI drop leaves the box's right edge and falls between the Foundry and MCP server boxes to the audit log.
+    expect(figure.wires.at(-1)).toBe("M118 266 H150 M150 266 V362 M160 256 V362");
   });
 
   it("refuses a phone frame wider than the drawing area of a 320px phone", () => {
@@ -31,9 +33,22 @@ describe("draw", () => {
 
   it("refuses a label that touches a lane or another label, naming both", () => {
     const onLine = { dx: 0, dy: 4, anchor: "end" } as const;
-    expect(() => draw({ ...stacked, ai: { ...stacked.ai, labelAt: [onLine, ...stacked.ai.labelAt.slice(1)] } })).toThrow(/"SSO" touches a lane/);
+    expect(() => draw({ ...stacked, ai: { ...stacked.ai, gates: [[stacked.ai.gates[0][0], onLine], ...stacked.ai.gates.slice(1)] } })).toThrow(/"SSO" touches a lane/);
     const lower = { ...stacked.mcp.title, lines: [{ text: "MCP", y: 140 }, { text: "Gateway", y: 154 }] };
     expect(() => draw({ ...stacked, mcp: { ...stacked.mcp, title: lower } })).toThrow(/"MCP Gateway" touches "OAuth"/);
+  });
+
+  it("refuses a gateway line that leaves its box and a drop that floats off a box or stops short of the audit log", () => {
+    expect(() => draw({ ...wide, ai: { ...wide.ai, to: 360 } })).toThrow(/"AI Gateway"'s line leaves its box/);
+    const floating = [[118, 286], [150, 286], [150, 362]] as const;
+    expect(() => draw({ ...stacked, drops: [floating, stacked.drops[1]] })).toThrow(/drop 1 starts at \[118, 286\], not on a gateway box's edge/);
+    const short = [[160, 256], [160, 340]] as const;
+    expect(() => draw({ ...stacked, drops: [stacked.drops[0], short] })).toThrow(/drop 2 ends at y 340, not on the audit log's top edge \(362\)/);
+  });
+
+  it("refuses a check that no request crosses: a gate at the line's end is never passed", () => {
+    const gates = [...stacked.ai.gates.slice(0, -1), [stacked.ai.to, stacked.ai.gates[4][1]] as const];
+    expect(() => draw({ ...stacked, ai: { ...stacked.ai, gates } })).toThrow(/no request lights Routing/);
   });
 
   it("refuses a frame whose lanes run so long that a request ends after the loop", () => {

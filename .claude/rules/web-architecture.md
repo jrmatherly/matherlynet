@@ -57,13 +57,14 @@ web/
                        respond() (text/event-stream, the 6 s deadline, 503 past 6 calls per process), report() (a
                        code to Sentry and the log, never the caught error)
   src/lib/gateway-map.ts  GatewayMap's geometry (pure): layout() places nodes, wires, labels and region outlines and
-                       throws when a label would not fit or would cross a lane, node or region edge (Geist widths,
-                       width() exported for gateway-path.ts)
-  src/lib/gateway-path.ts  GatewayPath's geometry and timing (pure): FRAMES.wide and FRAMES.stacked (phones, 240
-                       wide), one requests table and SPEED; draw(frame) returns a render-ready Figure and throws when a
-                       name would not fit its box on two lines, a label would touch another label, a box or a lane, a
-                       phone frame would be wider than PHONE_MAX_W (246), or an animation's keyTimes would leave the
-                       12 s loop
+                       throws when a label would not fit or would cross a lane, node or region edge (Geist widths;
+                       Rect, Point, Segment, overlaps(), path() and width() exported for gateway-path.ts)
+  src/lib/gateway-path.ts  GatewayPath's geometry and timing (pure): FRAMES.wide and FRAMES.stacked (phone: true, 240
+                       wide), one requests table and SPEED; FIGURES is both drawn; draw(frame) returns a render-ready
+                       Figure (FONT[tone].class gives each label its classes) and throws when a name would not fit its
+                       box on two lines, a label would touch another label, a box or a lane, a gateway line or an
+                       audit drop would leave its box, a phone frame would be wider than PHONE_MAX_W (246), no request
+                       would light a check, or an animation's keyTimes would leave the 12 s loop
   src/data/gateway.ts  gates, callers, targets, guardrail categories, audit retention: shared by GatewayPath, GatewayMap
                        and the playground
   src/data/gateway-generations.ts  the two retired generations GatewayMap draws: hub, callers, services, upstreams,

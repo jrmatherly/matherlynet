@@ -48,8 +48,8 @@ test("the case study opens from Writing with its figure and table", async ({ pag
 });
 
 test("the gateway figure stacks on phones and stays wide from sm up", async ({ page }) => {
-  const wide = page.locator('svg[viewBox="0 0 520 308"]');
-  const stacked = page.locator('svg[viewBox^="0 0 240 "]');
+  const wide = page.locator("svg:has(#path-title)");
+  const stacked = page.locator("svg:has(#path-stacked-title)");
   for (const path of ["/", "/writing/ai-gateway-three-generations"]) {
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 844 });
@@ -59,7 +59,8 @@ test("the gateway figure stacks on phones and stays wide from sm up", async ({ p
       await expect(wide, `${path} at ${width}`).toBeHidden();
       expect(await page.evaluate(sidewaysScroll), `${path} at ${width}`).toBe(0);
       // Drawn at full size or larger, so its 11-unit names render at 11px or more.
-      expect((await stacked.boundingBox())!.width / 240, `${path} at ${width}`).toBeGreaterThanOrEqual(1);
+      const scale = await stacked.evaluate((el: SVGSVGElement) => el.getBoundingClientRect().width / el.viewBox.baseVal.width);
+      expect(scale, `${path} at ${width}`).toBeGreaterThanOrEqual(1);
     }
     await page.setViewportSize({ width: 640, height: 844 });
     await page.goto(path);

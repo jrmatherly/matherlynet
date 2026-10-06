@@ -157,17 +157,21 @@ out/                   aspire publish output (gitignored)
   neither); `lazy` adds `loading="lazy"` and `decoding="async"`. /about's is eager (above the fold); the other two are
   lazy, so a phone never downloads the one /changelog hides below `md`. `pages.test.ts` pins this.
 - The home gateway figure (`GatewayPath.astro`) animates with SMIL, not script or inline style, so the CSP holds. It
-  renders two frames from `lib/gateway-path.ts`: the wide one (`hidden sm:block`) and a stacked one for phones
-  (`sm:hidden`, 240 units wide: callers on top, the gateways as columns of checks, targets below, the audit log a bar
-  at the bottom), each with its own ids and `role="img"`. `draw(frame)` returns a render-ready `Figure`, so
-  `GatewayPath.astro` and `GatewayLabel.astro` do no math, and its `motion` object is the only part under
-  `motion-reduce:hidden`. The engine works in flow coordinates, so both frames share one requests table and `SPEED`,
-  and pulse timings are computed there from lane lengths. `draw()` measures names with `gateway-map.ts`'s exported
-  Geist `width()` and wraps a name onto two lines or throws naming it; `check()` throws when a label leaves its box or
-  touches another label, a box or a lane, or a phone frame is wider than `PHONE_MAX_W` (246); `times()` throws on
-  keyTimes outside the 12 s loop or out of order (a bad list makes the browser drop the animation). If `times()`
-  throws, move geometry, never the requests or `SPEED`. `tests/gateway-path.test.ts` pins those throws; `home.test.ts`
-  pins each frame's pulse counts, labels and check order, and that every `keyTimes` list runs 0 to 1 in order.
+  renders `FIGURES` from `lib/gateway-path.ts`, `draw()` of `FRAMES.wide` (`hidden sm:block`) and `FRAMES.stacked`
+  (`phone: true`, so `sm:hidden` and no wider than `PHONE_MAX_W`, 246; 240 units wide: callers on top, the gateways as
+  columns of checks, targets below, the audit log a bar at the bottom), each with its own ids and `role="img"`. A
+  `Figure` is render-ready, so `GatewayPath.astro` and `GatewayLabel.astro` do no math (`GatewayLabel` takes a label's
+  classes from `FONT[tone].class`; the tones are `bold15`, `bold13`, `text12` and `text11`, and `Frame.names` picks the
+  callers' and targets'), and its `motion` object is the only part under `motion-reduce:hidden`. The engine works in
+  flow coordinates, so both frames share one requests table and `SPEED`, and pulse timings are computed there from
+  lane lengths. `Rect`, `Point`, `Segment`, `overlaps()`, `path()` and the Geist `width()` come from `gateway-map.ts`.
+  `draw()` wraps a name onto two lines or throws naming it; `check()` throws when a label leaves its box or touches
+  another label, a box or a lane, a gateway line leaves its box, an audit drop does not run from a gateway box's edge
+  to the audit log's top, or a phone frame is wider than `PHONE_MAX_W`; `flash()` throws for a check no request
+  crosses, and `times()` on keyTimes outside the 12 s loop or out of order (either makes the browser drop the
+  animation). If `times()` throws, move geometry, never the requests or `SPEED`. `tests/gateway-path.test.ts` pins
+  those throws; `home.test.ts` pins each frame's pulse counts, labels and check order, and that every `keyTimes` list
+  runs 0 to 1 in order.
 - `web/tests/__snapshots__/gateway-path-wide.svg` pins the home gateway figure's wide SVG, SMIL timings included
   (`home.test.ts`, `toMatchFileSnapshot`). Astro's dev `data-astro-source-file`/`-loc` attributes (an absolute path and
   a line number) are stripped before comparing. Never run `vitest -u` to make a layout change pass: a diff means the

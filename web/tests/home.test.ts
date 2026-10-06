@@ -23,8 +23,8 @@ describe("GatewayPath", () => {
   const joined = (svg: string) => svg.replace(/<\/tspan><tspan[^>]*>/g, " ").replace(/<\/?tspan[^>]*>/g, "");
   const ids = (svg: string) => [...svg.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 
-  // The wide drawing as rendered before the stacked one existed, SMIL timings included.
-  it("draws the wide figure exactly as before", async () => {
+  // The whole wide SVG, SMIL timings included; update the file only for an intended change to the wide figure.
+  it("pins the wide SVG", async () => {
     const [wide] = svgs(await render(GatewayPath));
     expect(wide).toBeDefined();
     await expect(wide).toMatchFileSnapshot("./__snapshots__/gateway-path-wide.svg");
@@ -36,7 +36,6 @@ describe("GatewayPath", () => {
     expect(more).toEqual([]);
     expect(html).toMatch(/<div class="hidden sm:block"[^>]*>\s*<svg viewBox="0 0 520 308"/);
     expect(html).toMatch(/<div class="sm:hidden"[^>]*>\s*<svg viewBox="0 0 240 /);
-    expect(+stacked.match(/viewBox="0 0 (\d+) \d+"/)![1]).toBeLessThanOrEqual(246);
     expect(ids(wide)).toEqual(["path-title", "path-desc", "path-glow"]);
     expect(ids(stacked)).toEqual(["path-stacked-title", "path-stacked-desc", "path-stacked-glow"]);
     for (const svg of [wide, stacked]) {
