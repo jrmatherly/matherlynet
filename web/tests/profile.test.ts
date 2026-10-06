@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { availability, career, gateway, headline, recruiterFacts, work, workGroups, type WorkItem } from "../src/data/profile";
+import { aboutHeadline, availability, career, gateway, headline, perspectives, recruiterFacts, work, workGroups, type WorkItem } from "../src/data/profile";
+import { ogCards } from "../src/lib/og";
 
 describe("profile data", () => {
   it("has a headline and no placeholder availability copy", () => {
@@ -62,5 +63,13 @@ describe("profile data", () => {
 
   it("lists the recruiter screening facts", () => {
     expect(recruiterFacts.map((f) => f.term)).toEqual(["Current title", "Reports to", "Team", "Built", "Location", "Education", "Writes code in"]);
+  });
+
+  it("reads the current title and the about headline from one place each", () => {
+    const recruiters = perspectives.find((p) => p.id === "recruiters");
+    expect(recruiterFacts[0].detail).toBe(career[0].title);
+    expect(recruiters?.body).toContain(career[0].title);
+    expect(recruiters?.headline).toBe(aboutHeadline);
+    expect(ogCards.about.title).toBe(aboutHeadline);
   });
 });

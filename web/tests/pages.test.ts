@@ -37,14 +37,30 @@ describe("About", () => {
     expect(html.match(/<h1[^>]*>([^<]*)<\/h1>/)?.[1]).toBe(esc(profile.aboutHeadline));
   });
 
-  it("shows one portrait and the availability line", async () => {
+  it("shows one eager portrait and the availability line", async () => {
     const html = await page(About, "/about");
     const main = html.match(/<main[\s\S]*<\/main>/)?.[0] ?? "";
-    const imgs = main.match(/<img[^>]*>/g) ?? [];
-    expect(imgs).toHaveLength(1);
-    expect(imgs[0]).toContain('alt="Portrait of Jason Matherly"');
+    const portraits = portraitTags(main);
+    expect(portraits).toHaveLength(1);
+    expect(portraits[0]).toContain('alt="Portrait of Jason Matherly"');
+    expect(portraits[0]).not.toContain("loading=");
     if (profile.availability === null) expect(main).not.toContain("bg-success");
-    else expect(html).toContain(esc(profile.availability));
+    else expect(main).toContain(esc(profile.availability));
+  });
+});
+
+// The /about portrait is above the fold and eager; the other two are lazy so a phone never downloads the one
+// /changelog hides below md, and the home strip's loads when scrolled to.
+const portraitTags = (html: string) => html.match(/<img[^>]*alt="Portrait of[^>]*>/g) ?? [];
+
+describe("portraits elsewhere", () => {
+  it("lazy-load, and /changelog hides its 132px one below md", async () => {
+    const [home] = portraitTags(await page(Home, "/"));
+    expect(home).toContain('loading="lazy"');
+    const [changelog] = portraitTags(await page(Changelog, "/changelog"));
+    expect(changelog).toContain('loading="lazy"');
+    expect(changelog).toContain('sizes="132px"');
+    expect(changelog).toMatch(/class="[^"]*\bhidden\b[^"]*\bmd:block\b/);
   });
 });
 

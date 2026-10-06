@@ -148,9 +148,10 @@ out/                   aspire publish output (gitignored)
   `sameAs` holds LinkedIn only (the footer and JSON-LD read it).
 - `aboutHeadline` in `profile.ts` is /about's h1, its share card title (`og.ts`) and the home recruiters headline.
   `currentTitle` (not exported) feeds `career[0].title`, the recruiter facts and the recruiters perspective, so a
-  retitle is one edit; `pages.test.ts` bans "Manager of Infrastructure" and "nearly 17" across pages, data and cards.
-  /about's header carries the portrait and the availability line, like home and /changelog, and its skills are ruled
-  rows (group name, then pills) as on /work.
+  retitle is one edit; `pages.test.ts` bans "Manager of Infrastructure" and "nearly 17" on the four content pages
+  (/, /about, /changelog, /work), in the profile data and on the share cards. /about's header carries the portrait
+  and the availability line (/changelog's header has both; home has the line in its hero and the portrait in
+  `AboutStrip`), and its skills are ruled rows with a label column like /work's: group name, then pills.
 - The home gateway figure (`GatewayPath.astro`) animates with SMIL, not script or inline style, so the CSP holds. Pulse
   timings are computed in the frontmatter from lane lengths at one `SPEED`; `home.test.ts` pins the pulse counts and
   that every `keyTimes` list runs 0 to 1 in order (a bad list makes the browser drop the animation).
