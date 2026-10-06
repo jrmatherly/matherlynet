@@ -84,7 +84,7 @@ export const name = (n: Node<string>) => lines(n.label).join(" ");
 const height = (n: Node<string>) => Math.max(40, 16 + LINE.label * lines(n.label).length + LINE.small * lines(n.note).length);
 const cy = (r: Rect) => r.y + r.h / 2;
 
-function width(text: string, px: number, weight: 400 | 700 = 400): number {
+export function width(text: string, px: number, weight: 400 | 700 = 400): number {
   let em = 0;
   for (const ch of text) {
     const w = ADVANCE[weight][ch.charCodeAt(0) - 32];
