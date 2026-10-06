@@ -1,11 +1,11 @@
 ---
 import Availability from "../components/Availability.astro";
 import Cta from "../components/Cta.astro";
+import Portrait from "../components/Portrait.astro";
 import RailEntry from "../components/RailEntry.astro";
 import { availability, career, contact, type Milestone, recruiterFacts, resumeUrl } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
-import { person } from "../lib/site";
 
 // The timeline page, newest first: each role's milestones (the years since it started), then the role at its start
 // year. The perspectives live on the home page and the gateway's generations on /work and in the home case study.
@@ -35,8 +35,9 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
               <a href={resumeUrl} target="_blank" rel="noopener" class="font-medium text-muted underline decoration-border decoration-2 underline-offset-4">Read the résumé</a>
             </div>
           </div>
-          <!-- The home page shows the portrait on phones; here it would sit alone under the links. -->
-          <img src="/portrait.jpg" srcset="/portrait-320.jpg 320w, /portrait.jpg 648w" sizes="132px" width="648" height="648" alt={`Portrait of ${person.name}`} class="hidden aspect-square h-auto w-[132px] object-cover md:block" />
+          <!-- The home page shows the portrait on phones; here it would sit alone under the links. Lazy, so a phone
+               doesn't download the hidden image (an eager one is fetched even when display:none). -->
+          <Portrait class="hidden w-[132px] md:block" sizes="132px" lazy />
         </div>
         <dl class="mt-4 grid max-w-3xl grid-cols-[max-content_1fr] gap-x-5 gap-y-1.5 text-sm">
           {

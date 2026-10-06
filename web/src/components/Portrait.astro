@@ -1,0 +1,24 @@
+---
+import { person } from "../lib/site";
+
+// The width class and any frame (size by class, never a style attribute: the CSP blocks it) come with the matching
+// `sizes`, or both are left to the 160px default.
+type Props = ({ class: string; sizes: string } | { class?: undefined; sizes?: undefined }) & {
+  // For a portrait below the fold, or hidden at the current width.
+  lazy?: boolean;
+};
+const { class: className = "w-40 rounded-xl border border-border", sizes = "160px", lazy = false } = Astro.props;
+---
+
+<!-- h-auto stops height="648" stretching the image to the intrinsic height. -->
+<img
+  src="/portrait.jpg"
+  srcset="/portrait-320.jpg 320w, /portrait.jpg 648w"
+  sizes={sizes}
+  width="648"
+  height="648"
+  alt={`Portrait of ${person.name}`}
+  loading={lazy ? "lazy" : undefined}
+  decoding={lazy ? "async" : undefined}
+  class:list={["aspect-square h-auto object-cover", className]}
+/>
