@@ -2,15 +2,18 @@
 import Availability from "../components/Availability.astro";
 import Cta from "../components/Cta.astro";
 import RailEntry from "../components/RailEntry.astro";
-import { availability, career, contact, recruiterFacts, resumeUrl } from "../data/profile";
+import { availability, career, contact, type Milestone, recruiterFacts, resumeUrl } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { ogImage } from "../lib/og";
 import { person } from "../lib/site";
 
-// The timeline page: roles, years, scope and results, newest first. The perspectives live on the home page and the
-// gateway's generations on /work.
-const year = (role: (typeof career)[number]) => role.start.slice(-4);
-const period = (role: (typeof career)[number]) => `${role.title}, ${year(role)} to ${role.end?.slice(-4) ?? "now"}`;
+// The timeline page, newest first: each role's milestones (the years since it started), then the role at its start
+// year. The perspectives live on the home page and the gateway's generations on /work and in the home case study.
+const entries = career.flatMap((role): (Milestone & { meta?: string })[] => {
+  const year = role.start.slice(-4);
+  const meta = `${role.title}, ${year} to ${role.end?.slice(-4) ?? "now"}`;
+  return [...(role.milestones ?? []), { year, meta, heading: role.heading, highlights: role.highlights }];
+});
 const link = "font-semibold underline decoration-accent decoration-2 underline-offset-4";
 ---
 
@@ -48,16 +51,16 @@ const link = "font-semibold underline decoration-accent decoration-2 underline-o
       </RailEntry>
 
       {
-        career.map((role, i) => (
-          <RailEntry year={year(role)} now={!role.end} meta={period(role)} id={i === 0 ? "work" : i === 1 ? "career" : undefined}>
-            <h2 class="display text-3xl">{role.heading}</h2>
-            {role.summary && <p class="max-w-[62ch]">{role.summary}</p>}
+        entries.map((entry, i) => (
+          <RailEntry year={entry.year} now={i === 0} meta={entry.meta} id={i === 0 ? "work" : undefined}>
+            <h2 class="display text-3xl">{entry.heading}</h2>
+            {entry.summary && <p class="max-w-[62ch]">{entry.summary}</p>}
             <ul class="grid max-w-[62ch] list-disc gap-1.5 pl-5 text-muted marker:text-border">
-              {role.highlights.map((h) => (
+              {entry.highlights.map((h) => (
                 <li>{h}</li>
               ))}
             </ul>
-            {!role.end && (
+            {i === 0 && (
               <p class="text-sm">
                 <a href="/work" class={link}>The platforms in detail</a>
               </p>

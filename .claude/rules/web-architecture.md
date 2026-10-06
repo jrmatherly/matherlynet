@@ -85,7 +85,8 @@ web/
                         LinkedIn, RSS, sign in), Logo (monogram at header size; `decorative` hides it beside the
                         name), Telemetry (Umami tag + lazy @sentry/browser, both from site settings); home:
                         GatewayPath (SVG request path), Perspectives (no-JS radio switcher), CaseStudy,
-                        PlatformList, AboutStrip, Cta, Availability (renders only when set);
+                        PlatformList (AI platform items minus the gateway), AboutStrip, Cta,
+                        Availability (renders only when set);
                         writing: GatewayMap (static SVG map of a retired gateway generation, `generation` prop);
                         changelog: RailEntry; work: WorkCard (a row, slot for extra detail);
                         playground: GatewayConsole (chips, panels, form, page script), TraceRow (one request's gates;
@@ -94,7 +95,8 @@ web/
                         adds the answer box and the "Live values" list (from LIVE), and its script POSTs the
                         visitor's own request to /api/playground
   src/pages/           one job each: index (overview, perspectives), changelog (timeline: recruiter facts, roles with
-                        highlights), work (platforms, gateway generations), about (person: skills, education,
+                        highlights and their milestones), work (platforms by `workGroups`, newest first;
+                        gateway generations), about (person: skills, education,
                         volunteering), playground (the gateway simulation, `?try=<scenario>`; passes `live` when
                         liveModelOn()), writing/ (+[slug]),
                         404 (links the nav pages); robots/sitemap/rss per request

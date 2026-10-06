@@ -21,7 +21,7 @@ const { year, now = false, meta, id } = Astro.props;
       class:list={["absolute top-3 -right-[5px] size-2.5 rounded-full border-2", now ? "border-accent bg-accent" : "border-muted bg-background"]}
     />
   </div>
-  <div id={id} class="grid scroll-mt-24 content-start gap-3.5 pb-12 pl-5 sm:pl-10">
+  <div id={id} class="grid scroll-mt-28 content-start gap-3.5 pb-12 pl-5 sm:pl-10">
     {meta && <p class="text-sm text-muted">{meta}</p>}
     <slot />
   </div>
