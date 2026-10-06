@@ -103,26 +103,24 @@ export const perspectives: Perspective[] = [
 export interface WorkItem {
   title: string;
   summary: string;
-  // "2024 to now" or "2015 to 2021".
+  // "2024 to now", "2015 to 2021", or one year, "2022". Newest first within a group.
   period: string;
   // One short line: the outcome a reader should remember.
   result: string;
+  group: (typeof workGroups)[number];
 }
 
+// /work's sections, in page order. The home page's "Also built" is the AI platform minus the gateway.
+export const workGroups = ["AI platform", "Infrastructure"] as const;
+
 export const work: WorkItem[] = [
-  {
-    title: "AI Gateway",
-    summary:
-      "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team.",
-    period: "2024 to now",
-    result: "About 2 billion tokens a month; projected licensing from $100K+ a year to near zero",
-  },
   {
     title: "MCP Gateway, Registry & Portal",
     summary:
       "How Claude Code, Claude Desktop and company agents reach internal systems and data. A server is approved into the registry once; from then on, every call to it goes through the MCP Gateway.",
     period: "2025 to now",
     result: "About 20 MCP servers, each approved into the registry, behind OAuth",
+    group: "AI platform",
   },
   {
     title: "AI chat platform & agents",
@@ -130,38 +128,108 @@ export const work: WorkItem[] = [
       "An internal AI chat platform and agents on third-party and open-source agent frameworks, with prompt composition, agent memory, multi-step orchestration with tool use, and model evaluations, built in Python, TypeScript and Go. Designed the retrieval pipeline that grounds the agents in company knowledge: source documents are curated, chunked, embedded and indexed for RAG and Graph-RAG over a vector store.",
     period: "2025 to now",
     result: "About 30 agents grounded in company knowledge, 400 users across 14 teams",
+    group: "AI platform",
+  },
+  {
+    title: "AI Gateway",
+    summary:
+      "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team.",
+    period: "2024 to now",
+    result: "About 2 billion tokens a month; projected licensing from $100K+ a year to near zero",
+    group: "AI platform",
   },
   {
     title: "On-prem Kubernetes platform",
     summary: "Talos Linux clusters run with GitOps (Flux and Argo CD), Cilium networking, and External Secrets Operator backed by Secret Server.",
     period: "2024 to now",
     result: "Runs the AI Gateway and the MCP platform, managed through GitOps",
+    group: "AI platform",
+  },
+  {
+    title: "AD auditing platform",
+    summary: "Replaced ADAudit Plus with a custom Active Directory auditing platform.",
+    period: "2026",
+    result: "$20K a year in licensing replaced by an in-house platform",
+    group: "Infrastructure",
+  },
+  {
+    title: "BrandsMart USA integration",
+    summary:
+      "After the acquisition, led BrandsMart's 4-person infrastructure team alongside Aaron's own, standardizing policies, procedures and tooling across its data center and 12 sites.",
+    period: "2023 to 2026",
+    result: "8 direct reports in all; one set of policies and tooling across both companies",
+    group: "Infrastructure",
+  },
+  {
+    title: "Self-service automation",
+    summary: "Self-service requests for VMs, storage, VDI, accounts and firewall changes, fulfilled by automation instead of tickets.",
+    period: "2023",
+    result: "Saves 10 minutes to several hours per request",
+    group: "Infrastructure",
+  },
+  {
+    title: "Monitoring on Zabbix & Grafana",
+    summary: "Replaced SolarWinds with Zabbix and custom Grafana dashboards.",
+    period: "2022",
+    result: "$80K a year in licensing replaced by in-house monitoring",
+    group: "Infrastructure",
+  },
+  {
+    title: "Disaster recovery data center",
+    summary: "Designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage.",
+    period: "2021",
+    result: "A second data center, with zero unplanned downtime",
+    group: "Infrastructure",
   },
   {
     title: "SD-WAN for every store",
     summary: "Led the SD-WAN rollout to every store on CloudGenix. Later moved SD-WAN onto the Meraki equipment the stores already had, which simplified each store's hardware and cut licensing costs.",
     period: "2015 to 2021",
     result: "2,300+ stores at the time; later moved onto existing Meraki gear for a simpler stack and lower licensing",
+    group: "Infrastructure",
   },
   {
-    title: "Data centers, DR & corporate offices",
+    title: "Primary data center, corporate offices & Azure",
     summary:
-      "Designed and built the new primary data center and led its migration. Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018). In 2021, as manager, designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage.",
+      "Designed and built the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications), and led its migration. Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018). Established the Azure tenant, subscriptions and ExpressRoute hybrid connectivity.",
     period: "2015 to 2021",
-    result: "Primary and DR data centers, three corporate offices, Azure with ExpressRoute; zero unplanned downtime",
+    result: "Primary data center, three offices, Azure with ExpressRoute; zero unplanned downtime",
+    group: "Infrastructure",
+  },
+  {
+    title: "Store network re-IP & firewall migrations",
+    summary:
+      "Designed a standard IP plan and re-IP'd every store network. Led the firewall migrations: corporate offices and data centers to Palo Alto, stores from SonicWALL to Meraki.",
+    period: "2012 to 2015",
+    result: "2,300+ stores on one addressing plan",
+    group: "Infrastructure",
+  },
+  {
+    title: "Secret Server PAM rollout",
+    summary: "Rolled out Secret Server, vaulting every organization service account and elevated-credential account with rotation.",
+    period: "2012 to 2015",
+    result: "Every privileged credential vaulted and rotated",
+    group: "Infrastructure",
   },
 ];
+
+export interface Milestone {
+  // "YYYY": the year the rail shows.
+  year: string;
+  heading: string;
+  summary?: string;
+  highlights: string[];
+}
 
 export interface Role {
   title: string;
   // "Mon YYYY": pages take the year with slice(-4). Only the current role has no end.
   start: string;
   end?: string;
-  highlights: string[];
-  // Changelog entry: a heading over the highlights. Only the current role adds a paragraph: its heading (the
-  // gateway) needs one, and every other role's highlights already say what a paragraph would.
   heading: string;
-  summary?: string;
+  highlights: string[];
+  // Newest first, between the role's start and end.
+  milestones?: Milestone[];
 }
 
 export const employer = { name: person.worksFor };
@@ -171,17 +239,49 @@ export const career: Role[] = [
     title: "Manager, Infrastructure Services",
     start: "Jul 2021",
     highlights: [
-      "Leads company-wide AI strategy and adoption. Built the AI Gateway single-handedly and grew it from 15 million tokens a month at launch to about 2 billion, across 400 users and 14 teams; also delivered the MCP Gateway, Registry and Portal and the internal AI chat platform",
-      "Rolled out Microsoft Copilot and Copilot Studio to 600 users, and packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune for 400; since early 2026, hosts a weekly AI community of practice",
-      "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime while supporting PCI DSS and SOX requirements; leads a team of 4",
-      "After the BrandsMart USA acquisition, also led its 4-person infrastructure team from March 2023 to March 2026 (8 direct reports in all), standardizing policies and tooling across a data center and 12 sites",
       "Designed and built the disaster recovery data center (2021) and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime",
+      "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime while supporting PCI DSS and SOX requirements; leads a team of 4",
+      "Leads company-wide AI strategy and adoption; rolled out Microsoft Copilot and Copilot Studio to 600 users",
       "With no standing annual budget through downsizing and acquisitions, funds each project on its own business case; replaced paid tools with in-house platforms (SolarWinds with Zabbix and Grafana, ADAudit Plus with a custom auditing platform), saving $100K a year in licensing",
       "Rolled out self-service automation for VMs, storage, VDI, accounts and firewall changes, saving 10 minutes to several hours per request",
     ],
-    heading: "One gateway, three generations",
-    summary:
-      "The company's single path to large language models since December 2024. Each generation was retired when it couldn't answer the business's questions: who is spending what, on which model, under which rules.",
+    heading: "Manager, and a second data center",
+    milestones: [
+      {
+        year: "2026",
+        heading: "One gateway, three generations",
+        summary:
+          "The company's single path to large language models since December 2024. Each generation was retired when it couldn't answer the business's questions: who is spending what, on which model, under which rules.",
+        highlights: [
+          "Moved the gateway from LiteLLM to Azure API Management in February, then to the in-house platform in June: cost per user and team, routing across Azure AI Foundry and Anthropic, and guardrails, rate limits and an audit log on every call. Projected licensing went from $100K+ a year to about $38K to near zero",
+          "About 2 billion tokens a month, across 400 users and 14 teams",
+          "Packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune for 400 users, and hosts a weekly AI community of practice",
+        ],
+      },
+      {
+        year: "2025",
+        heading: "Tools and agents behind a gateway, too",
+        highlights: [
+          "Designed and delivered the MCP Gateway, Registry and Portal: about 20 MCP servers, each approved into the registry before any agent can call it, behind OAuth",
+          "Built the internal AI chat platform and about 30 agents, grounded in company knowledge by a retrieval pipeline for RAG and Graph-RAG over a vector store",
+        ],
+      },
+      {
+        year: "2024",
+        heading: "The first gateway",
+        highlights: [
+          "Built the AI Gateway single-handedly and launched it on LiteLLM in December at 15 million tokens a month. It proved demand, but couldn't attribute cost per team or enforce policy per use case, and licensing was projected at $100K+ a year",
+          "Stood up on-prem Talos Linux Kubernetes clusters run with GitOps (Flux and Argo CD), Cilium networking and External Secrets Operator; they run the gateway and the MCP platform",
+        ],
+      },
+      {
+        year: "2023",
+        heading: "Two infrastructure teams",
+        highlights: [
+          "After the BrandsMart USA acquisition, also led its 4-person infrastructure team from March 2023 to March 2026 (8 direct reports in all), standardizing policies and tooling across a data center and 12 sites",
+        ],
+      },
+    ],
   },
   {
     title: "Sr. Infrastructure Engineer",

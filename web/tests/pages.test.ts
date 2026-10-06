@@ -50,15 +50,17 @@ describe("tenure copy", () => {
 });
 
 describe("Changelog", () => {
-  it("has one h1 and puts each role's heading after its start year, newest first", async () => {
+  it("has one h1 and puts each milestone's and role's heading after its year, newest first", async () => {
     const html = await page(Changelog, "/changelog");
     expect(html.match(/<h1/g)).toHaveLength(1);
+    expect([...html.matchAll(/>(20\d\d)<\/span>/g)].map((m) => m[1])).toEqual(["2026", "2025", "2024", "2023", "2021", "2015", "2012", "2009", "2006"]);
+    const entries = profile.career.flatMap((role) => [...(role.milestones ?? []), { year: role.start.slice(-4), heading: role.heading }]);
     let from = 0;
-    for (const role of profile.career) {
-      const year = html.indexOf(`>${role.start.slice(-4)}`, from);
-      const heading = html.indexOf(role.heading, year);
-      expect(year, `${role.title} year`).toBeGreaterThan(-1);
-      expect(heading, `${role.title} heading`).toBeGreaterThan(year);
+    for (const entry of entries) {
+      const year = html.indexOf(`>${entry.year}`, from);
+      const heading = html.indexOf(entry.heading, year);
+      expect(year, `${entry.heading} year`).toBeGreaterThan(-1);
+      expect(heading, `${entry.heading} heading`).toBeGreaterThan(year);
       from = heading;
     }
   });
@@ -80,5 +82,14 @@ describe("WorkCard", () => {
     expect(html).toContain(work[0].period);
     expect(html).toContain(work[0].result);
     expect(html).not.toContain("rounded-full");
+  });
+});
+
+describe("Work", () => {
+  it("lists the platforms newest first within each group, from 2026 back to 2012", async () => {
+    const html = await page(Work, "/work");
+    const periods = [...html.matchAll(/<p class="text-sm text-muted tabular-nums"[^>]*>([^<]*)</g)].map((m) => m[1]);
+    expect(periods).toEqual(work.map((w) => w.period));
+    expect([...html.matchAll(/<section aria-label="([^"]*)"/g)].map((m) => m[1])).toEqual([...profile.workGroups]);
   });
 });

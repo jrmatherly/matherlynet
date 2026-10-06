@@ -94,7 +94,8 @@ web/
                         adds the answer box and the "Live values" list (from LIVE), and its script POSTs the
                         visitor's own request to /api/playground
   src/pages/           one job each: index (overview, perspectives), changelog (timeline: recruiter facts, roles with
-                        highlights), work (platforms, gateway generations), about (person: skills, education,
+                        highlights and the current role's milestones), work (platforms by `workGroups`, newest first;
+                        gateway generations), about (person: skills, education,
                         volunteering), playground (the gateway simulation, `?try=<scenario>`; passes `live` when
                         liveModelOn()), writing/ (+[slug]),
                         404 (links the nav pages); robots/sitemap/rss per request

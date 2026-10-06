@@ -1,16 +1,13 @@
 ---
 import Cta from "../components/Cta.astro";
 import WorkCard from "../components/WorkCard.astro";
-import { gateway, work } from "../data/profile";
+import { gateway, work, workGroups } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { inlineLink } from "../lib/form";
 import { ogImage } from "../lib/og";
 
-// The platforms still running ("to now") are the AI platform; the finished ones, the infrastructure under it.
-const groups = [
-  { title: "AI platform", items: work.filter((w) => w.period.endsWith("now")) },
-  { title: "Infrastructure", items: work.filter((w) => !w.period.endsWith("now")) },
-];
+// `work` is already newest first within each group, so nothing here sorts.
+const groups = workGroups.map((title) => ({ title, items: work.filter((w) => w.group === title) }));
 ---
 
 <Base title="Work" description="AI gateways, MCP, Kubernetes and enterprise infrastructure built and run by Jason Matherly." image={ogImage("work", Astro.locals.siteSettings)}>

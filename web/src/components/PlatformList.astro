@@ -1,8 +1,8 @@
 ---
-import { work } from "../data/profile";
+import { gateway, work } from "../data/profile";
 
-// Every platform except the gateway, which CaseStudy covers.
-const rest = work.filter((w) => w.title !== "AI Gateway");
+// The AI platform minus the gateway, which CaseStudy covers; the infrastructure is on /work.
+const rest = work.filter((w) => w.group === "AI platform" && w.title !== gateway.title);
 ---
 
 <section aria-labelledby="also-title" class="grid gap-4">

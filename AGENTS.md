@@ -132,8 +132,9 @@ out/                   aspire publish output (gitignored)
 - Nav visibility is the `nav` flag in `publicRoutes`; the same flag drives the footer's page links and the 404 page's
   links. The header's "Let's talk" button links to `person.sameAs[0]`; RSS and Account/Sign in live in the footer.
 - Each page has one job, so facts aren't retold across pages: home is the overview (perspectives, case study),
-  /changelog the timeline (recruiter facts, roles with highlights), /work the platforms (gateway generations),
-  /about the person. Every inner page links to another from its body (`pages.test.ts`).
+  /changelog the timeline (recruiter facts, roles with highlights, and the current role's year-dated milestones),
+  /work the platforms (`workGroups`, newest first; the gateway generations), /about the person. Every inner page
+  links to another from its body (`pages.test.ts`).
 - The home perspective panels share one grid cell and switch with `visibility` (not `display`), so the block keeps the
   tallest panel's height and the page below doesn't jump; the radio `:has()` rules in `Perspectives.astro` only flip
   visibility. The hero grid is `1fr / 1.15fr` so the figure draws near full size.
