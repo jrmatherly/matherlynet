@@ -25,7 +25,7 @@ const chunk = (delta: object, finish: string | null) => ({
   id: "chatcmpl-fake",
   object: "chat.completion.chunk",
   created: 0,
-  model: "phi-4-mini",
+  model: "qwen3-4b",
   choices: [{ index: 0, delta, finish_reason: finish }],
 });
 

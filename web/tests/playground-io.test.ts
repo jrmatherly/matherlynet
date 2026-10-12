@@ -164,16 +164,16 @@ describe("run", () => {
       { type: "step", step: { gate: "Rate limits", verdict: "passed", left: 9 } },
       { type: "step", step: { gate: "Guardrails", verdict: "passed" } },
       { type: "step", step: { gate: "Cache", verdict: "off" } },
-      { type: "step", step: { gate: "Routing", verdict: "routed", to: "phi-4-mini" } },
+      { type: "step", step: { gate: "Routing", verdict: "routed", to: "qwen3-4b" } },
       { type: "text", text: "Hel" },
       { type: "text", text: "lo" },
-      { type: "end", decision: { verdict: "forwarded", to: "phi-4-mini" }, finish: "stop", logged: true },
+      { type: "end", decision: { verdict: "forwarded", to: "qwen3-4b" }, finish: "stop", logged: true },
     ]);
     expect(stepsOf(events).map((s) => s.gate)).toEqual([...AI_GATES]);
     expect(f.calls).toEqual(["open", "model", "claim", "close"]);
     expect(f.iteratedAfter).toEqual(["open", "model", "claim"]);
     expect(f.closes).toEqual([
-      { id: 1, closing: { decision: { verdict: "forwarded", to: "phi-4-mini" }, reason: "stop", replyChars: 5, tokens: { in: 9, out: 2 } } },
+      { id: 1, closing: { decision: { verdict: "forwarded", to: "qwen3-4b" }, reason: "stop", replyChars: 5, tokens: { in: 9, out: 2 } } },
     ]);
   });
 
@@ -375,8 +375,8 @@ describe("run", () => {
     const f = fakeIo({ model: stalling(["Hel"]) });
     const stop = new AbortController();
     const events = await runIt("hello", f.io, stop.signal, (e) => e.type === "text" && stop.abort("deadline"));
-    expect(f.closes).toEqual([{ id: 1, closing: { decision: { verdict: "forwarded", to: "phi-4-mini" }, reason: "deadline", replyChars: 3, tokens: null } }]);
-    expect(endOf(events)).toEqual({ type: "end", decision: { verdict: "forwarded", to: "phi-4-mini" }, finish: "deadline", logged: true });
+    expect(f.closes).toEqual([{ id: 1, closing: { decision: { verdict: "forwarded", to: "qwen3-4b" }, reason: "deadline", replyChars: 3, tokens: null } }]);
+    expect(endOf(events)).toEqual({ type: "end", decision: { verdict: "forwarded", to: "qwen3-4b" }, finish: "deadline", logged: true });
   });
 
   it("a stream that ends with no finish event is forwarded 'dropped', not reported", async () => {
@@ -396,7 +396,7 @@ describe("run", () => {
   it("a ModelRefused mid-answer is forwarded 'dropped', and run() does not report it a second time", async () => {
     const f = fakeIo({ model: throwing(new ModelRefused("model error"), ["Hel"]) });
     const events = await runIt("hello", f.io);
-    expect(endOf(events)).toEqual({ type: "end", decision: { verdict: "forwarded", to: "phi-4-mini" }, finish: "dropped", logged: true });
+    expect(endOf(events)).toEqual({ type: "end", decision: { verdict: "forwarded", to: "qwen3-4b" }, finish: "dropped", logged: true });
     expect(reported()).toEqual([]);
   });
 
@@ -523,7 +523,7 @@ describe("respond", () => {
     const res = respond(call("hello", performance.now() - (LIVE.totalMs - 500)), new AbortController().signal, f.io);
     const events = allEvents(res);
     await vi.advanceTimersByTimeAsync(500);
-    expect(endOf(await events)).toEqual({ type: "end", decision: { verdict: "forwarded", to: "phi-4-mini" }, finish: "deadline", logged: true });
+    expect(endOf(await events)).toEqual({ type: "end", decision: { verdict: "forwarded", to: "qwen3-4b" }, finish: "deadline", logged: true });
   });
 
   // Each held call stalls mid-answer until its deadline.
@@ -848,7 +848,7 @@ describe("liveIo.model over real undici against the fake llama", () => {
     const [received] = fake.received;
     expect(received.headers.authorization).toBeUndefined();
     expect(received.body).toEqual({
-      model: "phi-4-mini",
+      model: "qwen3-4b",
       stream: true,
       stream_options: { include_usage: true },
       max_tokens: LIVE.maxTokens,
