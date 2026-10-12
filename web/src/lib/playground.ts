@@ -72,7 +72,7 @@ export type Stop = "left" | "deadline";
  * windows in its SQL. No tag says "demo".
  */
 export const LIVE = {
-  model: "phi-4-mini",
+  model: "qwen3-4b",
   /** Calls holding a seat at once, site-wide: 3 of the server's 4 slots, one left for the owner's other consumers. */
   seats: 3,
   perVisitorPerHour: 10,
@@ -90,7 +90,7 @@ export const LIVE = {
   maxTokens: 150,
   temperature: 0.3,
   retentionDays: 30,
-  /** Names no person. About 40 tokens: with a 500-character prompt and 150 output tokens it fits a 2048-token slot. */
+  /** Names no person. About 40 tokens: with a 500-character prompt and 150 output tokens it fits an 8192-token slot with room to spare. */
   systemPrompt:
     "You answer visitors in a demo of an AI gateway on a personal website. Reply in plain text, in at most three " +
     "short sentences. Do not use Markdown, links or code.",

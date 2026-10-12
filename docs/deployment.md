@@ -236,7 +236,8 @@ example scenarios stay simulated in both modes.
 
 ### The model server
 
-The model is `phi-4-mini`, served by llama.cpp with 4 slots at `http://llama-server.ai.svc.cluster.local:8080` on the
+The model is `qwen3-4b` (Qwen3-4B-Instruct-2507, a non-thinking model), served by llama.cpp with 4 slots of 8192
+tokens at `http://llama-server.ai.svc.cluster.local:8080` on the
 home cluster. The server is reachable only from namespaces labelled `llama-server.ai/client: "true"`. It is not
 reachable from a laptop, from CI or from a Compose deployment outside that cluster.
 
