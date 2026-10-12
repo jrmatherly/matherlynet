@@ -222,7 +222,7 @@ out/                   aspire publish output (gitignored)
   running stack replaced the dev server's optimized client deps: page scripts answered `504 Outdated Optimize Dep`
   and E2E form tests failed until `aspire resource web restart`.
 - `web/e2e/global-setup.ts` opens Vite's HMR socket from Node and takes the `full-reload` Vite 8.3.1 keeps for the first
-  client: Astro 7.3.5 sends it when a dev start rewrites its content store (every `aspire start`: `astro dev` gets a
+  client: Astro 7.3.8 sends it when a dev start rewrites its content store (every `aspire start`: `astro dev` gets a
   new port behind the 4321 proxy, and that port is in the store's config digest). A first test's browser would
   otherwise take it mid-test and reload the page.
 - `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
@@ -328,7 +328,7 @@ out/                   aspire publish output (gitignored)
   `open()` returns the row's id with no load, so the call is refused at Rate limits ("unavailable") and `run()`
   closes it like any other. The same rows are the rate limiter and the seat counter, so limits hold across replicas.
   A seat is claimed under a Postgres advisory lock, so at most three are seated at once. `liveIo.claim` takes a pool
-  client and releases it itself rather than call `db.transaction()`: drizzle-orm 0.45.3 leaks the client when BEGIN
+  client and releases it itself rather than call `db.transaction()`: drizzle-orm 0.45.4 leaks the client when BEGIN
   fails. `routed_at` is never cleared: a row with it held a seat and counts toward the site's day. The table never
   stores prompt text, answer text or an IP, only a visitor key, the caller, lengths, token counts, timestamps and
   enum reasons. `visitorKey()` in `playground-io.ts` is the only playground code that reads `cf-connecting-ip`

@@ -30,6 +30,30 @@ minimumReleaseAgeExclude:
   - '@typescript-eslint/utils@8.71.1'
   - '@typescript-eslint/visitor-keys@8.71.1'
   - typescript-eslint@8.71.1
+  - '@sentry/browser-utils@11.7.0'
+  - '@sentry/browser@11.7.0'
+  - '@sentry/bundler-plugins@11.7.0'
+  - '@sentry/conventions@0.27.0'
+  - '@sentry/core@11.7.0'
+  - '@sentry/feedback@11.7.0'
+  - '@sentry/node@11.7.0'
+  - '@sentry/opentelemetry@11.7.0'
+  - '@sentry/replay-canvas@11.7.0'
+  - '@sentry/replay@11.7.0'
+  - '@sentry/server-runtime-injection@11.7.0'
+  - '@sentry/server-utils@11.7.0'
+  - '@takumi-rs/core-darwin-arm64@2.15.1'
+  - '@takumi-rs/core-darwin-x64@2.15.1'
+  - '@takumi-rs/core-linux-arm64-gnu@2.15.1'
+  - '@takumi-rs/core-linux-arm64-musl@2.15.1'
+  - '@takumi-rs/core-linux-x64-gnu@2.15.1'
+  - '@takumi-rs/core-linux-x64-musl@2.15.1'
+  - '@takumi-rs/core-win32-arm64-msvc@2.15.1'
+  - '@takumi-rs/core-win32-x64-msvc@2.15.1'
+  - '@takumi-rs/core@2.15.1'
+  - '@takumi-rs/helpers@2.15.1'
+  - '@takumi-rs/wasm@2.15.1'
+  - takumi-js@2.15.1
 # Aspire's Dockerfile installs on node:24-slim (glibc) but runs on node:24-alpine (musl):
 # keep musl builds of native packages (e.g. @takumi-rs/core) in the installed tree.
 supportedArchitectures:
