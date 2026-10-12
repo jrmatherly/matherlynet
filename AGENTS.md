@@ -142,7 +142,8 @@ out/                   aspire publish output (gitignored)
 - Owner-supplied wording stays `null` in `profile.ts` until the owner provides it, and the page renders it only when
   set; don't write placeholder copy. `availability` is the owner's own sentence, also on his LinkedIn summary.
 - `person` in `lib/site.ts` feeds the Person JSON-LD in `Seo.astro` (`jobTitle`, `worksFor`, `knowsAbout`; only
-  `knowsAbout` is not shown on a page, and `employer.name` in `profile.ts` reuses `worksFor`). `profile.ts` `intro` is
+  `knowsAbout` is not shown on a page, `employer.name` in `profile.ts` reuses `worksFor`, and `education.school` there
+  is its `alumniOf`). `profile.ts` `intro` is
   a list of paragraphs where `*word*` marks emphasis (home page splits on `*`); `og.ts` reuses `headline` for the home
   card, swapping U+2011 (non-breaking hyphen, which keeps "15,000‑person" together) for "-": the card font lacks it.
   `sameAs` holds LinkedIn only (the footer and JSON-LD read it).

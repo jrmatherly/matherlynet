@@ -45,7 +45,12 @@ describe("Seo", () => {
   it("adds Person JSON-LD to public pages", async () => {
     const html = await renderSeo({ title: "Jason Matherly" });
     const json = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)![1]);
-    expect(json).toMatchObject({ "@type": "Person", name: "Jason Matherly", url: `${ORIGIN}/` });
+    expect(json).toMatchObject({
+      "@type": "Person",
+      name: "Jason Matherly",
+      url: `${ORIGIN}/`,
+      alumniOf: { "@type": "EducationalOrganization", name: "Kennesaw State University (Southern Polytechnic)" },
+    });
   });
 });
 
