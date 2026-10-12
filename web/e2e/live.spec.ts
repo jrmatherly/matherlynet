@@ -151,7 +151,7 @@ test.describe("model on", () => {
     await send("hello");
     await expect(page.locator("[data-answer]")).toHaveText("Hello from the fake model.");
     await expect(newestLog).toHaveAttribute("data-v", "forwarded");
-    await expect(newestLog.locator('[data-slot="endpoint"]')).toHaveText("qwen3-4b");
+    await expect(newestLog.locator('[data-slot="endpoint"]')).toHaveText(LIVE.model);
     await expect(page.locator("[data-yours] [data-logged]")).toBeVisible();
     expect(requests).toHaveLength(1);
   });

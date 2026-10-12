@@ -81,6 +81,8 @@ const smtpUrl = await builder.executionContext().isRunMode()
 // Routing with "model off". Set with `aspire secret set Parameters:playground-model-url <url>`.
 const playgroundModelUrl = await optionalParameter('playground-model-url');
 const playgroundModelKey = await optionalParameter('playground-model-key', true);
+// The model id the server is asked for; empty means web's default (LIVE.model in web/src/lib/playground.ts).
+const playgroundModel = await optionalParameter('playground-model');
 
 // Kubernetes uses the cluster's existing Postgres: the chart takes its URI as one secret value at install time.
 const appdb = k8s ? undefined : await builder.addPostgres('pg')
@@ -129,6 +131,7 @@ const web = await builder
   .withEnvironment('SMTP_URL', smtpUrl)
   .withEnvironment('PLAYGROUND_MODEL_URL', playgroundModelUrl)
   .withEnvironment('PLAYGROUND_MODEL_KEY', playgroundModelKey)
+  .withEnvironment('PLAYGROUND_MODEL', playgroundModel)
   .withDockerfileBaseImage({ buildImage: 'node:24-slim', runtimeImage: 'node:24-alpine' })
   // Not publishAsPackageScript: `pnpm run` as a non-root user tries to reinstall into the root-owned node_modules
   // and fails. This form also sets `USER node`. outputPath '.' keeps node_modules, which Astro's server imports.

@@ -65,8 +65,9 @@ out/                   aspire publish output (gitignored)
 
 - Request flow: browser -> Astro middleware (session lookup) -> page render; auth calls hit `/api/auth/*`.
 - Config flow: Aspire injects `APPDB_URI`, `BETTER_AUTH_URL`, `BETTER_AUTH_SECRET`, OAuth ids/secrets, `ADMIN_EMAIL`,
-  `MAIL_FROM`, `SMTP_URL`, `PORT`, and the optional `PLAYGROUND_MODEL_URL` and `PLAYGROUND_MODEL_KEY` (parameters
-  `playground-model-url` and `playground-model-key`, the second a secret).
+  `MAIL_FROM`, `SMTP_URL`, `PORT`, and the optional `PLAYGROUND_MODEL_URL`, `PLAYGROUND_MODEL_KEY` and `PLAYGROUND_MODEL`
+  (parameters `playground-model-url`, `playground-model-key` and `playground-model`, the key a secret; an empty model
+  means `LIVE.model`, read through `liveModel()` in `lib/playground-io.ts`).
 
 <!-- END AUTO-MANAGED -->
 
