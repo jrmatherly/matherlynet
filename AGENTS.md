@@ -196,6 +196,8 @@ out/                   aspire publish output (gitignored)
   in `lib/playground-io.ts`. That file is server-only (the `playground_call` row, the model fetch, the stream). The
   page script must not import it. Prompt text must never be bound to a query or logged (a failed query's error
   quotes its parameters).
+  A live "routed" decision's target is a branded `LiveTarget` (`playground.ts`) that only `liveModel()` makes, so the
+  page shows the model id the call really used.
   `data/gateway.ts` is the one list of gates, callers and targets that the home figure and the playground share.
   The scenario chips switch panels with generated CSS (`scenarioCss()`, an inline `<style>` whose hash
   `GatewayConsole.astro` registers with `Astro.csp`). Without script each panel shows its scenario's `replay()`
