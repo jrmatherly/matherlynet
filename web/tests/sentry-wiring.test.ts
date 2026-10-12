@@ -33,6 +33,11 @@ it("sends errors to the current DSN, nothing at all while off, and follows a DSN
   Sentry.captureException(new Error("on"));
   await Sentry.flush(2000);
   expect(a.events()).toBe(1);
+  // The sink is an http server in this process, so Sentry's server instrumentation starts a request session when the
+  // first envelope lands, and @sentry/node 11.7.0 then closes the process session (processSessionIntegration) and
+  // queues its "exited" update. That send is in the buffer before the flush above resolves but not awaited by it, so a
+  // second flush takes it before the switch to off.
+  await Sentry.flush(2000);
 
   const sentWhileOn = a.envelopes.length;
   configureSentry(null);
