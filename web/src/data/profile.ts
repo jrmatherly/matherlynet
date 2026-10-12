@@ -97,7 +97,7 @@ export const perspectives: Perspective[] = [
     body: "Every model call goes through the AI Gateway: signed in with SSO, rate limited, checked for personal data, secrets, prompt injection and restricted topics, and written to the audit log, with cost tracked per user and team. Tools sit behind the MCP Gateway, which reaches only servers approved into the registry, over OAuth.",
     points: [
       "Audit logs kept for at least 90 days and reviewed by audit and compliance",
-      "About 20 MCP servers, each approved into the registry before any agent can call it",
+      "About 20 MCP servers, each approved into the registry before any agent or the chat platform can call it",
       "Wrote the company's guidelines for building software with AI, and briefed the Information Security team on AI security",
       "Responsible for privileged access (PAM) and identity; rolled out 802.1X network access control",
     ],
@@ -122,7 +122,7 @@ export const work: WorkItem[] = [
   {
     title: "MCP Gateway, Registry & Portal",
     summary:
-      "How Claude Code, Claude Desktop and company agents reach internal systems and data. A server is approved into the registry once; from then on, every call to it goes through the MCP Gateway.",
+      "How Claude Code, Claude Desktop, company agents and the AI chat platform's users reach internal systems and data. A server is approved into the registry once; from then on, every call to it goes through the MCP Gateway.",
     period: "2025 to now",
     result: "About 20 MCP servers, each approved into the registry, behind OAuth",
     group: "AI platform",
