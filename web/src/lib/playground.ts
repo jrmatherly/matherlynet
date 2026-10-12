@@ -11,7 +11,6 @@ import {
   type ModelTarget,
   type Target,
   TOOL_TARGET,
-  type ToolCaller,
 } from "../data/gateway";
 
 declare const promptBrand: unique symbol;
@@ -40,7 +39,7 @@ type DemoServerId = "wiki" | "tickets" | "unlisted";
 
 export type PlayRequest =
   | { lane: "model"; caller: Caller; text: PromptText }
-  | { lane: "tool"; caller: ToolCaller; server: DemoServerId; tool: string };
+  | { lane: "tool"; caller: Caller; server: DemoServerId; tool: string };
 
 type Lane = PlayRequest["lane"];
 export const GATES: { readonly [L in Lane]: readonly Gate[] } = { model: AI_GATES, tool: MCP_GATES };
