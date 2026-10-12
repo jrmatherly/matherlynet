@@ -8,6 +8,7 @@ import { playgroundDb as db } from "../db";
 import {
   type Finish,
   LIVE,
+  type LiveTarget,
   type LiveEvent,
   type LiveOutcome,
   type LiveStep,
@@ -36,6 +37,11 @@ export interface Call {
   readonly text: PromptText;
   /** performance.now() at the route's first statement. The total deadline counts from here. */
   readonly enteredAt: number;
+}
+
+/** The model id the server asks for and reports: PLAYGROUND_MODEL, or LIVE.model when it is unset or blank. */
+export function liveModel(): LiveTarget {
+  return (process.env.PLAYGROUND_MODEL?.trim() || LIVE.model) as LiveTarget;
 }
 
 /** True when the model URL is set. Read per call: an unset parameter arrives as "". */
@@ -321,7 +327,7 @@ async function* modelStream(base: string, key: string, text: PromptText, signal:
         method: "POST",
         headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
         body: JSON.stringify({
-          model: LIVE.model,
+          model: liveModel(),
           stream: true,
           stream_options: { include_usage: true },
           max_tokens: LIVE.maxTokens,
@@ -492,7 +498,7 @@ export async function run(call: Call, io: Io, signal: AbortSignal, emit: (event:
         if (replyChars === null) {
           clearTimeout(timer);
           replyChars = 0;
-          add({ gate: "Routing", verdict: "routed", to: LIVE.model });
+          add({ gate: "Routing", verdict: "routed", to: liveModel() });
         }
         if (event.type === "text") {
           replyChars += event.text.length;

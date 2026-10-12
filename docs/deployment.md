@@ -51,7 +51,7 @@ recorded as `REDACTED`.
 | `MAIL_FROM` | sender address, e.g. `MatherlyNet <…@matherly.net>` |
 | `ADMIN_EMAIL` | the admin's address, set **before** that account's email is verified (see below) |
 | `GITHUB_*`, `GOOGLE_*` | optional; a provider is enabled only when both its id and secret are set |
-| `PLAYGROUND_MODEL_URL`, `PLAYGROUND_MODEL_KEY` | optional, blank by default. They configure the live playground (section 8). With the URL blank, `/playground` stays a simulation |
+| `PLAYGROUND_MODEL_URL`, `PLAYGROUND_MODEL_KEY`, `PLAYGROUND_MODEL` | optional, blank by default. They configure the live playground (section 8). With the URL blank, `/playground` stays a simulation |
 
 ```sh
 cd out/compose           # aspire publish also wrote docker-compose.override.yaml (the web healthcheck)
@@ -167,8 +167,9 @@ settings under `config.web` (`app_url`, `admin_email`, `mail_from`, `github_clie
 secrets under `secrets.web`: `appdb_uri` (the database, below), `better_auth_secret`, `smtp_url` and the OAuth client
 secrets. An `smtp_url` that is not an `smtp://` or `smtps://` URL stops the pod at start, with the reason in its
 log; leave it blank to run without mail. These match the Compose `.env` except for the database: the chart has no
-`PG_PASSWORD`, and `appdb_uri` has no `.env` counterpart. The live playground adds two optional values, both empty
-by default: `config.web.playground_model_url` and `secrets.web.playground_model_key` (section 8).
+`PG_PASSWORD`, and `appdb_uri` has no `.env` counterpart. The live playground adds three optional values, all empty
+by default: `config.web.playground_model_url`, `config.web.playground_model` and `secrets.web.playground_model_key`
+(section 8).
 
 ### Database
 
@@ -233,13 +234,16 @@ example scenarios stay simulated in both modes.
 | :--- | :--- | :--- | :--- |
 | Model URL | `PLAYGROUND_MODEL_URL` | `config.web.playground_model_url` | Base URL of an OpenAI-compatible server, without `/v1`. The app POSTs to `<base>/v1/chat/completions`. A URL that carries a username or password is refused |
 | Model key | `PLAYGROUND_MODEL_KEY` | `secrets.web.playground_model_key` | Optional. Sent as `Authorization: Bearer <key>` |
+| Model | `PLAYGROUND_MODEL` | `config.web.playground_model` | Optional. The model id in the request's `model` field, shown on the page as the routing target. Empty means the app's default, `qwen-3.5-4b` (`LIVE.model` in `web/src/lib/playground.ts`) |
 
 ### The model server
 
-The model is `qwen3-4b` (Qwen3-4B-Instruct-2507, a non-thinking model), served by llama.cpp with 4 slots of 8192
-tokens at `http://llama-server.ai.svc.cluster.local:8080` on the
-home cluster. The server is reachable only from namespaces labelled `llama-server.ai/client: "true"`. It is not
-reachable from a laptop, from CI or from a Compose deployment outside that cluster.
+The model is `qwen-3.5-4b`, served by LocalAI (llama.cpp inside) with 4 parallel slots of 16384 tokens at
+`http://localai.ai.svc.cluster.local:8080` on the home cluster. Every route but its health checks answers 401
+without `Authorization: Bearer <key>`; the cluster passes the key as `secrets.web.playground_model_key`. A
+NetworkPolicy admits only pods in the `ai` namespace and namespaces labelled `localai.ai/client: "true"` (the
+site's namespace carries it when the cluster's `matherlynet.playground` is on). The server is not reachable from a
+laptop, from CI or from a Compose deployment outside that cluster.
 
 Leave the URL unset until web's namespace has that label. Without the label, every live send ends "no answer in
 time" or "unavailable".
@@ -250,10 +254,12 @@ There is no `/admin` switch. The URL is the switch, and web reads it from its en
 
 Before you set the URL, the Cloudflare rate limiting rule for `POST /api/playground` (section 5) must be in place.
 
-- Kubernetes: set `config.web.playground_model_url` and run `helm upgrade`. The chart passes both values through
-  `envFrom`, so an upgrade that changes only these values does not restart the pod. Restart it with
+- Kubernetes: set `config.web.playground_model_url` and `secrets.web.playground_model_key` (LocalAI refuses a call
+  without it), and `config.web.playground_model` to name another model, then run `helm upgrade`. The chart passes
+  these values through `envFrom`, so an upgrade that changes only them does not restart the pod. Restart it with
   `kubectl rollout restart deployment/matherlynet-web-deployment`.
-- Compose: set `PLAYGROUND_MODEL_URL` in `.env` and run `docker compose --env-file .env up -d`.
+- Compose: set `PLAYGROUND_MODEL_URL` (and `PLAYGROUND_MODEL_KEY`, `PLAYGROUND_MODEL`) in `.env` and run
+  `docker compose --env-file .env up -d`.
 - To turn the feature off, empty the value and repeat the same step.
 
 ### What is stored

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { AUDIT_RETENTION, CALLERS, type Gate, GUARDRAIL_CATEGORIES, MODEL_TARGETS } from "../data/gateway";
 import { badge, choice, field, primary } from "../lib/form";
 import { LIVE, PROMPT_MAX, RECORDED_TOUR, replay, SCENARIO_IDS, SCENARIOS, type ScenarioId, scenarioCss, SIM } from "../lib/playground";
+import { liveModel } from "../lib/playground-io";
 import FlowTable from "./FlowTable.astro";
 import TraceRow from "./TraceRow.astro";
 
@@ -61,7 +62,7 @@ const liveValues = [
   { label: "Cache", value: "Off. Every answer is generated fresh.", tag: LIVE.tags.Cache },
   {
     label: "Routing",
-    value: `${LIVE.model}, a small self-hosted model. ${LIVE.seats} answers at a time, at most ${LIVE.maxTokens} tokens each. An answer that has not started in ${s(LIVE.firstByteMs)} s is refused. A request is cut at ${s(LIVE.totalMs)} s.`,
+    value: `${liveModel()}, a small self-hosted model. ${LIVE.seats} answers at a time, at most ${LIVE.maxTokens} tokens each. An answer that has not started in ${s(LIVE.firstByteMs)} s is refused. A request is cut at ${s(LIVE.totalMs)} s.`,
     tag: LIVE.tags.Routing,
   },
   { label: "Instructions the model gets", value: LIVE.systemPrompt, tag: "live" },
@@ -159,7 +160,7 @@ const panel = "hidden min-w-0 gap-3";
                the answer is whole. */
             live && (
               <div class="grid gap-1 rounded-xl border border-border bg-surface p-3" data-answer-box hidden>
-                <p class="text-xs font-semibold tracking-wide text-muted uppercase">Answer from {LIVE.model}, unfiltered</p>
+                <p class="text-xs font-semibold tracking-wide text-muted uppercase">Answer from {liveModel()}, unfiltered</p>
                 <p class="text-sm whitespace-pre-wrap" aria-live="polite" aria-busy="false" data-answer></p>
               </div>
             )

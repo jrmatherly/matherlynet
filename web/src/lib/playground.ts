@@ -54,7 +54,10 @@ interface Finding {
 }
 
 /** What a live Routing step reached. Not in data/gateway.ts: the home figure draws MODEL_TARGETS. */
-type LiveTarget = (typeof LIVE)["model"];
+declare const liveBrand: unique symbol;
+/** The live model's id: LIVE.model unless PLAYGROUND_MODEL names another. Only liveModel() in playground-io.ts makes one,
+ *  so the simulation's Routing steps keep their ModelTarget literals. */
+export type LiveTarget = string & { readonly [liveBrand]: true };
 
 /** Why the live limiter refused. "unavailable": open() gave no load (see preRouting()), so the call is not sent on. */
 export type LimitReason = "one at a time" | "hourly" | "site daily" | "unavailable";
@@ -72,7 +75,8 @@ export type Stop = "left" | "deadline";
  * windows in its SQL. No tag says "demo".
  */
 export const LIVE = {
-  model: "qwen3-4b",
+  /** The model id sent to the server, unless PLAYGROUND_MODEL names another. */
+  model: "qwen-3.5-4b",
   /** Calls holding a seat at once, site-wide: 3 of the server's 4 slots, one left for the owner's other consumers. */
   seats: 3,
   perVisitorPerHour: 10,
@@ -90,7 +94,7 @@ export const LIVE = {
   maxTokens: 150,
   temperature: 0.3,
   retentionDays: 30,
-  /** Names no person. About 40 tokens: with a 500-character prompt and 150 output tokens it fits an 8192-token slot with room to spare. */
+  /** Names no person. About 40 tokens: with a 500-character prompt and 150 output tokens it fits a 16384-token slot with room to spare. */
   systemPrompt:
     "You answer visitors in a demo of an AI gateway on a personal website. Reply in plain text, in at most three " +
     "short sentences. Do not use Markdown, links or code.",
@@ -116,15 +120,16 @@ export type Step =
   | { gate: "Cache"; verdict: "hit" }
   | { gate: "Cache"; verdict: "miss" }
   | { gate: "Cache"; verdict: "off" }
-  | { gate: "Routing"; verdict: "routed"; to: ModelTarget | LiveTarget }
+  | { gate: "Routing"; verdict: "routed"; to: ModelTarget }
+  | { gate: "Routing"; verdict: "routed"; to: LiveTarget }
   | { gate: "Routing"; verdict: "refused"; why: RoutingRefusal }
   | { gate: "OAuth"; verdict: "passed" }
   | { gate: "Registry"; verdict: "approved"; server: DemoServerId }
   | { gate: "Registry"; verdict: "refused"; server: DemoServerId };
 
 type StepFor<G extends Gate> = Extract<Step, { gate: G }>;
-/** A step of the model lane: all the server ever sends. */
-export type LiveStep = StepFor<AiGate>;
+/** A step of the model lane: all the server ever sends. Its Routing step names the live model, never a simulated target. */
+export type LiveStep = Exclude<StepFor<AiGate>, { to: ModelTarget }>;
 
 /**
  * Where a request ended: `to` exists only when forwarded and `at` only when refused. "cut": a live call that ended with
@@ -416,7 +421,7 @@ export function liveOutcome(
         return { decision: { verdict: "refused", at: last.gate }, reason: last.why };
     }
   }
-  if (last?.gate === "Routing" && finish !== null) return { decision: { verdict: "forwarded", to: LIVE.model }, reason: finish };
+  if (last?.gate === "Routing" && last.verdict === "routed" && finish !== null) return { decision: { verdict: "forwarded", to: last.to }, reason: finish };
   return { decision: { verdict: "cut" }, reason: stop };
 }
 

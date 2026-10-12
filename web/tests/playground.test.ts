@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GatewayConsole from "../src/components/GatewayConsole.astro";
 import { AI_GATES } from "../src/data/gateway";
 import {
@@ -15,6 +15,7 @@ import {
   LIVE,
   type LiveEntry,
   type LiveStep,
+  type LiveTarget,
   limitStep,
   literal,
   liveClosing,
@@ -231,6 +232,9 @@ it("scenarioCss displays the picked panel, for every scenario and yours", () => 
 });
 
 describe("GatewayConsole", () => {
+  // The page prints liveModel(): a PLAYGROUND_MODEL in the developer's shell would otherwise fail the LIVE.model lines.
+  afterEach(() => vi.unstubAllEnvs());
+  beforeEach(() => vi.stubEnv("PLAYGROUND_MODEL", ""));
   const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
   const render = async (props: { live?: boolean }) =>
     (await AstroContainer.create()).renderToString(GatewayConsole, { props: { picked: "secret", ...props } });
@@ -313,7 +317,7 @@ describe("GatewayConsole", () => {
 const simTags = Object.values(SIM).map((gate) => gate.tag);
 
 describe("live wording", () => {
-  const routed: LiveStep = { gate: "Routing", verdict: "routed", to: "qwen3-4b" };
+  const routed: LiveStep = { gate: "Routing", verdict: "routed", to: LIVE.model as LiveTarget };
 
   it.each<[LiveStep, ReturnType<typeof stepView>]>([
     [{ gate: "SSO", verdict: "signed in", identity: "your account" }, { kind: "ok", verdict: "signed in", detail: "your account", tag: "live session" }],
@@ -337,7 +341,7 @@ describe("live wording", () => {
     ],
     [{ gate: "Guardrails", verdict: "passed" }, { kind: "ok", verdict: "passed", detail: "", tag: "live checks" }],
     [{ gate: "Cache", verdict: "off" }, { kind: "skip", verdict: "off", detail: "live answers are not cached", tag: "live, off" }],
-    [routed, { kind: "ok", verdict: "routed", detail: "→ qwen3-4b", tag: "live model" }],
+    [routed, { kind: "ok", verdict: "routed", detail: "→ qwen-3.5-4b", tag: "live model" }],
     [{ gate: "Routing", verdict: "refused", why: "busy" }, { kind: "bad", verdict: "refused", detail: "busy", tag: "live model" }],
     [
       { gate: "Routing", verdict: "refused", why: "no answer in time" },
@@ -380,10 +384,10 @@ describe("live wording", () => {
   const unlogged = "This site could not confirm its log entry.";
 
   const liveSentences: [LiveEntry, string][] = [
-    [live([...pre, routed], "stop"), `Answered by qwen3-4b, a small self-hosted model. ${logged}`],
-    [live([...pre, routed], "length"), `Answered by qwen3-4b, a small self-hosted model. It stopped at the 150-token limit. ${logged}`],
-    [live([...pre, routed], "deadline"), `Answered by qwen3-4b, a small self-hosted model. It was cut at the 6 s limit. ${logged}`],
-    [live([...pre, routed], "dropped", false), `Answered by qwen3-4b, a small self-hosted model. The model stopped early. ${unlogged}`],
+    [live([...pre, routed], "stop"), `Answered by qwen-3.5-4b, a small self-hosted model. ${logged}`],
+    [live([...pre, routed], "length"), `Answered by qwen-3.5-4b, a small self-hosted model. It stopped at the 150-token limit. ${logged}`],
+    [live([...pre, routed], "deadline"), `Answered by qwen-3.5-4b, a small self-hosted model. It was cut at the 6 s limit. ${logged}`],
+    [live([...pre, routed], "dropped", false), `Answered by qwen-3.5-4b, a small self-hosted model. The model stopped early. ${unlogged}`],
     [live([...pre, { gate: "Routing", verdict: "refused", why: "model off" }], null), `Refused at Routing. The model is switched off. ${logged}`],
     [
       live([...pre, { gate: "Routing", verdict: "refused", why: "busy" }], null),
@@ -412,7 +416,7 @@ describe("live wording", () => {
 
   it("liveClosing leaves out a finish or a Routing refusal it does not know, never writing 'undefined'", () => {
     const finish = live([...pre, routed], "stop");
-    expect(liveClosing({ ...finish, finish: "abandoned" as unknown as Finish })).toBe(`Answered by qwen3-4b, a small self-hosted model. ${logged}`);
+    expect(liveClosing({ ...finish, finish: "abandoned" as unknown as Finish })).toBe(`Answered by qwen-3.5-4b, a small self-hosted model. ${logged}`);
     const refusal = live([...pre, { gate: "Routing", verdict: "refused", why: "nonsense" as unknown as "busy" }], null);
     expect(liveClosing(refusal)).toBe(`Refused at Routing. ${logged}`);
   });
@@ -444,7 +448,8 @@ describe("live wording", () => {
   it("endpoint and GLYPH cover a cut and a live target", () => {
     expect(endpoint({ verdict: "cut" })).toBe("");
     expect(GLYPH.cut).toBe("✂");
-    expect(endpoint(liveOutcome([...pre, routed], "stop", "error").decision)).toBe("qwen3-4b");
+    expect(endpoint(liveOutcome([...pre, routed], "stop", "error").decision)).toBe("qwen-3.5-4b");
+    expect(endpoint(liveOutcome([...pre, { gate: "Routing", verdict: "routed", to: "other-model" as LiveTarget }], "stop", "error").decision)).toBe("other-model");
     expect(endpoint(liveOutcome([...pre, { gate: "Routing", verdict: "refused", why: "busy" }], null, "error").decision)).toBe("Routing");
   });
 });
@@ -510,8 +515,8 @@ describe("live policy", () => {
   });
 
   const clean = preRouting(false, idle, literal("hello"));
-  const routedClean: LiveStep[] = [...clean, { gate: "Routing", verdict: "routed", to: "qwen3-4b" }];
-  const forwarded = { verdict: "forwarded", to: "qwen3-4b" } as const;
+  const routedClean: LiveStep[] = [...clean, { gate: "Routing", verdict: "routed", to: LIVE.model as LiveTarget }];
+  const forwarded = { verdict: "forwarded", to: LIVE.model as LiveTarget } as const;
   it.each<[LiveStep[], Finish | null, Stop | "error", ReturnType<typeof liveOutcome>]>([
     [[], null, "left", { decision: { verdict: "cut" }, reason: "left" }],
     [clean, null, "deadline", { decision: { verdict: "cut" }, reason: "deadline" }],
