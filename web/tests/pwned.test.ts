@@ -249,7 +249,7 @@ describe("pwnedPasswordCheck in better-auth", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  // better-auth 1.7.7 consumes the reset token before hashing (better-auth#10632); checking first keeps it usable.
+  // Before 1.7.8 better-auth consumed the reset token before hashing (better-auth#10632); checking first keeps it usable.
   it("keeps the reset link usable after a refused password or a lookup outage", async () => {
     vi.stubGlobal("fetch", answer(CLEAN_RANGE));
     const { auth, resetToken } = makeAuth(100);

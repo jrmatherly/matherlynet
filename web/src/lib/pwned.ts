@@ -90,10 +90,10 @@ async function isBreached(password: string, timeoutMs: number): Promise<boolean>
   }
 }
 
-// Have I Been Pwned, checked before the endpoint runs. Replaces better-auth's haveIBeenPwned plugin (1.7.7), which
-// checks inside password.hash: /reset-password has consumed the token by then, so a refused password burned the
-// reset link (better-auth#10632), and its lookup had no timeout or abort. Upstream fixes #10717 and #11051 were
-// open as of 1.7.7; re-evaluate this plugin once both ship.
+// Have I Been Pwned, checked before the endpoint runs. Replaces better-auth's haveIBeenPwned plugin, which checks
+// inside password.hash. Before 1.7.8 /reset-password had consumed the token by then, so a refused password burned the
+// reset link (better-auth#10632, fixed by #11646); its lookup still has no timeout or abort as of 1.7.11. Re-evaluate
+// this plugin once #11051 ships.
 // Fails closed: if the lookup fails or takes longer than timeoutMs, the password is refused with a 503. It runs
 // before the endpoint's own validation, so during an outage sign-up, reset, signed-in password changes, permitted
 // admins and server-side user creation get the 503 (the rate limiter bounds them). Requests the route would refuse
