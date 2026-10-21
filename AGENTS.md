@@ -116,9 +116,11 @@ out/                   aspire publish output (gitignored)
   form filled from those would save them over the real row.
 - The display typeface is `data-type` on `<html>` (set in `Base.astro`); page and section titles use the `.display`
   class, which reads `--display-face` (small card and list headings stay Geist bold; Markdown post h2s in
-  `.prose-content` read the same variables, h3 stays Geist). Newsreader goes through Astro's
-  local font provider on the `@fontsource-variable/newsreader` files (the npm provider parses one CSS file per family,
-  and none declares both normal and italic) and is preloaded only when serif is active.
+  `.prose-content` read the same variables, h3 stays Geist). All three families (Geist, Geist Mono, Newsreader) go
+  through Astro's local font provider on the `@fontsource-variable/*` Latin woff2 files; avoid the npm provider: it
+  parses one CSS file per family (none declares both Newsreader's normal and italic), and with unifont 1.x it returns
+  `file://` URLs that Astro 7.4.1's font fetcher passes to `fetch()`, which fails. Newsreader is preloaded only when
+  serif is active.
   Cross-document view transitions are on (`@view-transition` in `global.css`); the header keeps its own
   `view-transition-name`. `Base.astro` marks the outgoing page's transition `ready` promise handled on `pageswap`:
   Safari rejects it at teardown and browser Sentry reported the unhandled rejection (WebKit bug 289078).

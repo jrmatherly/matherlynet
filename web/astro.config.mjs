@@ -5,9 +5,6 @@ import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
 import { sentryVitePlugin } from "@sentry/bundler-plugins/vite";
 
-// Fonts come from the installed @fontsource-variable packages; builds never fetch them.
-const npmFonts = fontProviders.npm({ remote: false });
-
 // `astro check`, `astro sync` and `astro build` start a temporary Vite server whose config hash differs from the
 // dev server's. On the shared default cache directory, Vite (8.3.1) then replaces the optimized deps of a running
 // `astro dev`, which answers 504 for its client scripts until it restarts. So they get their own directories:
@@ -62,8 +59,10 @@ export default defineConfig({
   },
   fonts: [
     {
-      // Latin only, through the local provider: the npm provider reads every @font-face in the package (unifont
-      // 0.7.5 ignores `subsets` there), so Cyrillic, Greek and Latin Extended were preloaded on every page too.
+      // Geist and Geist Mono: Latin only, through the local provider. The npm provider reads every @font-face in the
+      // package, so Cyrillic, Greek and Latin Extended were preloaded on every page too. With `remote: false`
+      // unifont 0.7.5 still pointed the files at jsDelivr, and unifont 1.x returns file:// URLs that Astro 7.4.1's
+      // font fetcher hands to fetch(), which can't read them.
       provider: fontProviders.local(),
       name: "Geist Variable",
       cssVariable: "--font-geist",
@@ -72,13 +71,13 @@ export default defineConfig({
       },
     },
     {
-      provider: npmFonts,
+      provider: fontProviders.local(),
       name: "Geist Mono Variable",
       cssVariable: "--font-geist-mono",
-      weights: ["100 900"],
-      styles: ["normal"],
       fallbacks: ["monospace"],
-      options: { package: "@fontsource-variable/geist-mono" },
+      options: {
+        variants: [{ weight: "100 900", style: "normal", src: ["@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2"] }],
+      },
     },
     {
       // Local provider on the fontsource files: the npm provider parses one CSS file per family (index.css by

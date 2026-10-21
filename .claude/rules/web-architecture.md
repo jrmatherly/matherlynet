@@ -9,8 +9,8 @@ The Astro app, file by file (moved out of AGENTS.md to keep it short; AGENTS.md'
 
 ```text
 web/
-  astro.config.mjs     output: 'server', @astrojs/node standalone, MDX, Tailwind 4 (Vite plugin), fonts (Geist Latin and
-                       Newsreader normal + italic via the local provider, Geist Mono via npm), CSP directives,
+  astro.config.mjs     output: 'server', @astrojs/node standalone, MDX, Tailwind 4 (Vite plugin), fonts (Geist, Geist Mono
+                       and Newsreader normal + italic, Latin only, via the local provider), CSP directives,
                        security.allowedDomains (trust X-Forwarded-Proto behind Cloudflare)
   migrate.mjs          applies web/drizzle/ on start (retry + Postgres advisory lock)
   start.mjs            production entry (the image's `node start.mjs`, `pnpm start`): imports otel, migrate, server
