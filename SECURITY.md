@@ -12,4 +12,5 @@ few days.
 
 ## Supported versions
 
-Only the current `main` branch (what's deployed) is supported.
+Only the current `main` branch (what's deployed) is supported. Tagged releases are snapshots of it; fixes land on
+`main` only.

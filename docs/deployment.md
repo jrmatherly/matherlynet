@@ -46,7 +46,7 @@ recorded as `REDACTED`.
 | :--- | :--- |
 | `WEB_IMAGE` | `ghcr.io/jrmatherly/matherlynet/web:<commit sha>` |
 | `APP_URL` | `https://matherly.net` (OAuth callbacks and canonical URLs are built from it) |
-| `BETTER_AUTH_SECRET`, `PG_PASSWORD`, `UMAMI_SECRET` | `openssl rand -hex 32` each; keep them stable across deploys |
+| `BETTER_AUTH_SECRET`, `PG_PASSWORD`, `UMAMI_SECRET` (Umami only) | `openssl rand -hex 32` each; keep them stable across deploys |
 | `SMTP_URL` | `smtp://<user>:<app password>@smtp.mail.me.com:587` (STARTTLS). A value that is not an `smtp://` or `smtps://` URL stops the container at start; blank runs without mail |
 | `MAIL_FROM` | sender address, e.g. `MatherlyNet <…@matherly.net>` |
 | `ADMIN_EMAIL` | the admin's address, set **before** that account's email is verified (see below) |
@@ -219,9 +219,9 @@ unreachable (site settings fall back; better-auth's database rate limiter skips 
 restart pods.
 
 Each pod logs `WARN [Better Auth]: Rate limiting could not determine a client IP` once, a few seconds after it
-starts. The first probe causes it: a kubelet request carries no `cf-connecting-ip`, and better-auth 1.7.7 warns
-before it applies the `/ok` exemption. Probes are still not limited. The warning is logged once per process, so it
-will not appear again if a visitor's request later arrives without the header.
+starts. The first probe causes it: a kubelet request carries no `cf-connecting-ip`, and better-auth (1.7.7 through
+1.7.11) warns before it applies the `/ok` exemption. Probes are still not limited. The warning is logged once per
+process, so it will not appear again if a visitor's request later arrives without the header.
 
 ## 8. Live playground (when a model URL is set)
 
