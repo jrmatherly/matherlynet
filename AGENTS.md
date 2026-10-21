@@ -59,6 +59,8 @@ web/                   Astro SSR app (start.mjs entry, otel.mjs, migrate.mjs, se
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported
 docs/deployment.md     production runbook: publish settings, .env, Cloudflare Tunnel + rules, Umami, Sentry, K8s,
                        live playground
+docs/superpowers/      design specs and implementation plans; finished ones move to `completed/`
+scripts/               check-chart.sh and smoke-image.sh (CI, also run locally), umami-set-password.mjs
 deploy/                docker-compose.override.yaml: web healthcheck; `aspire publish` copies it next to the Compose file
 out/                   aspire publish output (gitignored)
 ```
@@ -287,7 +289,8 @@ out/                   aspire publish output (gitignored)
   it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not buffer the playground stream, and a
   disconnect reaches web (the row closed as `cut` / `left`).
 - The image workflow runs only when the image, the chart or their checks can change (`web/**` minus docs, AppHost
-  files, root `package*.json`, `scripts/check-chart.sh` and `smoke-image.sh`, the workflow itself);
+  files, root `package*.json`, `scripts/check-chart.sh` and `smoke-image.sh`, the workflow itself and the
+  `web-checks.yml` and `e2e.yml` it calls);
   `workflow_dispatch` bypasses the filter. `paths-ignore` can't take `!` exceptions, so it is an include list.
 - Vitest sees an empty `writing` collection on a clean checkout (the content store exists only after a dev server
   or build has synced it), so which posts the feed and sitemap carry is asserted in `e2e/public.spec.ts`.
@@ -343,9 +346,10 @@ out/                   aspire publish output (gitignored)
   the log and Sentry as a code: a connection failure (DNS, TLS, refused), any status but 503 (a 400 is "model
   error"; a 2xx with no body too), an unreadable frame, or a 200 with no usable frame. A stream that drops
   mid-answer is reported as `playground: stream failed (<code>)`. A 503 and an abort are not reported.
-- Dependencies: exact versions, latest stable. npm (`~/.npmrc`) and pnpm both enforce a minimum release
-  age: pin a newer version explicitly (pnpm records `minimumReleaseAgeExclude`; npm needs
-  `--min-release-age-exclude=<package-name>`). Known caps: `vscode-jsonrpc` 8.x (Aspire's generated
+- Dependencies: exact versions, latest stable. pnpm refuses versions under a day old (its default
+  `minimumReleaseAge`): pinning one makes pnpm record a `minimumReleaseAgeExclude` entry. npm has no release-age guard
+  unless `~/.npmrc` sets `min-release-age` (then pass `--min-release-age-exclude=<package-name>`); Renovate waits 7
+  days. Known caps: `vscode-jsonrpc` 8.x (Aspire's generated
   transport imports `vscode-jsonrpc/node.js`), TypeScript 6.0.x (typescript-eslint and `@astrojs/check` peer ranges),
   `@types/node` 24.x (matches the Node 24 runtime). Keep the `allowedVersions` rules in `.github/renovate.json5` in
   sync with these caps. Renovate lists Aspire updates on its dashboard issue and opens that PR only when asked:

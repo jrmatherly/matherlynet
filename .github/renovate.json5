@@ -12,7 +12,7 @@
     "schedule:weekly",
   ],
   timezone: "America/New_York",
-  // Matches the 7-day minimum release age in ~/.npmrc and pnpm.
+  // Renovate's own wait; pnpm's default guard is 1 day, and npm has none unless ~/.npmrc sets min-release-age.
   minimumReleaseAge: "7 days",
   // Dependabot security updates raise the fix PRs; Renovate would raise each one again.
   vulnerabilityAlerts: { enabled: false },

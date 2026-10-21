@@ -13,8 +13,8 @@ paths:
   (`web/src/lib/auth.ts`, e.g. plugins), then run `cd web && APPDB_URI=postgresql://unused pnpm db:generate`.
   That regenerates the schema and writes a new SQL migration plus `web/drizzle/meta/*`.
 - Never hand-edit existing files in `web/drizzle/`; they may already be applied. Fix forward with a new migration.
-- Domain tables go in their own file under `web/src/db/`; add it to `drizzle.config.ts` `schema` and to the
-  `schema` import in `web/src/db/index.ts`.
+- App tables live in `web/src/db/schema.ts` (`site_settings`, `playground_call`). A table in a new file must also be
+  added to `drizzle.config.ts` `schema` and spread into the `schema` object in `web/src/db/index.ts`.
 - `web/migrate.mjs` runs before `astro dev` and the production server. It retries until Postgres accepts
   connections and serializes replicas with `pg_advisory_lock`; drizzle-orm 0.45's migrator has no lock of its own.
 - Drizzle stays on the stable 0.45 line: 1.0 is a release candidate and better-auth's generator emits

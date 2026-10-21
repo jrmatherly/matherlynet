@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Runs matherlynet's full local verification (AppHost eslint and tsc, Markdown and workflow lint, web astro check, lint, tests and build, Aspire smoke test, Playwright E2E) and reports PASS/FAIL per step. Use before committing, after changing apphost.mts, dependencies or the auth/database code, or when the user says "verify", "run the checks", "is everything green", or invokes /verify.
+description: Runs matherlynet's full local verification (AppHost eslint and tsc, Markdown and workflow lint, web astro check, lint, tests and build, a dev-server Vite deps check, Aspire smoke test, Playwright E2E) and reports PASS/FAIL per step. Use before committing, after changing apphost.mts, dependencies or the auth/database code, or when the user says "verify", "run the checks", "is everything green", or invokes /verify.
 argument-hint: "[--no-stack]"
 allowed-tools: Bash(.claude/skills/verify/scripts/verify.sh *)
 ---
@@ -30,3 +30,7 @@ Run the project's checks and report the result.
 - A FAIL on "Aspire smoke test" with certificate errors in `aspire logs` means the dev certificate isn't
   trusted: ask the user to run `aspire certs trust` (interactive).
 - The web build needs no database; a build failure is a code problem, not an environment one.
+- It doesn't cover publish output or the production image (CI's e2e job does). For AppHost, chart or Dockerfile
+  changes also run `aspire publish -o out/compose`, `DEPLOY_TARGET=k8s aspire publish -o out/k8s` and
+  `scripts/check-chart.sh out/k8s` (see `.claude/rules/apphost.md`).
+- Playwright's Chromium is per Playwright version: after a bump, run the install line above again.
