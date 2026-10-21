@@ -209,5 +209,5 @@ jobs:
           container=$(docker create "$IMAGE")
           docker cp "$container:/app/dist" "$RUNNER_TEMP/dist"
           docker rm "$container"
-          npx --yes sentry@0.45.0 release create "$SENTRY_ORG/$GITHUB_SHA" --project "$SENTRY_PROJECT" --finalize
-          npx --yes sentry@0.45.0 sourcemap upload "$RUNNER_TEMP/dist" --release "$GITHUB_SHA" --no-rewrite
+          npx --yes sentry@0.47.0 release create "$SENTRY_ORG/$GITHUB_SHA" --project "$SENTRY_PROJECT" --finalize
+          npx --yes sentry@0.47.0 sourcemap upload "$RUNNER_TEMP/dist" --release "$GITHUB_SHA" --no-rewrite
