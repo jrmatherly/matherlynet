@@ -47,8 +47,9 @@ vi.mock("better-auth/adapters/drizzle", async () => {
     },
   };
 });
-vi.mock("../src/lib/mail", () => ({
-  sendMail: vi.fn(async (to: string, _subject: string, body: string) => void h.mails.push({ to, body })),
+// The throttle has its own test (mail-throttle.test.ts); here every mail goes through.
+vi.mock("../src/lib/mail-throttle", () => ({
+  sendThrottled: vi.fn((to: string, _subject: string, body: string) => void h.mails.push({ to, body })),
 }));
 vi.mock("../src/lib/sentry", async (orig) => ({ ...(await orig<object>()), captureError: vi.fn() }));
 

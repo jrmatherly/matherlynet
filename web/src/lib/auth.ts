@@ -5,7 +5,7 @@ import { admin } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { user as userTable } from "../db/auth-schema";
-import { sendMail } from "./mail";
+import { sendThrottled } from "./mail-throttle";
 import { pwnedPasswordCheck } from "./pwned";
 import { captureError } from "./sentry";
 
@@ -58,7 +58,7 @@ export const auth = betterAuth({
     minPasswordLength: 12,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) =>
-      sendMail(user.email, "Reset your password", `Reset your matherlynet password:\n\n${url}\n\nIf you didn't ask for this, ignore this email.`),
+      sendThrottled(user.email, "Reset your password", `Reset your matherlynet password:\n\n${url}\n\nIf you didn't ask for this, ignore this email.`),
     // Sign-up answers the same for new and existing emails; the fake response needs the admin plugin's fields.
     customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
       ...coreFields,
@@ -75,7 +75,7 @@ export const auth = betterAuth({
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) =>
-      sendMail(user.email, "Verify your email", `Confirm your email to finish signing up for matherlynet:\n\n${url}\n\nIf you didn't sign up, ignore this email.`),
+      sendThrottled(user.email, "Verify your email", `Confirm your email to finish signing up for matherlynet:\n\n${url}\n\nIf you didn't sign up, ignore this email.`),
   },
   socialProviders,
   // No freshness rule: /account lists sessions through listSessions, which better-auth 1.7.7 refuses once the session

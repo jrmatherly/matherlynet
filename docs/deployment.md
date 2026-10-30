@@ -132,9 +132,18 @@ of the security headers pages get (checked on a production build), and the clien
   `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`.
 - **WAF custom rule**, action Block: `ends_with(http.request.uri.path, ".map")`. CI uploads the maps to Sentry from
   the image, so nobody needs them over HTTP.
-- **Rate limiting rule**, required before the app is exposed. This repo does not create it. Limit
-  `POST /api/playground` to about 30 requests a minute per address. The route writes a `playground_call` row for
-  every accepted POST even with the model off, and the app's own limits only stop the model call.
+- **Rate limiting rule**, required before the app is exposed. This repo does not create it. The zone is on the Free
+  plan, which allows one rate limiting rule with a 10 s counting period and a 10 s block. That rule matches
+  `http.request.uri.path eq "/api/playground"` (the route takes only POST) and allows 5 requests per 10 s per
+  address, then blocks the address for 10 s. The route writes a `playground_call` row for every accepted POST even
+  with the model off, and the app's own limits only stop the model call.
+- **No rule for mail.** The Free plan has no second rate limiting rule, so the auth routes that send mail are
+  limited in the app. better-auth's defaults (`api/rate-limiter/index.mjs` in 1.7.11) allow 3 requests per 10 s on
+  sign-in and sign-up and 3 per 60 s on password reset and resending the verification mail, all per IP and path;
+  nothing counts per recipient. `web/src/lib/mail-throttle.ts` adds that: at most 5 mails an hour to one address,
+  counted in the `mail_throttle` table so the cap holds across replicas. A refused mail is dropped silently and
+  the response is unchanged, so a client can't tell whether an address exists. The owner of a flooded address
+  gets no mail for up to an hour; the web log line `mail: throttled recipient <8 hex>` is what that looks like.
 
 ## 6. Sentry
 
