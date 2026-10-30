@@ -80,9 +80,10 @@ export function configureSentry(dsn: string | null): void {
         makeMultiplexedTransport(publicOnlyTransport, () => (activeDsn ? [activeDsn] : []))(options),
         () => activeDsn !== null,
       ),
-    // Request bodies stay out of events (sign-up bodies carry emails); query strings and headers keep the SDK's
-    // default key filtering (token, password, cookie, … are redacted).
-    dataCollection: { httpBodies: [] },
+    // Request bodies stay out of events (sign-up bodies carry emails). Visitor IPs are personal data the site stores
+    // nowhere else: userInfo false drops user.ip_address and the client-IP headers (cf-connecting-ip, x-forwarded-for,
+    // …; @sentry/core 11.8.0 requestdata.js). Query strings and other headers keep the SDK's key filtering.
+    dataCollection: { httpBodies: [], userInfo: false },
   });
 }
 
