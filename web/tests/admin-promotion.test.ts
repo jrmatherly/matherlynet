@@ -87,6 +87,7 @@ describe("admin promotion", () => {
     const res = await signUpAndVerify(ADMIN);
     expect(res.status).toBeLessThan(400);
     expect(owner()).toMatchObject({ emailVerified: true, role: "admin" });
+    expect(h.mails.filter((m) => m.to === ADMIN).at(-1)!.body).toContain("If you didn't sign up, ignore this email");
   });
 
   it("an ordinary update (name change) after a demotion doesn't re-promote", async () => {

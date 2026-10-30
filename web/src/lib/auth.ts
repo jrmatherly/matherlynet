@@ -75,7 +75,7 @@ export const auth = betterAuth({
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) =>
-      sendMail(user.email, "Verify your email", `Confirm your email to finish signing up for matherlynet:\n\n${url}`),
+      sendMail(user.email, "Verify your email", `Confirm your email to finish signing up for matherlynet:\n\n${url}\n\nIf you didn't sign up, ignore this email.`),
   },
   socialProviders,
   // No freshness rule: /account lists sessions through listSessions, which better-auth 1.7.7 refuses once the session

@@ -70,6 +70,10 @@ The admin account is promoted when its email becomes verified (the emailed link,
 vouches for it), never later: an account verified before `ADMIN_EMAIL` was set stays a normal user. For an OAuth
 account, set it before that account's first sign-in.
 
+On every new database, register `ADMIN_EMAIL` and verify it before the site is exposed. Sign-up is open, so whoever
+registers that address first holds its account. Ignore a verification link you did not request. Clicking it verifies
+the account, signs you in and promotes whoever set its password.
+
 `docker compose down` / `docker stop` give each container 10 s before SIGKILL. web drains requests for up to
 7 s and flushes Sentry and OpenTelemetry inside that window; don't lower the stop timeout.
 
