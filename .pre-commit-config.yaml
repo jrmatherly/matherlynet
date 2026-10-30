@@ -2,6 +2,10 @@
 #   pre-commit install
 # Run on everything: pre-commit run --all-files
 # Update pins:       pre-commit autoupdate --freeze
+# Node hooks run on the Node already on PATH (mise): pre-commit's own nodeenv download fails to parse a pre-release
+# version in the nodejs.org release list (nodeenv 1.9: "invalid literal for int() with base 10: '0-alpha'").
+default_language_version:
+  node: system
 repos:
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: 916ad0aaa108c64d294101002066f530ea170b10 # frozen: v0.23.3
