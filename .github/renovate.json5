@@ -74,6 +74,14 @@
       datasourceTemplate: "npm",
     },
     {
+      description: "markdownlint-cli2 in the repo checks workflow (keep it on the pre-commit hook's frozen version)",
+      customType: "regex",
+      managerFilePatterns: ["/^\\.github/workflows/repo-checks\\.yml$/"],
+      matchStrings: ["npx --yes markdownlint-cli2@(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      depNameTemplate: "markdownlint-cli2",
+      datasourceTemplate: "npm",
+    },
+    {
       description: "Aspire hosting packages",
       customType: "jsonata",
       fileFormat: "json",

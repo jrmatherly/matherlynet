@@ -15,8 +15,8 @@ paths:
 - `publish-images.yml` calls `web-checks.yml` and `e2e.yml` (`needs: [checks, e2e]`) before pushing; those two run
   on their own only for pull requests or manual dispatch, so they are in its `paths:` filter. After `push`, the
   `chart` job (main only, version `0.<run>.<attempt>`) and the `sourcemaps` job run in parallel.
-- The Aspire CLI is a pinned, sha512-checked tarball in both `e2e.yml` and `publish-images.yml`
-  (`ASPIRE_VERSION`, `ASPIRE_SHA512`): bump version and hash together in both (hash from the release's `.sha512`
+- The Aspire CLI is a pinned, sha512-checked tarball in `e2e.yml`, `publish-images.yml` and `repo-checks.yml`
+  (`ASPIRE_VERSION`, `ASPIRE_SHA512`): bump version and hash together in all three (hash from the release's `.sha512`
   asset).
 - E2E uses the dev server. `web-checks.yml`'s "Smoke-test the production server" step runs `web/server.mjs` alone,
   without a database (keep it in step with the probes and origin check); `e2e.yml`'s "Smoke-test the production
