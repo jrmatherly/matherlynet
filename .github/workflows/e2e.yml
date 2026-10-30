@@ -51,12 +51,12 @@ jobs:
         with:
           package_json_file: web/package.json
 
-      # Pinned and checksum-verified (the hash is from the v13.6.2 release's .sha512 asset); bump both together.
+      # Pinned and checksum-verified (the hash is from the v13.6.4 release's .sha512 asset); bump both together.
       # install.sh does the same download + extract into ~/.aspire/bin, without the pinned hash.
       - name: 🧰 Install Aspire CLI
         env:
-          ASPIRE_VERSION: '13.6.2'
-          ASPIRE_SHA512: 9e50e7f1bad5e7663cc4c145e386dd334db51bf5390bfec849bcf7b5ba60f05c89e438a2cd698f112d1a44def4c8eb6dfe7a0670e655a24bba19c4831182fea9
+          ASPIRE_VERSION: '13.6.4'
+          ASPIRE_SHA512: 6070e2e4aef237aea8d472a918d6ff419d3c2dfe883bc23549cf1d505a7e517dc483c48e9aa7991030243971955cda5e81b0b66f4df64f1f8a0cf8279c7cca56
         run: |
           curl -fsSLo "$RUNNER_TEMP/aspire.tgz" "https://github.com/microsoft/aspire/releases/download/v${ASPIRE_VERSION}/aspire-cli-linux-x64-${ASPIRE_VERSION}.tar.gz"
           echo "${ASPIRE_SHA512}  $RUNNER_TEMP/aspire.tgz" | sha512sum -c -
