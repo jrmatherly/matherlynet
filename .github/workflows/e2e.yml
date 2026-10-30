@@ -34,6 +34,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0 # the upgrade smoke diffs against the PR base or the last release's commit
 
       - name: 🟣 Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -50,12 +51,12 @@ jobs:
         with:
           package_json_file: web/package.json
 
-      # Pinned and checksum-verified (the hash is from the v13.6.2 release's .sha512 asset); bump both together.
+      # Pinned and checksum-verified (the hash is from the v13.6.4 release's .sha512 asset); bump both together.
       # install.sh does the same download + extract into ~/.aspire/bin, without the pinned hash.
       - name: 🧰 Install Aspire CLI
         env:
-          ASPIRE_VERSION: '13.6.2'
-          ASPIRE_SHA512: 9e50e7f1bad5e7663cc4c145e386dd334db51bf5390bfec849bcf7b5ba60f05c89e438a2cd698f112d1a44def4c8eb6dfe7a0670e655a24bba19c4831182fea9
+          ASPIRE_VERSION: '13.6.4'
+          ASPIRE_SHA512: 6070e2e4aef237aea8d472a918d6ff419d3c2dfe883bc23549cf1d505a7e517dc483c48e9aa7991030243971955cda5e81b0b66f4df64f1f8a0cf8279c7cca56
         run: |
           curl -fsSLo "$RUNNER_TEMP/aspire.tgz" "https://github.com/microsoft/aspire/releases/download/v${ASPIRE_VERSION}/aspire-cli-linux-x64-${ASPIRE_VERSION}.tar.gz"
           echo "${ASPIRE_SHA512}  $RUNNER_TEMP/aspire.tgz" | sha512sum -c -
@@ -86,11 +87,34 @@ jobs:
           aspire publish -o out/compose --non-interactive --nologo
           test -f out/compose/docker-compose.override.yaml
           WEB_IMAGE=x PG_PASSWORD=x docker compose --project-directory out/compose config | grep -q 'start_period: 1m30s'
+          WEB_IMAGE=x PG_PASSWORD=x docker compose --project-directory out/compose config --format json | jq -e '.services.pg.restart == "unless-stopped"' > /dev/null || { echo "pg has no restart policy"; exit 1; }
           DEPLOY_TARGET=k8s aspire publish -o out/k8s --non-interactive --nologo
           scripts/check-chart.sh out/k8s
 
+      # An unchanged journal means both images apply the same migrations, so the skip loses nothing.
+      - name: 🔁 Pick the release to upgrade from
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # GHCR is asked only when the release is needed: on main for the range, on a PR once the diff shows a change.
+          released() {
+            chart=$(helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet)
+            release=$(yq -r .appVersion <<<"$chart")
+            [ -n "$release" ] && [ "$release" != null ] || { echo "no appVersion in the chart"; exit 1; }
+          }
+          if [ -n "$BASE_REF" ]; then range=origin/$BASE_REF...HEAD; else released; range=$release..HEAD; fi
+          changed=0; git diff --quiet "$range" -- web/drizzle web/src/db || changed=$?
+          case $changed in
+            0) echo "migrations unchanged across $range: no upgrade run" ;;
+            1) [ -n "${release:-}" ] || released
+               echo "SMOKE_FROM_IMAGE=ghcr.io/jrmatherly/matherlynet/web:$release" >> "$GITHUB_ENV" ;;
+            *) echo "git diff $range failed ($changed)"; exit 1 ;;
+          esac
+
       # The stack above runs the dev server; this builds the production image and runs its entrypoint.
       - name: 🐳 Smoke-test the production image
+        env:
+          SMOKE_E2E: '1'
         run: scripts/smoke-image.sh out/k8s/web.Dockerfile
 
       # The runs above have no model URL (the playground's off path); this one points it at the fake model server.

@@ -25,6 +25,14 @@ export const siteSettings = pgTable(
   (table) => [check("site_settings_single_row", sql`${table.id} = 1`)],
 );
 
+// One row per mail recipient (mail-throttle.ts): a fixed window and how many mails went to the address in it.
+// The key is a hash of the lowercased address, never the address.
+export const mailThrottle = pgTable("mail_throttle", {
+  recipient: text("recipient").primaryKey(),
+  windowStart: timestamp("window_start", { withTimezone: true }).defaultNow().notNull(),
+  count: integer("count").notNull(),
+});
+
 // One row per accepted live /playground call (lib/playground-io.ts): the audit record, the limiter's counter and the
 // seat. No free text: the prompt and the answer are never stored, only their lengths. All times are Postgres's now(),
 // so replica clocks never enter a comparison.

@@ -46,7 +46,8 @@ The drizzle cap has no Renovate rule: Renovate skips 1.0 only while it stays a p
    current version's folder in place.
 2. `aspire update -y --non-interactive` moves `aspire.config.json` (SDK and hosting packages, the Kubernetes preview
    build included) and regenerates `.aspire/`. Check the CommunityToolkit packages separately; they ship apart.
-3. Bump `ASPIRE_VERSION` and `ASPIRE_SHA512` in both `.github/workflows/e2e.yml` and `publish-images.yml`. Take the
+3. Bump `ASPIRE_VERSION` and `ASPIRE_SHA512` in `.github/workflows/e2e.yml`, `publish-images.yml` and
+   `repo-checks.yml`. Take the
    hash from the release's `.sha512` asset (`gh release download v<version> -R microsoft/aspire -p
    'aspire-cli-linux-x64-<version>.tar.gz.sha512'`, lowercased) and check it with `sha512sum -c` against the tarball.
 4. Rehearse publish: `aspire publish -o out/compose`, `DEPLOY_TARGET=k8s aspire publish -o out/k8s`, then

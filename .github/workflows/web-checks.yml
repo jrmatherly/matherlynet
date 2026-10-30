@@ -45,8 +45,14 @@ jobs:
       - name: 📚 Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: 🛡️ Audit production dependencies
+        run: pnpm audit --prod --audit-level=high
+
       - name: 🔎 Astro check
         run: pnpm check
+
+      - name: 🧬 Schema and migrations agree
+        run: APPDB_URI=postgresql://unused pnpm db:generate && git diff --exit-code -- src/db drizzle
 
       - name: 🧹 Lint
         run: pnpm lint
@@ -77,6 +83,7 @@ jobs:
           pid=$!
           trap 'kill "$pid" 2>/dev/null || true; cat "$RUNNER_TEMP/server.log"' EXIT
           for _ in $(seq 1 30); do curl -sf "http://127.0.0.1:$PORT/api/auth/ok" > /dev/null 2>&1 && break; sleep 1; done
+          curl -sI "http://127.0.0.1:$PORT/" | grep -i '^content-security-policy:' | grep -q "frame-ancestors 'none'" || { echo "no CSP header on /"; exit 1; }
           expect() { # expect <status> <curl args...>
             local want=$1; shift
             local got; got=$(curl -s -o /dev/null -w '%{http_code}' "$@")

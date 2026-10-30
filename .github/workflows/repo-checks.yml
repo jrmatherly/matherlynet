@@ -1,0 +1,84 @@
+name: 🧹 Repo checks
+
+on:
+  pull_request:
+    paths:
+      - 'apphost.mts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.apphost.json'
+      - 'aspire.config.json'
+      - 'eslint.config.mjs'
+      - '.markdownlint-cli2.jsonc'
+      - '**/*.md'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  lint:
+    name: 🧹 Lint the AppHost, Markdown and workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # aspire restore runs on the .NET runtime, as in e2e.yml.
+      - name: 🟣 Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 🟢 Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: 📚 Install dependencies
+        run: npm ci
+
+      # Same pinned, checksum-verified CLI as e2e.yml and publish-images.yml; bump all three together.
+      - name: 🧰 Install Aspire CLI
+        env:
+          ASPIRE_VERSION: '13.6.4'
+          ASPIRE_SHA512: 6070e2e4aef237aea8d472a918d6ff419d3c2dfe883bc23549cf1d505a7e517dc483c48e9aa7991030243971955cda5e81b0b66f4df64f1f8a0cf8279c7cca56
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/aspire.tgz" "https://github.com/microsoft/aspire/releases/download/v${ASPIRE_VERSION}/aspire-cli-linux-x64-${ASPIRE_VERSION}.tar.gz"
+          echo "${ASPIRE_SHA512}  $RUNNER_TEMP/aspire.tgz" | sha512sum -c -
+          mkdir -p "$HOME/.aspire/bin" && tar -xzf "$RUNNER_TEMP/aspire.tgz" -C "$HOME/.aspire/bin"
+          echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
+
+      # tsc reads the generated SDK in .aspire/modules (gitignored).
+      - name: ⚙️ Generate the AppHost SDK
+        run: aspire restore --non-interactive --nologo
+
+      - name: 🧹 Lint the AppHost
+        run: npm run lint
+
+      - name: 🔎 Type-check the AppHost
+        run: node_modules/.bin/tsc -p tsconfig.apphost.json --noEmit
+
+      # Renovate moves this pin; when it does, bump the pre-commit hook's frozen rev (.pre-commit-config.yaml) to match.
+      - name: 📝 Lint Markdown
+        run: npx --yes markdownlint-cli2@0.23.3
+
+      # Version and checksum are bumped together by hand (checksums file on the release), like the Aspire CLI.
+      - name: 🔧 Lint workflows
+        env:
+          ACTIONLINT_VERSION: '1.7.12'
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/actionlint.tgz" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  $RUNNER_TEMP/actionlint.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/actionlint.tgz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint"

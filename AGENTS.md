@@ -355,7 +355,9 @@ out/                   aspire publish output (gitignored)
   transport imports `vscode-jsonrpc/node.js`), TypeScript 6.0.x (typescript-eslint and `@astrojs/check` peer ranges),
   `@types/node` 24.x (matches the Node 24 runtime). Keep the `allowedVersions` rules in `.github/renovate.json5` in
   sync with these caps. Renovate lists Aspire updates on its dashboard issue and opens that PR only when asked:
-  Aspire still moves through `/bump-deps`.
+  Aspire still moves through `/bump-deps`. CI fails on a high production advisory (`pnpm audit --prod
+  --audit-level=high` in web-checks); fix it with `pnpm update <package>` or an `overrides` entry in
+  `web/pnpm-workspace.yaml` (pnpm 12 ignores `pnpm.overrides` in package.json).
 - pnpm 12 blocks dependency build scripts: approve with `pnpm approve-builds <pkg>`.
 - The generated Dockerfile installs on glibc (node:24-slim) and runs on Alpine (musl). `web/pnpm-workspace.yaml`
   sets `supportedArchitectures.libc: [current, musl]` so native packages (`@takumi-rs/core`) ship musl builds;

@@ -28,6 +28,7 @@ web/
                        userHasPermission endpoint) and the length rules; fetch aborted after 5 s; fails closed
                        with a 503, logged
   src/lib/mail.ts      nodemailer over SMTP_URL (Mailpit locally); fire-and-forget
+  src/lib/mail-throttle.ts  sendThrottled(): auth mail capped at 5 an hour per recipient (mail_throttle, hashed key)
   src/lib/site-settings.ts  site_settings row (theme, Pro palette, typeface, Sentry, Umami), 30 s per-process cache;
                        reconfigures Sentry;
                        expired entries refresh in the background; database down: last known (or default) settings
@@ -78,8 +79,8 @@ web/
   src/content/writing/  posts: .md, or .mdx to embed a component (schema in src/content.config.ts; `draft: true`
                        hides a post everywhere)
   src/db/              Drizzle clients (`APPDB_URI`, pool timeouts): db, and playgroundDb on its own pool of 6 for the
-                       live playground; generated auth-schema.ts, app tables in schema.ts: site_settings, and
-                       playground_call (one row per accepted live playground call; no text, no IP)
+                       live playground; generated auth-schema.ts, app tables in schema.ts: site_settings,
+                       mail_throttle, and playground_call (one row per accepted live playground call; no text, no IP)
   src/middleware.ts    session, siteSettings and theme into Astro.locals; Sentry error capture; security headers
   src/theme/palettes.ts  palette keys, typefaces, cookie names, resolveTheme() (cookies -> theme, mode, palette,
                        typeface)

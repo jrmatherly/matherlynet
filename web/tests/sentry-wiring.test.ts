@@ -10,18 +10,24 @@ import { configureSentry } from "../src/lib/sentry";
 const sinks: Server[] = [];
 async function sink() {
   const envelopes: string[][] = [];
+  const bodies: Record<string, unknown>[] = [];
   const server = createServer((req, res) => {
     let body = "";
     req.on("data", (chunk) => (body += chunk));
     req.on("end", () => {
-      envelopes.push(body.split("\n").flatMap((line) => (line.includes('"type"') ? [JSON.parse(line).type] : [])));
+      const lines = body.split("\n");
+      envelopes.push(lines.flatMap((line) => (line.includes('"type"') ? [JSON.parse(line).type] : [])));
+      // An event's body is the line after its item header.
+      lines.forEach((line, i) => {
+        if (line.includes('"type":"event"')) bodies.push(JSON.parse(lines[i + 1]));
+      });
       res.end("{}");
     });
   });
   sinks.push(server);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const events = () => envelopes.filter((types) => types.includes("event")).length;
-  return { envelopes, events, dsn: `http://key@127.0.0.1:${(server.address() as AddressInfo).port}/1` };
+  return { envelopes, events, bodies, dsn: `http://key@127.0.0.1:${(server.address() as AddressInfo).port}/1` };
 }
 afterAll(() => sinks.forEach((s) => s.close()));
 
@@ -92,4 +98,29 @@ it("connects directly even when a proxy is configured, and says so", async () =>
   expect(d.events()).toBe(1);
   expect(warn.mock.calls.flat().join(" ")).toMatch(/proxy is set, but server Sentry connects directly/);
   warn.mockRestore();
+});
+
+it("sends no visitor identity: no user.ip_address, no client IP headers, request url and method kept", async () => {
+  const { dsn, bodies } = await sink();
+  configureSentry(dsn);
+  await Sentry.withIsolationScope(async () => {
+    Sentry.getIsolationScope().setSDKProcessingMetadata({
+      normalizedRequest: {
+        url: "https://matherly.net/x",
+        method: "GET",
+        headers: { "cf-connecting-ip": "203.0.113.9", "user-agent": "t" },
+      },
+      ipAddress: "203.0.113.9",
+    });
+    Sentry.captureException(new Error("probe"));
+    await Sentry.flush(2000);
+  });
+  expect(bodies).toHaveLength(1);
+  const event = bodies[0] as {
+    user?: { ip_address?: string };
+    request?: { url?: string; method?: string; headers?: Record<string, string> };
+  };
+  expect(event.user?.ip_address).toBeUndefined();
+  expect(event.request?.headers?.["cf-connecting-ip"]).toBeUndefined();
+  expect(event.request).toMatchObject({ url: "https://matherly.net/x", method: "GET" });
 });

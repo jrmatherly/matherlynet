@@ -70,6 +70,10 @@ The admin account is promoted when its email becomes verified (the emailed link,
 vouches for it), never later: an account verified before `ADMIN_EMAIL` was set stays a normal user. For an OAuth
 account, set it before that account's first sign-in.
 
+On every new database, register `ADMIN_EMAIL` and verify it before the site is exposed. Sign-up is open, so whoever
+registers that address first holds its account. Ignore a verification link you did not request. Clicking it verifies
+the account, signs you in and promotes whoever set its password.
+
 `docker compose down` / `docker stop` give each container 10 s before SIGKILL. web drains requests for up to
 7 s and flushes Sentry and OpenTelemetry inside that window; don't lower the stop timeout.
 
@@ -128,9 +132,18 @@ of the security headers pages get (checked on a production build), and the clien
   `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`.
 - **WAF custom rule**, action Block: `ends_with(http.request.uri.path, ".map")`. CI uploads the maps to Sentry from
   the image, so nobody needs them over HTTP.
-- **Rate limiting rule**, required before the app is exposed. This repo does not create it. Limit
-  `POST /api/playground` to about 30 requests a minute per address. The route writes a `playground_call` row for
-  every accepted POST even with the model off, and the app's own limits only stop the model call.
+- **Rate limiting rule**, required before the app is exposed. This repo does not create it. The zone is on the Free
+  plan, which allows one rate limiting rule with a 10 s counting period and a 10 s block. That rule matches
+  `http.request.uri.path eq "/api/playground"` (the route takes only POST) and allows 5 requests per 10 s per
+  address, then blocks the address for 10 s. The route writes a `playground_call` row for every accepted POST even
+  with the model off, and the app's own limits only stop the model call.
+- **No rule for mail.** The Free plan has no second rate limiting rule, so the auth routes that send mail are
+  limited in the app. better-auth's defaults (`api/rate-limiter/index.mjs` in 1.7.11) allow 3 requests per 10 s on
+  sign-in and sign-up and 3 per 60 s on password reset and resending the verification mail, all per IP and path;
+  nothing counts per recipient. `web/src/lib/mail-throttle.ts` adds that: at most 5 mails an hour to one address,
+  counted in the `mail_throttle` table so the cap holds across replicas. A refused mail is dropped silently and
+  the response is unchanged, so a client can't tell whether an address exists. The owner of a flooded address
+  gets no mail for up to an hour; the web log line `mail: throttled recipient <8 hex>` is what that looks like.
 
 ## 6. Sentry
 
@@ -160,6 +173,13 @@ Routing to web is yours to add.
 There is no Postgres and no Aspire dashboard in the chart. The chart package on GHCR is public, so a cluster pulls
 it without a secret.
 
+The chart ships `maxUnavailable: 1` on a single replica, so every upgrade stops the only pod before the new one is
+ready and the site serves nothing in between. An install must patch the Deployment's strategy to `maxUnavailable: 0`
+(a Flux `postRenderer` or `kubectl patch`); with the chart's `maxSurge: 1` the new pod then starts beside the old
+one, and a failed migration leaves the old pod serving. The home cluster's Flux patch has carried it since
+2026-10-30 (strategy `{"maxSurge":1,"maxUnavailable":0}`; the first rollout under it brought the new pod up ready
+before the old one stopped).
+
 The chart holds no secret values, so an install has to supply them. `out/k8s` is the same chart built locally,
 except that `parameters.web.web_image` is `web:latest` there: set it to
 `ghcr.io/jrmatherly/matherlynet/web:<commit sha>`. Both take their settings through `values.yaml`: non-secret
@@ -184,6 +204,24 @@ service (`<cluster>-rw`): migrations and sign-ups write. What the role needs:
   session-mode pooler.
 - Up to 16 connections per web pod: the server's two pools (sizes in `web/src/db/index.ts`). Migrations run first,
   on 2 connections closed before the server opens any. Size `max_connections` for your replica count.
+
+The connection is encrypted and verified only when the install says so. CloudNativePG's `-app` secret builds its
+`uri` with no query string, so `sslmode` cannot ride in the URI, and node-postgres 8.23 with no `sslmode` and no
+`ssl` option opens a plain TCP connection. The home cluster ran that way until 2026-10-30 (`app | f | 1` from the
+query below). The fix is in the environment: node-postgres reads `PGSSLMODE` when the URI names no mode, and
+`require` there means `ssl: true`, which Node verifies against its trust store (libpq's `require` does not verify).
+It reads no `PGSSLROOTCERT`, so the cluster CA goes into Node's store instead. The install mounts secret
+`<cluster>-ca` key `ca.crt` into the web container and sets `PGSSLMODE=require` and
+`NODE_EXTRA_CA_CERTS=/etc/cnpg/ca.crt` on it (a Flux patch in the home cluster). `PGSSLMODE=no-verify` would
+encrypt without verifying. The home cluster has run verified TLS this way since 2026-10-30, with the CNPG URI
+unchanged; the query then showed `app|t|TLSv1.3|TLS_AES_256_GCM_SHA384` for the web pod's connection. Check the live
+state from the Postgres pod; `t` means encrypted. The pool closes idle clients quickly, so right after a start the
+query shows no `app` row: load a few pages first.
+
+```sh
+kubectl exec -n matherlynet <cluster>-1 -c postgres -- psql -X -d app -tA \
+  -c "select a.usename, s.ssl, count(*) from pg_stat_ssl s join pg_stat_activity a using (pid) where a.datname='app' group by 1,2"
+```
 
 At start, `migrate.mjs` fails at once, naming `APPDB_URI`, when `secrets.web.appdb_uri` is empty. It also fails on
 the first attempt when the login is refused, the database does not exist or the URI does not parse (a `#` in the

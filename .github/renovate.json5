@@ -16,6 +16,7 @@
   minimumReleaseAge: "7 days",
   // Dependabot security updates raise the fix PRs; Renovate would raise each one again.
   vulnerabilityAlerts: { enabled: false },
+  lockFileMaintenance: { enabled: true, schedule: ["before 6am on monday"] },
   packageRules: [
     {
       description: "AppHost (root npm project): one PR for minor and patch updates",
@@ -70,6 +71,14 @@
       managerFilePatterns: ["/^\\.github/workflows/publish-images\\.yml$/"],
       matchStrings: ["npx --yes sentry@(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
       depNameTemplate: "sentry",
+      datasourceTemplate: "npm",
+    },
+    {
+      description: "markdownlint-cli2 in the repo checks workflow (keep it on the pre-commit hook's frozen version)",
+      customType: "regex",
+      managerFilePatterns: ["/^\\.github/workflows/repo-checks\\.yml$/"],
+      matchStrings: ["npx --yes markdownlint-cli2@(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      depNameTemplate: "markdownlint-cli2",
       datasourceTemplate: "npm",
     },
     {

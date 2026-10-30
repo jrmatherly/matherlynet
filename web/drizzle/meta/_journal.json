@@ -43,6 +43,13 @@
       "when": 1791090352657,
       "tag": "0005_outstanding_clint_barton",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793393142278,
+      "tag": "0006_graceful_moon_knight",
+      "breakpoints": true
     }
   ]
 }

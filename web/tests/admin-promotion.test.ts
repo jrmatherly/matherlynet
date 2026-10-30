@@ -47,8 +47,9 @@ vi.mock("better-auth/adapters/drizzle", async () => {
     },
   };
 });
-vi.mock("../src/lib/mail", () => ({
-  sendMail: vi.fn(async (to: string, _subject: string, body: string) => void h.mails.push({ to, body })),
+// The throttle has its own test (mail-throttle.test.ts); here every mail goes through.
+vi.mock("../src/lib/mail-throttle", () => ({
+  sendThrottled: vi.fn((to: string, _subject: string, body: string) => void h.mails.push({ to, body })),
 }));
 vi.mock("../src/lib/sentry", async (orig) => ({ ...(await orig<object>()), captureError: vi.fn() }));
 
@@ -87,6 +88,7 @@ describe("admin promotion", () => {
     const res = await signUpAndVerify(ADMIN);
     expect(res.status).toBeLessThan(400);
     expect(owner()).toMatchObject({ emailVerified: true, role: "admin" });
+    expect(h.mails.filter((m) => m.to === ADMIN).at(-1)!.body).toContain("If you didn't sign up, ignore this email");
   });
 
   it("an ordinary update (name change) after a demotion doesn't re-promote", async () => {

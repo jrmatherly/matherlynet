@@ -85,11 +85,12 @@ const playgroundModelKey = await optionalParameter('playground-model-key', true)
 const playgroundModel = await optionalParameter('playground-model');
 
 // Kubernetes uses the cluster's existing Postgres: the chart takes its URI as one secret value at install time.
-const appdb = k8s ? undefined : await builder.addPostgres('pg')
+const pg = k8s ? undefined : await builder.addPostgres('pg')
   .withDataVolume()
   // addDatabase() only creates the database under `aspire run`; published Compose relies on this.
-  .withEnvironment('POSTGRES_DB', 'appdb')
-  .addDatabase('appdb');
+  .withEnvironment('POSTGRES_DB', 'appdb');
+if (pg) await pg.publishAsDockerComposeService(async (_resource, service) => { await service.restart.set('unless-stopped'); });
+const appdb = pg ? await pg.addDatabase('appdb') : undefined;
 // optionalParameter: a parameter with no value fails a non-interactive publish (CI).
 const appdbUri = appdb ? await appdb.uriExpression() : await optionalParameter('appdb-uri', true);
 
