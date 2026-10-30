@@ -194,6 +194,21 @@ service (`<cluster>-rw`): migrations and sign-ups write. What the role needs:
 - Up to 16 connections per web pod: the server's two pools (sizes in `web/src/db/index.ts`). Migrations run first,
   on 2 connections closed before the server opens any. Size `max_connections` for your replica count.
 
+The connection is encrypted and verified only when the install says so. CloudNativePG's `-app` secret builds its
+`uri` with no query string, so `sslmode` cannot ride in the URI, and node-postgres 8.23 with no `sslmode` and no
+`ssl` option opens a plain TCP connection. The home cluster ran that way until 2026-10-30 (`app | f | 1` from the
+query below). The fix is in the environment: node-postgres reads `PGSSLMODE` when the URI names no mode, and
+`require` there means `ssl: true`, which Node verifies against its trust store (libpq's `require` does not verify).
+It reads no `PGSSLROOTCERT`, so the cluster CA goes into Node's store instead. The install mounts secret
+`<cluster>-ca` key `ca.crt` into the web container and sets `PGSSLMODE=require` and
+`NODE_EXTRA_CA_CERTS=/etc/cnpg/ca.crt` on it (a Flux patch in the home cluster). `PGSSLMODE=no-verify` would
+encrypt without verifying. Check the live state from the Postgres pod; `t` means encrypted:
+
+```sh
+kubectl exec -n matherlynet <cluster>-1 -c postgres -- psql -X -d app -tA \
+  -c "select a.usename, s.ssl, count(*) from pg_stat_ssl s join pg_stat_activity a using (pid) where a.datname='app' group by 1,2"
+```
+
 At start, `migrate.mjs` fails at once, naming `APPDB_URI`, when `secrets.web.appdb_uri` is empty. It also fails on
 the first attempt when the login is refused, the database does not exist or the URI does not parse (a `#` in the
 password must be percent-encoded as `%23`). A database it cannot reach is retried for about 60 s, with one log line
