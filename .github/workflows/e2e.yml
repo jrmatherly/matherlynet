@@ -34,6 +34,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0 # the upgrade smoke diffs against the PR base or the last release's commit
 
       - name: 🟣 Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -89,6 +90,20 @@ jobs:
           WEB_IMAGE=x PG_PASSWORD=x docker compose --project-directory out/compose config --format json | jq -e '.services.pg.restart == "unless-stopped"' > /dev/null || { echo "pg has no restart policy"; exit 1; }
           DEPLOY_TARGET=k8s aspire publish -o out/k8s --non-interactive --nologo
           scripts/check-chart.sh out/k8s
+
+      # An unchanged journal means both images apply the same migrations, so the skip loses nothing.
+      - name: 🔁 Pick the release to upgrade from
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          chart=$(helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet)
+          release=$(yq -r .appVersion <<<"$chart")
+          if [ -n "$BASE_REF" ]; then range=origin/$BASE_REF...HEAD; else range=$release..HEAD; fi
+          if git diff --quiet "$range" -- web/drizzle web/src/db; then
+            echo "migrations unchanged across $range: no upgrade run"
+          else
+            echo "SMOKE_FROM_IMAGE=ghcr.io/jrmatherly/matherlynet/web:$release" >> "$GITHUB_ENV"
+          fi
 
       # The stack above runs the dev server; this builds the production image and runs its entrypoint.
       - name: 🐳 Smoke-test the production image

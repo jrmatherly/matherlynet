@@ -51,6 +51,9 @@ jobs:
       - name: 🔎 Astro check
         run: pnpm check
 
+      - name: 🧬 Schema and migrations agree
+        run: APPDB_URI=postgresql://unused pnpm db:generate && git diff --exit-code -- src/db drizzle
+
       - name: 🧹 Lint
         run: pnpm lint
 

@@ -4,12 +4,14 @@
 # capabilities, and a Postgres role that owns its database and nothing more. Nothing else in CI runs the image.
 # Usage: scripts/smoke-image.sh [Dockerfile]   (default out/k8s/web.Dockerfile, from `DEPLOY_TARGET=k8s aspire publish`;
 # run from the repository root. CI: e2e.yml, after "Check publish output".)
+# SMOKE_FROM_IMAGE=<image> first runs that earlier release against the same database, to smoke the upgrade. The
+# release images are amd64-only: on Apple Silicon set DOCKER_DEFAULT_PLATFORM=linux/amd64 for that run.
 set -euo pipefail
 
 dockerfile=${1:-out/k8s/web.Dockerfile}
 id=matherlynet-smoke-$$
 image=$id:local
-net=$id pg=$id-pg web=$id-web early=$id-early
+net=$id pg=$id-pg web=$id-web early=$id-early prev=$id-prev
 uri=postgresql://app:app-pw@$pg:5432/app
 
 # Prints the container's exit code once it stops, or nothing if it is still running after $2 seconds.
@@ -28,11 +30,13 @@ fail() {
 }
 cleanup() {
   local status=$?
-  if [ "$status" -ne 0 ] && docker inspect "$web" > /dev/null 2>&1; then
-    echo "--- web container log"
-    docker logs "$web" 2>&1 || true
-  fi
-  docker rm -f "$web" "$early" "$pg" > /dev/null 2>&1 || true
+  for c in "$prev" "$web"; do
+    if [ "$status" -ne 0 ] && docker inspect "$c" > /dev/null 2>&1; then
+      echo "--- $c container log"
+      docker logs "$c" 2>&1 || true
+    fi
+  done
+  docker rm -f "$web" "$early" "$prev" "$pg" > /dev/null 2>&1 || true
   docker network rm "$net" > /dev/null 2>&1 || true
   docker image rm "$image" > /dev/null 2>&1 || true
 }
@@ -45,6 +49,17 @@ run_web() {
   docker run -d --name "$name" --network "$net" --user 1000:1000 --read-only --cap-drop ALL \
     --security-opt no-new-privileges -e HOST=0.0.0.0 -e BETTER_AUTH_SECRET=smoke-secret-0123456789abcdef0123456789 \
     -e BETTER_AUTH_URL=http://localhost:4321 "$@" "$image" > /dev/null
+}
+# Waits until container $1 answers /api/auth/ok with {"ok":true}; leaves its host address in $port.
+wait_ok() {
+  port=$(docker port "$1" 4321/tcp | head -1)
+  local ok=
+  for _ in $(seq 90); do
+    ok=$(curl -fsS "http://$port/api/auth/ok" 2> /dev/null) && break
+    [ "$(docker inspect -f '{{.State.Running}}' "$1")" = true ] || fail "the $1 container exited"
+    sleep 1
+  done
+  [ "$ok" = '{"ok":true}' ] || fail "/api/auth/ok on $1 answered '$ok', not {\"ok\":true}"
 }
 
 docker build -q -f "$dockerfile" -t "$image" web/ > /dev/null
@@ -79,23 +94,32 @@ grep -q 'SMTP_URL is not an smtp' <<<"$log" || fail "the bad-SMTP_URL error does
 grep -q smoke-smtp-pw <<<"$log" && fail "the bad-SMTP_URL error prints the value"
 docker rm -f "$early" > /dev/null
 
+smtp=smtp://user:smoke-smtp-pw@smtp.example.com:587
+# The upgrade path: the previous release migrates and serves first, a user row goes in, and the new image below
+# must migrate that database without losing the row.
+if [ -n "${SMOKE_FROM_IMAGE:-}" ]; then
+  image=$SMOKE_FROM_IMAGE run_web "$prev" -e "APPDB_URI=$uri" -e "SMTP_URL=$smtp" -p 127.0.0.1::4321
+  wait_ok "$prev"
+  docker stop "$prev" > /dev/null
+  docker exec "$pg" psql -v ON_ERROR_STOP=1 -qU postgres -d app \
+    -c "insert into \"user\" (id, name, email) values ('smoke-seed', 'Smoke', 'smoke-seed@example.test')"
+fi
+
 # A valid SMTP_URL on the serving run: the check must let it through, and nodemailer must build its transport when
 # the first request loads the middleware. Nothing connects to the host; nodemailer connects only to send.
-run_web "$web" -e "APPDB_URI=$uri" -e SMTP_URL=smtp://user:smoke-smtp-pw@smtp.example.com:587 -p 127.0.0.1::4321
-port=$(docker port "$web" 4321/tcp | head -1)
-ok=
-for _ in $(seq 90); do
-  ok=$(curl -fsS "http://$port/api/auth/ok" 2> /dev/null) && break
-  [ "$(docker inspect -f '{{.State.Running}}' "$web")" = true ] || fail "the web container exited"
-  sleep 1
-done
-[ "$ok" = '{"ok":true}' ] || fail "/api/auth/ok answered '$ok', not {\"ok\":true}"
+run_web "$web" -e "APPDB_URI=$uri" -e "SMTP_URL=$smtp" -p 127.0.0.1::4321
+wait_ok "$web"
 if [ "${SMOKE_E2E:-}" = 1 ]; then
   E2E_BASE_URL="http://$port" MAILPIT_URL=http://127.0.0.1:1 pnpm --dir web e2e e2e/csp.spec.ts || fail "CSP E2E failed against the image"
 fi
 
 migrations=$(docker exec "$pg" psql -tAU postgres -d app -c 'select count(*) from drizzle.__drizzle_migrations' || true)
-[ "$migrations" -gt 0 ] || fail "no migrations were applied"
+expected=$(node -p "require('./web/drizzle/meta/_journal.json').entries.length")
+[ "$migrations" -eq "$expected" ] || fail "$migrations migrations applied, journal has $expected"
+if [ -n "${SMOKE_FROM_IMAGE:-}" ]; then
+  seeded=$(docker exec "$pg" psql -tAU postgres -d app -c "select count(*) from \"user\" where id = 'smoke-seed'")
+  [ "$seeded" = 1 ] || fail "the user row seeded under $SMOKE_FROM_IMAGE did not survive the upgrade"
+fi
 uid=$(docker exec "$web" id -u)
 [ "$uid" = 1000 ] || fail "the server runs as UID $uid, not 1000"
 
@@ -118,4 +142,4 @@ if [ "$code" = 0 ] || [ "$code" = 137 ] || [ "$SECONDS" -gt 5 ]; then
   fail "docker stop during the database wait exited $code after ${SECONDS}s (want non-zero, not 137, within 5 s)"
 fi
 
-echo "smoke-image: ok ($migrations migrations, UID $uid, serving stop exit 0, early stop exit $code)"
+echo "smoke-image: ok ($migrations migrations, UID $uid, serving stop exit 0, early stop exit $code${SMOKE_FROM_IMAGE:+, upgraded from $SMOKE_FROM_IMAGE})"
