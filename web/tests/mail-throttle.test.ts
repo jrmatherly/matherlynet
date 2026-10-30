@@ -89,6 +89,9 @@ describe("mail throttle", () => {
       sent.push(mailsTo(email));
     }
     expect(sent).toEqual([1, 2, 3, 4, 5, 5]);
+    const logged = vi.mocked(console.warn).mock.calls.flat().join(" ");
+    expect(logged).toContain("mail: throttled recipient");
+    expect(logged).not.toContain(email);
     expect(h.mails.every((m) => m.subject === "Verify your email")).toBe(true);
   });
 
