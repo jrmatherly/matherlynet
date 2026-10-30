@@ -5,6 +5,7 @@ import Perspectives from "../src/components/Perspectives.astro";
 import { perspectives } from "../src/data/profile";
 import * as rss from "../src/pages/rss.xml";
 import * as sitemap from "../src/pages/sitemap.xml";
+import { BANNED } from "./banned";
 
 const ORIGIN = "https://matherly.example";
 let saved: string | undefined;
@@ -40,10 +41,12 @@ describe("feeds", () => {
     expect(xml).toContain(`<link>${ORIGIN}/writing</link>`);
   });
 
-  it("keeps column alignment out of post tables, which renders style attributes the CSP blocks", () => {
+  it("keeps column alignment (a style attribute the CSP blocks) and retired claims out of posts", () => {
     const dir = new URL("../src/content/writing/", import.meta.url);
     for (const file of readdirSync(dir)) {
-      expect(readFileSync(new URL(file, dir), "utf8"), file).not.toMatch(/^\|.*:-{3,}|^\|.*-{3,}:/m);
+      const post = readFileSync(new URL(file, dir), "utf8");
+      expect(post, file).not.toMatch(/^\|.*:-{3,}|^\|.*-{3,}:/m);
+      expect(post, file).not.toMatch(BANNED);
     }
   });
 

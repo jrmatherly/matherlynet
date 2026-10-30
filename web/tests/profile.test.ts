@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aboutHeadline, availability, career, gateway, headline, perspectives, recruiterFacts, work, workGroups, type WorkItem } from "../src/data/profile";
+import { aboutHeadline, availability, career, gateway, headline, perspectives, recruiterFacts, work, workGroups, workHeadline, type WorkItem } from "../src/data/profile";
 import { ogCards } from "../src/lib/og";
 
 describe("profile data", () => {
@@ -42,8 +42,13 @@ describe("profile data", () => {
   it("gives every platform a period and a one-line result", () => {
     for (const item of work) {
       expect(item.period).toMatch(/^20\d\d( to (20\d\d|now))?$/);
-      expect(item.result.length).toBeLessThanOrEqual(110);
+      // 130: the self-service result is Jason's confirmed sentence at 128 characters; the next longest is 104.
+      expect(item.result.length).toBeLessThanOrEqual(130);
     }
+  });
+
+  it("keeps Go off the chat platform, which is Python and TypeScript", () => {
+    expect(work.find((w) => w.title === "AI chat platform & agents")?.summary).not.toMatch(/\bGo\b/);
   });
 
   it("lists each group newest first, AI platform then Infrastructure", () => {
@@ -71,5 +76,6 @@ describe("profile data", () => {
     expect(recruiters?.body).toContain(career[0].title);
     expect(recruiters?.headline).toBe(aboutHeadline);
     expect(ogCards.about.title).toBe(aboutHeadline);
+    expect(ogCards.work.title).toBe(workHeadline);
   });
 });

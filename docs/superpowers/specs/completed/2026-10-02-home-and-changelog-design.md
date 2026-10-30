@@ -45,7 +45,7 @@ Sections, top to bottom, all from `src/data/profile.ts`:
 3. "One gateway, three generations": the AI Gateway case study (LiteLLM → Azure API Management → in-house) with
    three results (~2 billion tokens a month; near-zero projected licensing cost; every call attributed, limited,
    logged), then the compact list of the other five platforms with their period.
-4. About strip: portrait, bio paragraph, three facts (Atlanta, Kennesaw State, Spoons of Salt), résumé and GitHub.
+4. About strip: portrait, bio paragraph, three facts (Atlanta, [education], Spoons of Salt), résumé and GitHub.
 5. Closing: "Hiring for a platform that has to work on Monday?" + LinkedIn action.
 
 ### Changelog `/changelog`

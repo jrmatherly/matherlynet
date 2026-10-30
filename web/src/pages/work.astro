@@ -1,7 +1,7 @@
 ---
 import Cta from "../components/Cta.astro";
 import WorkCard from "../components/WorkCard.astro";
-import { gateway, work, workGroups } from "../data/profile";
+import { gateway, work, workGroups, workHeadline } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { inlineLink } from "../lib/form";
 import { ogImage } from "../lib/og";
@@ -13,9 +13,9 @@ const groups = workGroups.map((title) => ({ title, items: work.filter((w) => w.g
 <Base title="Work" description="AI gateways, MCP, Kubernetes and enterprise infrastructure built and run by Jason Matherly." image={ogImage("work", Astro.locals.siteSettings)}>
   <div class="mx-auto grid max-w-6xl gap-14 px-4 pt-16 sm:px-6 sm:pt-20">
     <header class="grid max-w-3xl gap-3">
-      <h1 class="display text-4xl sm:text-5xl">Platforms that run in production, not in slides.</h1>
+      <h1 class="display text-4xl sm:text-5xl">{workHeadline}</h1>
       <p class="text-lg text-muted">
-        The systems I've designed, built and operated at <a href="/changelog" class={inlineLink}>The Aaron's Company</a>, from the AI platform down to the store network.
+        From the AI platform down to the store network, at <a href="/changelog" class={inlineLink}>The Aaron's Company</a>.
       </p>
     </header>
     {
@@ -43,6 +43,6 @@ const groups = workGroups.map((title) => ({ title, items: work.filter((w) => w.g
         </section>
       ))
     }
-    <Cta title="If a platform has to work on Monday, let's talk." body="About the role, the stack, or how we went from LiteLLM to an in‑house gateway." />
+    <Cta title="Ask me about the gateway, the MCP registry or the Kubernetes platform." body="Or about how we went from LiteLLM to Azure API Management to an in-house gateway." />
   </div>
 </Base>

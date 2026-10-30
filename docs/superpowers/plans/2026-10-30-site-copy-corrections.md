@@ -229,7 +229,7 @@ git commit -m "fix(copy): credit the team, drop the user count and unslop the wo
 **Files:**
 
 - Modify: `docs/superpowers/plans/completed/2026-10-02-home-and-changelog-redesign.md:979,996,1037` (three lines
-  naming the school; `git grep -in kennesaw -- docs` lists them)
+  naming the school; a case-insensitive `git grep` for its name under `docs` lists them)
 - Modify: `docs/superpowers/specs/completed/2026-10-02-home-and-changelog-design.md:48` (one line)
 
 **Interfaces:** none.
@@ -241,7 +241,7 @@ where they appear beside it (line 1037 carries `2008 to 2012`).
 
 - [ ] **Step 2: Confirm nothing tracked names it**
 
-Run: `git grep -il "kennesaw\|southern poly" -- . ; echo "exit=$?"`
+Run a case-insensitive `git grep -l` for the school's two names over the whole tree, followed by `echo "exit=$?"`.
 Expected: no paths, `exit=1`. Then `markdownlint-cli2 docs/superpowers/**/*.md` prints `0 issues`.
 
 - [ ] **Step 3: Edit the PR body**

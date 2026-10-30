@@ -4,8 +4,9 @@ import { person } from "../lib/site";
 
 export const resumeUrl = "https://resume.matherly.net/jason/matherly";
 
-export const headline = "Every AI request at a 15,000‑person company runs through the platform I built."; // ‑: non-breaking hyphen
+export const headline = "Every AI request at a 15,000‑person company runs through the platform I designed and run."; // ‑: non-breaking hyphen
 export const aboutHeadline = "Twenty years, one company, four promotions.";
+export const workHeadline = "Platforms I designed, built and run at The Aaron's Company.";
 // The current role's title, as the résumé writes it; career[0].title, recruiterFacts and the recruiters perspective
 // read it, so a retitle is one edit.
 const currentTitle = "Manager, Infrastructure Services";
@@ -13,7 +14,7 @@ const currentTitle = "Manager, Infrastructure Services";
 // foreground color, so a skim of those alone still tells the story.
 export const intro = [
   "In *twenty years* at The Aaron's Company I designed and built its primary and disaster recovery *data centers*, the infrastructure for three corporate offices, and SD‑WAN to every store.",
-  "Now I lead its move into *agentic AI*: a gateway carrying about *2 billion tokens a month*, built in-house to take projected licensing from $100K+ a year to near zero.",
+  "Now I lead its move into *agentic AI*. The gateway carries about *2 billion tokens a month* and took projected licensing from $100K+ a year to near zero.",
 ];
 // Rendered only when set. Jason supplies the wording (roles, remote/Atlanta, timing).
 export const availability: string | null = "Interested in roles leading AI platform, AI enablement or infrastructure teams.";
@@ -24,19 +25,19 @@ export const gateway = {
   summary:
     "Started as a quick way to give teams safe access to models. Each generation was replaced when it could no longer answer the questions the business asked: who is spending what, on which model, and under which rules. Before building the third, I evaluated Portkey, Kong AI Gateway, Envoy, Agent Gateway and kgateway; each lacked features we needed or cost too much.",
   generations: [
-    { name: "LiteLLM", since: "Dec 2024", note: "Fast to stand up, proved demand. Couldn't attribute cost per team or enforce policy per use case, and licensing was projected at $100K+ a year.", current: false },
-    { name: "Azure API Management", since: "Feb 2026", note: "Added SSO and rate limits, and cut projected licensing to about $38K a year. Routing and guardrails were awkward to express.", current: false },
+    { name: "LiteLLM", since: "Dec 2024", note: "It was fast to stand up and it proved the demand. It couldn't attribute cost per team or enforce policy per use case, and licensing was projected at $100K+ a year.", current: false },
+    { name: "Azure API Management", since: "Feb 2026", note: "Added SSO and rate limits, and cut projected licensing to about $38K a year. Every further capability became a custom integration bounded by what Azure allows.", current: false },
     {
       name: "In-house platform",
       since: "Jun 2026",
-      note: "Answers all three: cost per user and team, routing across Azure AI Foundry and Anthropic, and guardrails, rate limits and an audit log on every call.",
+      note: "Full control. Cost per user and team, routing across Azure AI Foundry and Anthropic, and guardrails, rate limits and an audit log on every call. Rebuilt in August 2026 on an open-source base, TokenHub, maintained as AIOps Hub.",
       current: true,
     },
   ],
   results: [
     { value: "15M to about 2 billion", label: "tokens a month, launch to today" },
     { value: "$100K+ to near zero", label: "projected yearly licensing" },
-    { value: "Every call", label: "attributed, limited, logged" },
+    { value: "Every call", label: "signed in, rate limited, logged for 90 days" },
   ],
 } as const;
 
@@ -129,24 +130,24 @@ export const work: WorkItem[] = [
   {
     title: "AI chat platform & agents",
     summary:
-      "An internal AI chat platform and agents on third-party and open-source agent frameworks, with prompt composition, agent memory, multi-step orchestration with tool use, and model evaluations, built in Python, TypeScript and Go. Designed the retrieval pipeline that grounds the agents in company knowledge: source documents are curated, chunked, embedded and indexed for RAG and Graph-RAG over a vector store.",
+      "An internal AI chat platform and agents on third-party and open-source agent frameworks, with prompt composition, agent memory, multi-step orchestration with tool use, and model evaluations, built in Python and TypeScript. Designed the retrieval pipeline that grounds the agents in company knowledge: source documents are curated, chunked, embedded and indexed for RAG and Graph-RAG over a vector store.",
     period: "2025 to now",
-    result: "About 30 agents grounded in company knowledge, 400 users across 14 teams",
+    result: "About 30 agents grounded in company knowledge, used company-wide",
     group: "AI platform",
   },
   {
     title: gateway.title,
     summary:
-      "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team.",
+      "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team. The current generation is a Go backend with a Next.js console, running on the on-prem Talos Kubernetes clusters through GitOps.",
     period: "2024 to now",
     result: "About 2 billion tokens a month; projected licensing from $100K+ a year to near zero",
     group: "AI platform",
   },
   {
     title: "On-prem Kubernetes platform",
-    summary: "Talos Linux clusters run with GitOps (Flux and Argo CD), Cilium networking, and External Secrets Operator backed by Secret Server.",
+    summary: "100-plus nodes across three on-prem Talos Linux clusters, plus Rancher and AKS clusters, run as code: GitOps with Flux and Argo CD across dev, staging and prod, Cilium networking and Envoy ingress, External Secrets Operator backed by Secret Server with per-workload RBAC, self-hosted GitHub Actions runners, ephemeral AI sandbox environments, and Portworx Enterprise for persistent data.",
     period: "2024 to now",
-    result: "Runs the AI Gateway and the MCP platform, managed through GitOps",
+    result: "Runs the AI Gateway, the MCP platform and the chat platform, managed through GitOps",
     group: "AI platform",
   },
   {
@@ -168,7 +169,7 @@ export const work: WorkItem[] = [
     title: "Self-service automation",
     summary: "Self-service requests for VMs, storage, VDI, accounts and firewall changes, fulfilled by automation instead of tickets.",
     period: "2023",
-    result: "Saves 10 minutes to several hours per request",
+    result: "Dozens of tickets a week removed; the DBA team's VM self-service alone handles about 50 requests a week at 10 minutes saved each",
     group: "Infrastructure",
   },
   {
@@ -274,7 +275,7 @@ export const career: Role[] = [
         year: "2024",
         heading: "The first gateway",
         highlights: [
-          "Built the AI Gateway single-handedly and launched it on LiteLLM in December at 15 million tokens a month",
+          "Built the AI Gateway and launched it on LiteLLM in December at 15 million tokens a month",
           "Stood up the on-prem Kubernetes platform that runs the gateway and the MCP platform",
         ],
       },

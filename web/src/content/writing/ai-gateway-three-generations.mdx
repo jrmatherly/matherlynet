@@ -1,6 +1,6 @@
 ---
 title: "One gateway, three generations"
-description: "How I built The Aaron's Company's AI Gateway three times in eighteen months, and why each version was retired."
+description: "How The Aaron's Company's AI Gateway was built three times in eighteen months, and why each version was retired."
 pubDate: 2026-10-02
 tags: [ai, platforms, governance]
 ---
@@ -10,13 +10,13 @@ import GatewayPath from "../../components/GatewayPath.astro";
 
 Every model call at The Aaron's Company, a 15,000-person retailer, goes through one gateway. Claude Code, Claude
 Desktop, our agents and the people using our internal tools all reach Azure AI Foundry and Anthropic through it.
-I built it alone, then rebuilt it twice in eighteen months.
+I designed it, then rebuilt it twice in eighteen months.
 
 ## Quick facts
 
-- **Role:** designer and sole builder; Manager, Infrastructure Services
-- **Timeline:** built December 2024 to June 2026; the current version has been in production since June 2026
-- **Scale:** from about 15 million tokens a month at launch to about 2 billion, across 400 users and 14 teams
+- **Role:** architect and lead engineer; Manager, Infrastructure Services. My four-engineer team runs it with me.
+- **Timeline:** built December 2024 to June 2026; in-house since June 2026, rebuilt on an open-source base in August 2026
+- **Scale:** from about 15 million tokens a month at launch to about 2 billion
 - **Cost:** projected licensing from $100K+ a year to about $38K, then to near zero
 
 ## The problem
@@ -37,8 +37,8 @@ case, and its licensing was projected at more than $100,000 a year.
 <GatewayMap generation="apim" />
 
 Moving to Azure API Management added single sign-on and rate limits, and cut projected licensing to about $38,000 a
-year. But routing and guardrails were awkward to express in it, and those were exactly the parts the business
-needed next.
+year. But every capability the business asked for next became a custom integration, and those were bounded by
+what Azure allows.
 
 ## Choosing to build
 

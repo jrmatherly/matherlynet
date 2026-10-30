@@ -1,4 +1,4 @@
-import { aboutHeadline, headline } from "../data/profile";
+import { aboutHeadline, headline, workHeadline } from "../data/profile";
 import { BRAND_PALETTE, type SiteThemeDefaults } from "../theme/palettes";
 
 // Share cards served by /og/[slug].png. Pages reference them with ogImage(slug, site).
@@ -8,7 +8,7 @@ export const ogCards = {
     title: headline.replaceAll("‑", "-"),
     subtitle: "AI platform & infrastructure leader · Atlanta, GA",
   },
-  work: { title: "Platforms that run in production, not in slides.", subtitle: "AI gateways, MCP, Kubernetes and enterprise infrastructure" },
+  work: { title: workHeadline, subtitle: "AI gateways, MCP, Kubernetes and enterprise infrastructure" },
   about: { title: aboutHeadline, subtitle: "From the IT call center to company-wide AI strategy" },
   writing: { title: "Writing", subtitle: "Notes on AI platforms, governance and infrastructure" },
   changelog: { title: "Twenty years, one company, newest first.", subtitle: "Roles, platforms and what each one changed" },
