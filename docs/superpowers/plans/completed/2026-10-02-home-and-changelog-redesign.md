@@ -976,7 +976,7 @@ export const recruiterFacts = [
   { term: "Current title", detail: "Manager, Infrastructure Services" },
   { term: "Team", detail: "4 direct reports; 8 while leading BrandsMart's team after the acquisition" },
   { term: "Location", detail: "Atlanta, remote since 2020" },
-  { term: "Education", detail: "B.S. Computer Science, Kennesaw State" },
+  { term: "Education", detail: "[education]" },
   { term: "Languages", detail: "Python, TypeScript, Go" },
 ];
 
@@ -993,7 +993,7 @@ export const bio =
   "I joined The Aaron's Company as a Network Analyst in 2009 and grew with it: Network Engineer, Senior Infrastructure Engineer, and since 2021 Manager of Infrastructure Services. Along the way I built the store network, the data centers and the Azure footprint, then turned to the question of how a 15,000-person company adopts AI without losing control of cost, data or risk.";
 export const facts = [
   { title: "Atlanta, GA", detail: "remote since 2020" },
-  { title: "Kennesaw State", detail: "B.S. Computer Science" },
+  { title: "[education]", detail: "[education]" },
   { title: "Spoons of Salt", detail: "volunteer IT since 2023" },
 ];
 ```
@@ -1034,7 +1034,7 @@ summary:
 // Network Analyst
 heading: "Started where the packets start",
 summary:
-  "Store network connectivity and SonicWALL firewall deployments, while finishing a Computer Science degree at Kennesaw State (Southern Polytechnic), 2008 to 2012.",
+  "Store network connectivity and SonicWALL firewall deployments, while finishing [education].",
 ```
 
 Reorder `perspectives` so `recruiters` is first. The three headlines stay as they are (mockup A's copy; decided
