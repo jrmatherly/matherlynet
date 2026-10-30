@@ -365,3 +365,48 @@ curl -N https://matherly.net/api/playground -H 'Origin: https://matherly.net' \
   buffers the stream.
 - Disconnect: press Ctrl-C while the answer streams, then read the newest `playground_call` row. `decision` is `cut`
   and `reason` is `left` when the disconnect reached web.
+
+## 9. Backups
+
+The database holds everything that is not in the image or in `.env`: accounts and their password hashes, OAuth
+account links and their tokens, sessions, verification and reset tokens, the site settings row (theme, Sentry DSN,
+Umami ids), the `mail_throttle` and `rate_limit` counters and the `playground_call` rows. With Umami enabled, its
+`umami` schema lives in the same database and rides along in every dump.
+
+### Compose
+
+From the Compose directory. The published `pg` service initialises with `--auth-local=scram-sha-256`, so even the
+socket connection needs the password, which the container has as `POSTGRES_PASSWORD`; `-T` keeps Compose from
+allocating a TTY that would corrupt the custom-format dump:
+
+```sh
+docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U postgres -Fc appdb' > appdb-$(date +%F).dump
+```
+
+Run it nightly from cron on the host (write `%` as `\%` in a crontab line) and copy the files off the host; keep 14
+days. Restore with web stopped, so nothing writes while the tables are replaced, then start it again:
+
+```sh
+docker compose stop web
+docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d appdb --clean --if-exists' < appdb-<date>.dump
+docker compose start web
+```
+
+`--clean --if-exists` drops and recreates each object from the dump, so a restore onto a database that is already
+populated works. Checked on 2026-10-30 against the published `pg` service (postgres:18.3): one `site_settings` row,
+dump, `delete from site_settings`, restore, and the row was back with its values and the 7 migration rows intact.
+Confirm with the same wrapper:
+
+```sh
+docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d appdb -tc "select count(*) from site_settings"'
+```
+
+### Cluster
+
+CloudNativePG backs up the `matherlynet-db` cluster itself: a `ScheduledBackup` runs daily at 03:00 UTC through the
+barman-cloud plugin, which also archives WAL continuously, into the object store that the `postgres-backup`
+`ObjectStore` names (an S3-compatible bucket, 30-day retention). Both are in the home-cluster repository
+(`kubernetes/apps/matherlynet/matherlynet/app/scheduledbackup.yaml` and `cluster.yaml`). Nothing in this repository
+runs or checks them. To restore, create a new `Cluster` whose `bootstrap.recovery` points at that object store
+(optionally with a `recoveryTarget` time, which the WAL archive makes possible), then repoint `secrets.web.appdb_uri`
+at the new cluster's `-rw` service.
