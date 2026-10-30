@@ -176,7 +176,9 @@ it without a secret.
 The chart ships `maxUnavailable: 1` on a single replica, so every upgrade stops the only pod before the new one is
 ready and the site serves nothing in between. An install must patch the Deployment's strategy to `maxUnavailable: 0`
 (a Flux `postRenderer` or `kubectl patch`); with the chart's `maxSurge: 1` the new pod then starts beside the old
-one, and a failed migration leaves the old pod serving.
+one, and a failed migration leaves the old pod serving. The home cluster's Flux patch has carried it since
+2026-10-30 (strategy `{"maxSurge":1,"maxUnavailable":0}`; the first rollout under it brought the new pod up ready
+before the old one stopped).
 
 The chart holds no secret values, so an install has to supply them. `out/k8s` is the same chart built locally,
 except that `parameters.web.web_image` is `web:latest` there: set it to
@@ -211,7 +213,10 @@ query below). The fix is in the environment: node-postgres reads `PGSSLMODE` whe
 It reads no `PGSSLROOTCERT`, so the cluster CA goes into Node's store instead. The install mounts secret
 `<cluster>-ca` key `ca.crt` into the web container and sets `PGSSLMODE=require` and
 `NODE_EXTRA_CA_CERTS=/etc/cnpg/ca.crt` on it (a Flux patch in the home cluster). `PGSSLMODE=no-verify` would
-encrypt without verifying. Check the live state from the Postgres pod; `t` means encrypted:
+encrypt without verifying. The home cluster has run verified TLS this way since 2026-10-30, with the CNPG URI
+unchanged; the query then showed `app|t|TLSv1.3|TLS_AES_256_GCM_SHA384` for the web pod's connection. Check the live
+state from the Postgres pod; `t` means encrypted. The pool closes idle clients quickly, so right after a start the
+query shows no `app` row: load a few pages first.
 
 ```sh
 kubectl exec -n matherlynet <cluster>-1 -c postgres -- psql -X -d app -tA \
