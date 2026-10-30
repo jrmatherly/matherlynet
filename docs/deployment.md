@@ -164,6 +164,11 @@ Routing to web is yours to add.
 There is no Postgres and no Aspire dashboard in the chart. The chart package on GHCR is public, so a cluster pulls
 it without a secret.
 
+The chart ships `maxUnavailable: 1` on a single replica, so every upgrade stops the only pod before the new one is
+ready and the site serves nothing in between. An install must patch the Deployment's strategy to `maxUnavailable: 0`
+(a Flux `postRenderer` or `kubectl patch`); with the chart's `maxSurge: 1` the new pod then starts beside the old
+one, and a failed migration leaves the old pod serving.
+
 The chart holds no secret values, so an install has to supply them. `out/k8s` is the same chart built locally,
 except that `parameters.web.web_image` is `web:latest` there: set it to
 `ghcr.io/jrmatherly/matherlynet/web:<commit sha>`. Both take their settings through `values.yaml`: non-secret
