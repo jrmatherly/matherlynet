@@ -86,6 +86,7 @@ jobs:
           aspire publish -o out/compose --non-interactive --nologo
           test -f out/compose/docker-compose.override.yaml
           WEB_IMAGE=x PG_PASSWORD=x docker compose --project-directory out/compose config | grep -q 'start_period: 1m30s'
+          WEB_IMAGE=x PG_PASSWORD=x docker compose --project-directory out/compose config --format json | jq -e '.services.pg.restart == "unless-stopped"' > /dev/null || { echo "pg has no restart policy"; exit 1; }
           DEPLOY_TARGET=k8s aspire publish -o out/k8s --non-interactive --nologo
           scripts/check-chart.sh out/k8s
 
