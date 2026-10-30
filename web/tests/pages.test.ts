@@ -76,10 +76,18 @@ describe("inner pages", () => {
   });
 });
 
+const BANNED = /nearly 17|Manager of Infrastructure|built it alone|sole builder|single-handedly|400 users (across|and) 14 teams/i;
+
 describe("tenure copy", () => {
-  it("never says \"nearly 17\" or \"Manager of\" on a page, in the profile data or on a share card", async () => {
-    const pages = await Promise.all([page(About, "/about"), page(Home, "/"), page(Changelog, "/changelog"), page(Work, "/work")]);
-    for (const text of [...pages, JSON.stringify(profile), JSON.stringify(ogCards)]) expect(text).not.toMatch(/nearly 17|Manager of Infrastructure/i);
+  it("never repeats a retired claim on a page, in the profile data or on a share card, and ends every page with one call to action", async () => {
+    const pages = await Promise.all([page(About, "/about"), page(Home, "/"), page(Changelog, "/changelog"), page(Work, "/work"), page(Playground, "/playground")]);
+    for (const text of [...pages, JSON.stringify(profile), JSON.stringify(ogCards)]) expect(text).not.toMatch(BANNED);
+    for (const html of pages) expect(html).toContain("Ask me about the gateway, the MCP registry or the Kubernetes platform.");
+  });
+
+  it("titles /work with the work headline", async () => {
+    const html = await page(Work, "/work");
+    expect(html.match(/<h1[^>]*>([^<]*)<\/h1>/)?.[1]).toBe(esc(profile.workHeadline));
   });
 });
 
