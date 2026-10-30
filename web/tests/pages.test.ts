@@ -10,6 +10,7 @@ import Home from "../src/pages/index.astro";
 import Playground from "../src/pages/playground.astro";
 import Work from "../src/pages/work.astro";
 import { SITE_DEFAULTS, resolveTheme } from "../src/theme/palettes";
+import { BANNED } from "./banned";
 
 const { work } = profile;
 // Text as Astro renders it into HTML.
@@ -76,13 +77,16 @@ describe("inner pages", () => {
   });
 });
 
-const BANNED = /nearly 17|Manager of Infrastructure|built it alone|sole builder|single-handedly|400 users (across|and) 14 teams/i;
-
-describe("tenure copy", () => {
-  it("never repeats a retired claim on a page, in the profile data or on a share card, and ends every page with one call to action", async () => {
+describe("retired copy", () => {
+  it("never repeats a retired claim on a page, in the profile data or on a share card, and gives every page the one call to action", async () => {
     const pages = await Promise.all([page(About, "/about"), page(Home, "/"), page(Changelog, "/changelog"), page(Work, "/work"), page(Playground, "/playground")]);
     for (const text of [...pages, JSON.stringify(profile), JSON.stringify(ogCards)]) expect(text).not.toMatch(BANNED);
-    for (const html of pages) expect(html).toContain("Ask me about the gateway, the MCP registry or the Kubernetes platform.");
+    const title = "Ask me about the gateway, the MCP registry or the Kubernetes platform.";
+    const body = "Or about how we went from LiteLLM to Azure API Management to an in-house gateway.";
+    for (const html of pages) {
+      expect(html.split(title)).toHaveLength(2);
+      expect(html).toContain(body);
+    }
   });
 
   it("titles /work with the work headline", async () => {

@@ -5,6 +5,7 @@ import Perspectives from "../src/components/Perspectives.astro";
 import { perspectives } from "../src/data/profile";
 import * as rss from "../src/pages/rss.xml";
 import * as sitemap from "../src/pages/sitemap.xml";
+import { BANNED } from "./banned";
 
 const ORIGIN = "https://matherly.example";
 let saved: string | undefined;
@@ -45,7 +46,7 @@ describe("feeds", () => {
     for (const file of readdirSync(dir)) {
       const post = readFileSync(new URL(file, dir), "utf8");
       expect(post, file).not.toMatch(/^\|.*:-{3,}|^\|.*-{3,}:/m);
-      expect(post, file).not.toMatch(/built it alone|sole builder|single-handedly|400 users (across|and) 14 teams/i);
+      expect(post, file).not.toMatch(BANNED);
     }
   });
 
