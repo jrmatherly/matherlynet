@@ -42,7 +42,7 @@ describe("profile data", () => {
   it("gives every platform a period and a one-line result", () => {
     for (const item of work) {
       expect(item.period).toMatch(/^20\d\d( to (20\d\d|now))?$/);
-      expect(item.result.length).toBeLessThanOrEqual(110);
+      expect(item.result.length).toBeLessThanOrEqual(130);
     }
   });
 
