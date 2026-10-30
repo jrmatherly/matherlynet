@@ -90,6 +90,9 @@ for _ in $(seq 90); do
   sleep 1
 done
 [ "$ok" = '{"ok":true}' ] || fail "/api/auth/ok answered '$ok', not {\"ok\":true}"
+if [ "${SMOKE_E2E:-}" = 1 ]; then
+  E2E_BASE_URL="http://$port" MAILPIT_URL=http://127.0.0.1:1 pnpm --dir web e2e e2e/csp.spec.ts || fail "CSP E2E failed against the image"
+fi
 
 migrations=$(docker exec "$pg" psql -tAU postgres -d app -c 'select count(*) from drizzle.__drizzle_migrations' || true)
 [ "$migrations" -gt 0 ] || fail "no migrations were applied"

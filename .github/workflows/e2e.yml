@@ -91,6 +91,8 @@ jobs:
 
       # The stack above runs the dev server; this builds the production image and runs its entrypoint.
       - name: 🐳 Smoke-test the production image
+        env:
+          SMOKE_E2E: '1'
         run: scripts/smoke-image.sh out/k8s/web.Dockerfile
 
       # The runs above have no model URL (the playground's off path); this one points it at the fake model server.
