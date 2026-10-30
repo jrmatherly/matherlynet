@@ -454,7 +454,7 @@ describe("liveIo storage", () => {
   });
 
   const client = (query: (text: string) => Promise<unknown>) => {
-    const fake = { query: vi.fn((config: { text: string }) => query(config.text)), release: vi.fn() };
+    const fake = { query: vi.fn<(config: { text: string }, params: unknown[]) => Promise<unknown>>((config) => query(config.text)), release: vi.fn() };
     connect.mockResolvedValueOnce(fake);
     return fake;
   };
@@ -470,6 +470,14 @@ describe("liveIo storage", () => {
       "commit",
     ]);
     expect(fake.release.mock.calls).toEqual([[]]);
+  });
+
+  it("claim: the UPDATE also holds the site's day under LIVE.sitePerDay", async () => {
+    const fake = client(seated);
+    await liveIo.claim(5 as CallId);
+    const [config, params] = fake.query.mock.calls.find(([{ text }]) => text.includes("update playground_call"))!;
+    expect(config.text).toContain("routed_at > now() - interval '1 day'");
+    expect(params).toContain(LIVE.sitePerDay);
   });
 
   it("claim: no row updated is false, and the client goes back to the pool", async () => {

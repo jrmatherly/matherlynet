@@ -180,8 +180,10 @@ export interface Io {
    */
   open(opening: Opening): Promise<{ id: CallId; load: Load | null }>;
   /**
-   * Takes a seat under a lock: marks the row routed only while fewer than LIVE.seats open routed rows exist. true when
-   * it did. A call refused "busy" never gets routed_at.
+   * Takes a seat under a lock: marks the row routed only while fewer than LIVE.seats open routed rows exist and fewer
+   * than LIVE.sitePerDay were routed in the last day. open() counts the day outside this lock, so two calls it admitted
+   * one under the cap would otherwise both take the last one. true when it did. A call refused "busy" never gets
+   * routed_at.
    */
   claim(id: CallId): Promise<boolean>;
   /**
@@ -271,6 +273,7 @@ export const liveIo: Io = {
              and (select count(*) from playground_call
                    where routed_at is not null and ended_at is null
                      and routed_at > now() - make_interval(secs => ${staleSecs})) < ${LIVE.seats}
+             and (select count(*) from playground_call where routed_at > now() - interval '1 day') < ${LIVE.sitePerDay}
           returning id`);
       });
       client.release();
