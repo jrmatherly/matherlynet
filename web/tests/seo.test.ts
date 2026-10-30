@@ -49,8 +49,8 @@ describe("Seo", () => {
       "@type": "Person",
       name: "Jason Matherly",
       url: `${ORIGIN}/`,
-      alumniOf: { "@type": "EducationalOrganization", name: "Kennesaw State University (Southern Polytechnic)" },
     });
+    expect(json).not.toHaveProperty("alumniOf");
   });
 });
 

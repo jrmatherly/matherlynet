@@ -147,8 +147,8 @@ out/                   aspire publish output (gitignored)
 - Owner-supplied wording stays `null` in `profile.ts` until the owner provides it, and the page renders it only when
   set; don't write placeholder copy. `availability` is the owner's own sentence, also on his LinkedIn summary.
 - `person` in `lib/site.ts` feeds the Person JSON-LD in `Seo.astro` (`jobTitle`, `worksFor`, `knowsAbout`; only
-  `knowsAbout` is not shown on a page, `employer.name` in `profile.ts` reuses `worksFor`, and `education.school` there
-  is its `alumniOf`). `profile.ts` `intro` is
+  `knowsAbout` is not shown on a page, and `employer.name` in `profile.ts` reuses `worksFor`; it carries no
+  `alumniOf`: education is not published anywhere, by the owner's decision). `profile.ts` `intro` is
   a list of paragraphs where `*word*` marks emphasis (home page splits on `*`); `og.ts` reuses `headline` for the home
   card, swapping U+2011 (non-breaking hyphen, which keeps "15,000‑person" together) for "-": the card font lacks it.
   `sameAs` holds LinkedIn only (the footer and JSON-LD read it).
@@ -283,11 +283,13 @@ out/                   aspire publish output (gitignored)
   publishes nothing; a failed chart push can't skip the source maps. CI writes the pushed image (`web@<digest>`)
   into `parameters.web.web_image` and renders the packaged chart to confirm it: `aspire publish` leaves the value
   as `web:latest`. The chart name comes from `withChartName` in `apphost.mts`; the chart is not attested.
+  A release is a signed `v<chart version>` tag (e.g. `v0.46.1`) on the commit that chart was built from, with a GitHub
+  Release, cut by hand (no workflow creates it); fixes land on `main` only.
 - Chart upgrade from 0.29.1 or earlier is not a rolling update: object names gained the `matherlynet-` prefix, so Helm
   deletes and recreates them and the site is down until the new pod is ready. Each pod logs one better-auth "Rate
-  limiting could not determine a client IP" warning at start (the first kubelet probe has no `cf-connecting-ip`);
-  it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not buffer the playground stream, and a
-  disconnect reaches web (the row closed as `cut` / `left`).
+  limiting could not determine a client IP" warning at start (the first kubelet probe has no `cf-connecting-ip`;
+  still true on better-auth 1.7.11); it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not
+  buffer the playground stream, and a disconnect reaches web (the row closed as `cut` / `left`).
 - The image workflow runs only when the image, the chart or their checks can change (`web/**` minus docs, AppHost
   files, root `package*.json`, `scripts/check-chart.sh` and `smoke-image.sh`, the workflow itself and the
   `web-checks.yml` and `e2e.yml` it calls);

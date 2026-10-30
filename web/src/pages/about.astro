@@ -2,17 +2,17 @@
 import Availability from "../components/Availability.astro";
 import Cta from "../components/Cta.astro";
 import Portrait from "../components/Portrait.astro";
-import { aboutHeadline, availability, career, employer, resumeUrl, skills, volunteer, education } from "../data/profile";
+import { aboutHeadline, availability, career, employer, resumeUrl, skills, volunteer } from "../data/profile";
 import Base from "../layouts/Base.astro";
 import { inlineLink } from "../lib/form";
 import { ogImage } from "../lib/og";
 
-// The person page: who, skills, education and volunteering. The roles are on /changelog, the platforms on /work.
+// The person page: who, skills and volunteering. The roles are on /changelog, the platforms on /work.
 ---
 
 <Base
   title="About"
-  description={`Skills, education and volunteer work. Twenty years at ${employer.name}, from the IT call center to ${career[0].title}.`}
+  description={`Skills and volunteer work. Twenty years at ${employer.name}, from the IT call center to ${career[0].title}.`}
   image={ogImage("about", Astro.locals.siteSettings)}
   type="profile"
 >
@@ -51,19 +51,12 @@ import { ogImage } from "../lib/og";
       </div>
     </section>
 
-    <section aria-labelledby="education" class="grid gap-6">
-      <h2 id="education" class="display text-3xl sm:text-4xl">Education and volunteering</h2>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div class="grid content-start gap-1 rounded-2xl border border-border p-5">
-          <p class="text-sm text-muted">Education</p>
-          <h3 class="text-lg font-bold">{education.degree}</h3>
-          <p class="text-muted">{education.school}, {education.years}</p>
-        </div>
-        <div class="grid content-start gap-1 rounded-2xl border border-border p-5">
-          <p class="text-sm text-muted">Volunteer</p>
-          <h3 class="text-lg font-bold">{volunteer.org} <span class="font-normal text-muted">{volunteer.years}</span></h3>
-          <p class="text-muted">{volunteer.summary}</p>
-        </div>
+    <section aria-labelledby="volunteering" class="grid gap-6">
+      <h2 id="volunteering" class="display text-3xl sm:text-4xl">Volunteering</h2>
+      <div class="grid content-start gap-1 rounded-2xl border border-border p-5 sm:max-w-md">
+        <p class="text-sm text-muted">Volunteer</p>
+        <h3 class="text-lg font-bold">{volunteer.org} <span class="font-normal text-muted">{volunteer.years}</span></h3>
+        <p class="text-muted">{volunteer.summary}</p>
       </div>
     </section>
 

@@ -1,5 +1,4 @@
 ---
-import { education } from "../data/profile";
 import { person, siteOrigin } from "../lib/site";
 import { themeColorTags, type ThemeColor } from "../theme/theme-color";
 
@@ -26,7 +25,6 @@ const jsonLd = {
   jobTitle: person.jobTitle,
   worksFor: { "@type": "Organization", name: person.worksFor },
   knowsAbout: person.knowsAbout,
-  alumniOf: { "@type": "EducationalOrganization", name: education.school },
   url: origin.href,
   address: { "@type": "PostalAddress", addressLocality: person.locality },
   sameAs: person.sameAs,

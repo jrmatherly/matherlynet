@@ -46,7 +46,6 @@ export const recruiterFacts = [
   { term: "Team", detail: "4 direct reports; 8 while also leading BrandsMart's team, 2023 to 2026" },
   { term: "Built", detail: "Two data centers, three corporate offices, SD-WAN to 2,300+ stores (at the time), and the AI platform" },
   { term: "Location", detail: "Atlanta, remote since 2020" },
-  { term: "Education", detail: "B.S. Computer Science, Kennesaw State" },
   { term: "Writes code in", detail: "Python, TypeScript, Go" },
 ];
 
@@ -334,8 +333,6 @@ export const skills: { group: string; items: string[] }[] = [
   { group: "Data center", items: ["VMware & Hyper-V", "Cisco UCS", "HPE Nimble & Pure Storage", "Rubrik", "Zerto DR"] },
   { group: "Programming", items: ["Python", "TypeScript", "Go"] },
 ];
-
-export const education = { degree: "B.S., Computer Science", school: "Kennesaw State University (Southern Polytechnic)", years: "2008 to 2012" };
 
 export const volunteer = {
   org: "Spoons of Salt",

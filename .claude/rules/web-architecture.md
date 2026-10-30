@@ -111,7 +111,7 @@ web/
   src/pages/           one job each: index (overview, perspectives), changelog (timeline: recruiter facts, roles with
                         highlights and their milestones), work (platforms by `workGroups`, newest first;
                         gateway generations), about (person: aboutHeadline, portrait, availability, skills,
-                        education, volunteering), playground (the gateway simulation, `?try=<scenario>`; passes `live` when
+                        volunteering), playground (the gateway simulation, `?try=<scenario>`; passes `live` when
                         liveModelOn()), writing/ (+[slug]),
                         404 (links the nav pages); robots/sitemap/rss per request
   src/pages/ (account)  sign-in, sign-up, forgot/reset-password, account (sessions), admin (role-gated, 404

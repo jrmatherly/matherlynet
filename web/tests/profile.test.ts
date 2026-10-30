@@ -62,7 +62,7 @@ describe("profile data", () => {
   });
 
   it("lists the recruiter screening facts", () => {
-    expect(recruiterFacts.map((f) => f.term)).toEqual(["Current title", "Reports to", "Team", "Built", "Location", "Education", "Writes code in"]);
+    expect(recruiterFacts.map((f) => f.term)).toEqual(["Current title", "Reports to", "Team", "Built", "Location", "Writes code in"]);
   });
 
   it("reads the current title and the about headline from one place each", () => {
