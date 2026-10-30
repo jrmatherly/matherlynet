@@ -97,14 +97,19 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           # GHCR is asked only when the release is needed: on main for the range, on a PR once the diff shows a change.
-          released() { chart=$(helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet); release=$(yq -r .appVersion <<<"$chart"); }
+          released() {
+            chart=$(helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet)
+            release=$(yq -r .appVersion <<<"$chart")
+            [ -n "$release" ] && [ "$release" != null ] || { echo "no appVersion in the chart"; exit 1; }
+          }
           if [ -n "$BASE_REF" ]; then range=origin/$BASE_REF...HEAD; else released; range=$release..HEAD; fi
-          if git diff --quiet "$range" -- web/drizzle web/src/db; then
-            echo "migrations unchanged across $range: no upgrade run"
-          else
-            [ -n "${release:-}" ] || released
-            echo "SMOKE_FROM_IMAGE=ghcr.io/jrmatherly/matherlynet/web:$release" >> "$GITHUB_ENV"
-          fi
+          changed=0; git diff --quiet "$range" -- web/drizzle web/src/db || changed=$?
+          case $changed in
+            0) echo "migrations unchanged across $range: no upgrade run" ;;
+            1) [ -n "${release:-}" ] || released
+               echo "SMOKE_FROM_IMAGE=ghcr.io/jrmatherly/matherlynet/web:$release" >> "$GITHUB_ENV" ;;
+            *) echo "git diff $range failed ($changed)"; exit 1 ;;
+          esac
 
       # The stack above runs the dev server; this builds the production image and runs its entrypoint.
       - name: 🐳 Smoke-test the production image

@@ -113,7 +113,7 @@ if [ "${SMOKE_E2E:-}" = 1 ]; then
   E2E_BASE_URL="http://$port" MAILPIT_URL=http://127.0.0.1:1 pnpm --dir web e2e e2e/csp.spec.ts || fail "CSP E2E failed against the image"
 fi
 
-migrations=$(docker exec "$pg" psql -tAU postgres -d app -c 'select count(*) from drizzle.__drizzle_migrations' || true)
+migrations=$(docker exec "$pg" psql -tAU postgres -d app -c 'select count(*) from drizzle.__drizzle_migrations')
 expected=$(node -p "require('./web/drizzle/meta/_journal.json').entries.length")
 [ "$migrations" -eq "$expected" ] || fail "$migrations migrations applied, journal has $expected"
 if [ -n "${SMOKE_FROM_IMAGE:-}" ]; then

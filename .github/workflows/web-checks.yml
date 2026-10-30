@@ -46,7 +46,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: 🛡️ Audit production dependencies
-        run: pnpm audit --prod --audit-level=high --ignore-registry-errors
+        run: pnpm audit --prod --audit-level=high
 
       - name: 🔎 Astro check
         run: pnpm check
