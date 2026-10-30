@@ -19,7 +19,7 @@ const h = vi.hoisted(() => ({
 vi.mock("../src/db", () => ({
   db: {
     execute: async (query: SQL) => {
-      if (h.dbDown) throw new Error("connect ECONNREFUSED");
+      if (h.dbDown) throw Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:5432"), { code: "ECONNREFUSED" });
       const key = new PgDialect().sqlToQuery(query).params.find((p) => typeof p === "string" && /^[0-9a-f]{64}$/.test(p));
       if (typeof key !== "string") throw new Error("no recipient key in the query");
       const count = (h.counts.get(key) ?? 0) + 1;
@@ -32,7 +32,8 @@ vi.mock("better-auth/adapters/drizzle", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
   return { drizzleAdapter: () => memoryAdapter(h.mem) };
 });
-vi.mock("../src/lib/mail", () => ({
+vi.mock("../src/lib/mail", async (orig) => ({
+  ...(await orig<object>()),
   sendMail: vi.fn((to: string, subject: string) => void h.mails.push({ to, subject })),
 }));
 vi.mock("../src/lib/sentry", async (orig) => ({ ...(await orig<object>()), captureError: vi.fn() }));
@@ -116,6 +117,15 @@ describe("mail throttle", () => {
     expect(mailsTo(email)).toBe(1);
     expect(failed.status).toBe(allowed.status);
     expect(await failed.json()).toEqual(await allowed.json());
+    // The failure is reported with a code and never the address: the cluster has no log sink.
+    const { captureError } = (await import("../src/lib/sentry")) as unknown as { captureError: ReturnType<typeof vi.fn> };
+    const reported = captureError.mock.calls.map(([e]) => (e as Error).message).join(" ");
+    const logged = vi.mocked(console.error).mock.calls.flat().join(" ");
+    for (const text of [reported, logged]) {
+      expect(text).toContain("mail: throttle check failed (ECONNREFUSED)");
+      expect(text).not.toContain(email);
+      expect(text).not.toContain("127.0.0.1");
+    }
   });
 
   it("a throttled password reset answers exactly like an allowed one", async () => {
