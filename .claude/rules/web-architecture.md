@@ -128,7 +128,9 @@ web/
                        -> sign-out -> password reset; each run creates an e2e-*@example.test user. account.spec.ts
                        also ages its session row in the database (APPDB_URI, loopback only: db.ts). live.spec.ts is
                        /playground's live path, run in two passes: model off, then against tests/fake-llama.ts (a
-                       test for one mode skips itself on the other stack)
+                       test for one mode skips itself on the other stack). Sign-up and reset call the live Have I
+                       Been Pwned range API, so a HIBP outage fails E2E; re-run the job. Add a PWNED_RANGE_URL
+                       parameter if it fails twice
   public/              brand favicons, web manifest, brand raster logo, portrait.jpg (648x648) and
                        portrait-320.jpg (srcset for 2x screens); public/pro/ = Pro monogram set
 ```

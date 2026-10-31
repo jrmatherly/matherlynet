@@ -130,8 +130,11 @@ of the security headers pages get (checked on a production build), and the clien
 
 - **Response Header Transform Rule**, all requests to `matherly.net`: set `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`.
-- **WAF custom rule**, action Block: `ends_with(http.request.uri.path, ".map")`. CI uploads the maps to Sentry from
-  the image, so nobody needs them over HTTP.
+- **WAF custom rule** "matherlynet: block source maps (.map)", expression `ends_with(http.request.uri.path, ".map")`,
+  action Block, created on 2026-10-30. CI uploads the maps to Sentry from the image, so nobody needs them over HTTP.
+  The 2026-10-30 audit found this rule missing while the runbook described it, so check rather than trust. From
+  outside the home network, `curl -s -o /dev/null -w '%{http_code}' https://matherly.net/_astro/<any script>.js.map`
+  prints 403. From the house it prints 200, because the zone's first custom rule skips the WAF for the house IP.
 - **Rate limiting rule**, required before the app is exposed. This repo does not create it. The zone is on the Free
   plan, which allows one rate limiting rule with a 10 s counting period and a 10 s block. That rule matches
   `http.request.uri.path eq "/api/playground"` (the route takes only POST) and allows 5 requests per 10 s per
@@ -231,6 +234,16 @@ waiting.
 
 With Umami enabled (`Umami__Enabled=true` at publish time), the chart also has `secrets.umami.appdb_uri`: set it to
 the same URI. The chart appends `?schema=umami` to it, so with Umami on the URI must carry no query string of its own.
+
+Two tables grow with traffic and are never pruned: `rate_limit` (better-auth's per-IP counters, one row per key, with
+`last_request` in epoch milliseconds) and `user` rows that never verified their email. At today's traffic neither
+matters; if they grow, run these (the second cascades to the `account` and `session` rows; `verification` rows have
+no foreign key and expire on their own):
+
+```sql
+delete from rate_limit where last_request < extract(epoch from now() - interval '1 day') * 1000;
+delete from "user" where email_verified = false and created_at < now() - interval '30 days';
+```
 
 ### Telemetry
 
