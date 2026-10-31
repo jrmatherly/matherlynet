@@ -59,26 +59,35 @@ done
 [ -n "$chart" ] && pass "chart $chart has appVersion $short" || stop "no chart has appVersion $short"
 tag=v$chart
 
-# The peeled ref: an annotated tag's own object isn't the commit.
-remote=$(git ls-remote origin "refs/tags/$tag^{}") || stop "git ls-remote origin"
+# Both refs: the peeled one, listed last, is the commit of an annotated tag; a lightweight tag has only the plain one.
+remote=$(git ls-remote origin "refs/tags/$tag" "refs/tags/$tag^{}") || stop "git ls-remote origin"
+remote=$(tail -1 <<< "$remote")
 remote=${remote%%$'\t'*}
 local_sha=$(git rev-parse -q --verify "refs/tags/$tag^{commit}")
 releases=$(gh release list -R "$REPO" --limit 100 --json tagName --jq '.[].tagName') || stop "gh release list"
 released=0
 grep -qxF "$tag" <<< "$releases" && released=1
 
+# GitHub's check, because this machine has no gpg.ssh.allowedSignersFile for git tag -v.
+tag_verified() {
+  local object
+  object=$(gh api "repos/$REPO/git/refs/tags/$tag" --jq .object.sha 2> /dev/null)
+  [ "$(gh api "repos/$REPO/git/tags/$object" --jq .verification.verified 2> /dev/null)" = true ]
+}
+
 next=tag
 if [ $recheck = 1 ]; then
   [ "$remote" = "$sha" ] && pass "$tag on origin points at $short" || fail "$tag on origin does not point at $short"
   [ $released = 1 ] && pass "GitHub Release $tag exists" || fail "GitHub Release $tag does not exist"
-  # GitHub's check, because this machine has no gpg.ssh.allowedSignersFile for git tag -v.
-  tag_object=$(gh api "repos/$REPO/git/refs/tags/$tag" --jq .object.sha 2> /dev/null)
-  [ "$(gh api "repos/$REPO/git/tags/$tag_object" --jq .verification.verified 2> /dev/null)" = true ] \
-    && pass "tag signature verified by GitHub" || fail "tag signature not verified by GitHub"
+  tag_verified && pass "tag signature verified by GitHub" || fail "tag signature not verified by GitHub"
 elif [ -n "$remote" ] && [ "$remote" != "$sha" ]; then
   fail "$tag on origin points at ${remote:0:7}, not $short, and tags can't be moved or deleted"
+elif [ -n "$local_sha" ] && [ "$(git cat-file -t "refs/tags/$tag")" != tag ]; then
+  fail "$tag is a lightweight tag, and a release needs a signed annotated one (git tag -d if it isn't on origin)"
 elif [ -n "$remote" ] && [ $released = 1 ]; then
   fail "$tag is already released"
+elif [ -n "$remote" ] && ! tag_verified; then
+  fail "$tag is pushed, but GitHub doesn't verify its signature"
 elif [ -n "$remote" ]; then
   pass "$tag is pushed with no GitHub Release: continuing from there"
   next=release
@@ -113,8 +122,9 @@ grep -qF "web_image: \"$IMAGE@$digest\"" <<< "$values" && pass "chart pins that 
 grep -qF "SENTRY_RELEASE: \"$sha\"" <<< "$values" && pass "chart's SENTRY_RELEASE is the commit" \
   || fail "chart's SENTRY_RELEASE is not $sha"
 
-gh attestation verify "oci://$IMAGE:$sha" -R "$REPO" > /dev/null 2>&1 && pass "image attestation verifies" \
-  || fail "image attestation does not verify"
+gh attestation verify "oci://$IMAGE@$digest" -R "$REPO" --source-ref refs/heads/main --source-digest "$sha" \
+  --signer-workflow "$REPO/.github/workflows/publish-images.yml" > /dev/null 2>&1 \
+  && pass "attestation ties the image to $short on main" || fail "attestation does not tie the image to $short on main"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -150,6 +160,7 @@ printf '\nReady.\n'
 
 printf '\nCommands, in order (put the notes file in the last one)\n'
 [ $next = tag ] && printf '  git tag -s %s %s -m "%s: chart %s, image %s"\n' "$tag" "$sha" "$tag" "$chart" "$short"
-[ $next != release ] && printf "  git cat-file -p %s | grep -q 'BEGIN SSH SIGNATURE'\n  git push origin refs/tags/%s\n" "$tag" "$tag"
+# cat-file tag: -p on a lightweight tag would print the commit, whose own signature would satisfy the grep.
+[ $next != release ] && printf "  git cat-file tag %s | grep -q '^-----BEGIN SSH SIGNATURE-----\$'\n  git push origin refs/tags/%s\n" "$tag" "$tag"
 printf '  gh release create %s --verify-tag --latest --title "%s" --notes-file <notes file>\n' "$tag" "$chart"
 printf '  %s --recheck %s\n' "$0" "$sha"
