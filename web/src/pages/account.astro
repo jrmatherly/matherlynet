@@ -91,7 +91,10 @@ const others = sessions.filter((s) => s.id !== session.id);
     button.disabled = true;
     // The client resolves an HTTP error as { error } and rejects only when the request never completes
     // (checked on @better-fetch/fetch 1.3.2).
-    const { error } = await authClient.signOut().catch(() => ({ error: { message: "" } }));
+    const { error } = await authClient.signOut().catch((reason: unknown) => {
+      console.error("sign-out request failed", reason);
+      return { error: { message: "" } };
+    });
     if (!error) return location.assign("/");
     button.disabled = false;
     message.textContent = error.message || "Sign-out failed. Try again.";

@@ -410,30 +410,39 @@ hold password hashes and OAuth tokens):
 
 ```sh
 #!/bin/sh
-# appdb-backup <compose dir> <backup dir>: one complete dump, then prune dumps older than 14 days.
+# appdb-backup <compose dir> <backup dir>: one complete dump, then prune dumps 14 days old or more.
 set -eu
 cd "$1"
 umask 077
 out="$2/appdb-$(date +%F).dump"
 trap 'rm -f "$out.tmp"' EXIT
+trap 'exit 1' INT TERM HUP
 docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U postgres -Fc appdb' > "$out.tmp"
 mv "$out.tmp" "$out"
-find "$2" -name 'appdb-*.dump' -mtime +14 -delete
+find "$2" -name 'appdb-*.dump' -mtime +13 -delete
+find "$2" -name 'appdb-*.dump.tmp' -mtime +1 -delete
 ```
 
-Run it from root's crontab with `MAILTO` set, so a failed run (exit 1) reaches someone, and copy the files off the
-host: `0 3 * * * /usr/local/bin/appdb-backup /srv/matherlynet /srv/backups/appdb` (your Compose and backup
-directories). Checked on 2026-10-31 against a scratch Compose project on postgres:18.6: a good run wrote a
-`-rw-------` dump and pruned a 30-day-old one; with pg stopped it exited 1 and left no file.
+Make it executable (`chmod 700 /usr/local/bin/appdb-backup`), copy the files off the host, and run it from root's
+crontab with your Compose and backup directories. Cron mails a job's output only if `MAILTO` is set and the host can
+send mail; the second line prints when no dump is under 2 days old, which also catches a backup that never ran:
 
-Restore with web stopped, and `umami` too when it is enabled (it writes to the same database's `umami` schema): with
-Umami, name both services in the `stop` and `start` commands below (`web umami`). `--single-transaction
---exit-on-error` makes the restore all or nothing, and `&&` starts web again only when it succeeded; without them, a
-truncated dump empties the tables and web starts on that.
+```text
+0 3 * * * /usr/local/bin/appdb-backup /srv/matherlynet /srv/backups/appdb
+0 9 * * * find /srv/backups/appdb -name 'appdb-*.dump' -mtime -2 | grep -q . || echo "no appdb dump in the last 2 days"
+```
+
+Checked on 2026-10-31 on postgres:18.6: a failed run (pg stopped, a full disk, a TERM or HUP under dash or busybox
+`sh`) exits 1 and leaves no file, and the prune keeps 14 dumps. A run killed outright (`kill -9`, power loss) can leave
+a `.tmp`; the next good run deletes any 2 days old or more.
+
+Restore with web stopped, and `umami` too when it is enabled (it writes to the same database's `umami` schema; name
+both services, `web umami`). The `&&` chain and the two `pg_restore` flags make it all or nothing: web starts again
+only after a complete restore, and without the flags a truncated dump empties the tables. Compose 5.5.0 exits 0 for a
+misspelled service name, so type the names exactly.
 
 ```sh
-docker compose stop web
-docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d appdb --clean --if-exists --single-transaction --exit-on-error' < appdb-<date>.dump && docker compose start web
+docker compose stop web && docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d appdb --clean --if-exists --single-transaction --exit-on-error' < /srv/backups/appdb/appdb-<date>.dump && docker compose start web
 ```
 
 `--clean --if-exists` drops and recreates each object in the dump, so a restore onto a populated database works.

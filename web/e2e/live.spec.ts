@@ -21,6 +21,11 @@ test.afterAll(() => db.end());
 const SEED = "e2e-seed";
 // SEAT_LOCK in src/lib/playground-io.ts (not exported): a test holding it keeps every claim waiting.
 const SEAT_LOCK = 727_002;
+// Never throws, so a broken connection can't hide the test's own failure; it is destroyed instead of returned.
+const unlock = async (client: pg.PoolClient) => {
+  const failed = await client.query("rollback").then(() => false, () => true);
+  client.release(failed);
+};
 
 interface CallRow {
   id: number;
@@ -335,8 +340,7 @@ test.describe("model on", () => {
       for await (const event of answer) rest.push(event);
       expect(rest.find((event) => event.type === "end")?.decision).toEqual({ verdict: "forwarded", to: LIVE.model });
     } finally {
-      await lock.query("rollback");
-      lock.release();
+      await unlock(lock);
     }
   });
 
@@ -369,6 +373,8 @@ test.describe("model on", () => {
       return step;
     };
     try {
+      // No seat is held, so the refusal below can only come from the day.
+      expect(await query("select id from playground_call where routed_at is not null and ended_at is null")).toEqual([]);
       const before = await lastId();
       const lateFill = await routingAfter(async () => seeded.push(...(await seed(1, day))));
       expect(lateFill).toMatchObject({ gate: "Routing", verdict: "refused", why: "busy" });
@@ -380,8 +386,7 @@ test.describe("model on", () => {
       await query("delete from playground_call where id = $1", [seeded.pop()!.id]);
       expect(await routingAfter()).toMatchObject({ gate: "Routing", verdict: "routed" });
     } finally {
-      await lock.query("rollback");
-      lock.release();
+      await unlock(lock);
       await query("delete from playground_call where id = any($1)", [seeded.map((row) => row.id)]);
     }
   });
