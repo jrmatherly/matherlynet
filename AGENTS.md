@@ -318,13 +318,14 @@ out/                   aspire publish output (gitignored)
   Aspire still moves through `/bump-deps`. CI fails on a high production advisory (`pnpm audit --prod
   --audit-level=high` in web-checks); fix it with `pnpm update <package>` or an `overrides` entry in
   `web/pnpm-workspace.yaml` (pnpm 12 ignores `pnpm.overrides` in package.json).
-- Security fixes skip the 7-day holds, which are for version updates (Renovate, `~/.npmrc`). A Dependabot alert is the
-  trigger: the fix waits one day after the fixed version's release, then lands once CI is green. When no parent accepts
-  the fixed version yet, pin it in `overrides` and delete the pin once the parents move: `web/pnpm-workspace.yaml`'s
-  comments give each entry's reason, and the root `package.json`'s `minimatch` is GHSA-g3hv-75wg-m249.
-- Keep `pmOnFail: ignore` in `web/pnpm-workspace.yaml` (its comment says why): without it Dependabot can't see `web/`,
-  and `--frozen-lockfile` fails. `tests/lockfile.test.ts` fails if the lockfile gains a second document with the setting
-  on, as a dependency bot's pnpm could write.
+- Security fixes skip the 7-day holds, which are for version updates (Renovate, `~/.npmrc`). A known advisory (a
+  Dependabot alert or `pnpm audit`) is the trigger: the fix waits one day after the fixed version's release, then lands
+  once CI is green. When no parent accepts the fixed version yet, pin it in `overrides` and delete the pin once the
+  parents move: `web/pnpm-workspace.yaml`'s comments give each entry's reason, and the root `package.json`'s `minimatch`
+  is GHSA-g3hv-75wg-m249.
+- Keep `pmOnFail: ignore` in `web/pnpm-workspace.yaml` (its comment says why). Without it, any pnpm command rewrites the
+  lockfile to two documents, even `pnpm --version`, and `--frozen-lockfile` accepts that. `tests/lockfile.test.ts` is
+  the check that fails.
 - pnpm 12 blocks dependency build scripts: approve with `pnpm approve-builds <pkg>`.
 - The generated Dockerfile installs on glibc (node:24-slim) and runs on Alpine (musl). `web/pnpm-workspace.yaml`
   sets `supportedArchitectures.libc: [current, musl]` so native packages (`@takumi-rs/core`) ship musl builds;

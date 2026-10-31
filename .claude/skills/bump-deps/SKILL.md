@@ -61,5 +61,7 @@ The drizzle cap has no Renovate rule: Renovate skips 1.0 only while it stays a p
 ## Gotchas
 
 - `packageManager` in `web/package.json` sets the pnpm that CI and the image install. Keep the local pnpm on the same
-  version: `pmOnFail: ignore` (AGENTS.md) means pnpm doesn't switch to the pin or warn about a mismatch.
+  version: `pmOnFail: ignore` (`web/pnpm-workspace.yaml`) means pnpm doesn't switch to the pin or warn about a mismatch.
+- On each bump, re-check every `overrides` entry (root `package.json`, `web/pnpm-workspace.yaml`): `npm view <parent>
+  dependencies` shows what a parent asks for. Delete an entry once its parents accept the fix or drop the package.
 - Root `tsconfig.apphost.json` must keep `"types": ["node"]` (TypeScript 6 no longer auto-includes `@types`).
