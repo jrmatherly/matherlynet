@@ -27,8 +27,9 @@ await target.withContainerRegistry(ghcr);
 // port would be published on all host interfaces; bind it to loopback and reach it through an SSH tunnel.
 if (!k8s) {
   await target.configureDashboard(async (dashboard) => {
-    // The publisher's default is the dotnet/nightly dashboard image; pin the release image at Aspire's own version.
-    await dashboard.withImage('mcr.microsoft.com/dotnet/aspire-dashboard', { tag: '13.6' });
+    // The publisher's default is the dotnet/nightly dashboard image; pin the newest release image (MCR has no tag
+    // for every SDK patch).
+    await dashboard.withImage('mcr.microsoft.com/dotnet/aspire-dashboard', { tag: '13.6.2' });
     await dashboard.publishAsDockerComposeService(async (_resource, service) => {
       await service.ports.clear();
       await service.ports.add('127.0.0.1:18888:18888');
@@ -183,10 +184,10 @@ const publishDir = async (step: string) => {
 };
 if (!(await builder.executionContext().isRunMode())) {
   if (k8s) {
-    // Aspire.Hosting.Kubernetes writes probe schemes in lower case (checked on Aspire.Hosting.Kubernetes 13.6.4-preview.1),
-    // and the API server accepts only HTTP or HTTPS: it rejects the Deployment at install. A scheme
-    // line in a shape this doesn't know fails the publish rather than ship a chart the cluster refuses; an Aspire that
-    // writes them correctly retires the step.
+    // Aspire.Hosting.Kubernetes writes probe schemes in lower case
+    // (checked on Aspire.Hosting.Kubernetes 13.6.4-preview.1.26523.11), and the API server accepts only HTTP or
+    // HTTPS: it rejects the Deployment at install. A scheme line in a shape this doesn't know fails the publish rather
+    // than ship a chart the cluster refuses; an Aspire that writes them correctly retires the step.
     await builder.pipeline().addStep('fix-probe-scheme', async () => {
       const file = join(await publishDir('fix-probe-scheme'), 'templates', 'web', 'deployment.yaml');
       const text = await readFile(file, 'utf8');
@@ -197,12 +198,12 @@ if (!(await builder.executionContext().isRunMode())) {
       await writeFile(file, fixed);
     }, { dependsOn: ['publish-k8s'], requiredBy: ['publish'] });
     // Aspire.Hosting.Kubernetes names each object after its resource alone (web-deployment;
-    // checked on Aspire.Hosting.Kubernetes 13.6.4-preview.1), and the TS SDK's publishAsKubernetesService callback exposes no
-    // object to rename, only a read-only name(). In a pod
-    // list across namespaces that name says nothing, so every `name: "<resource>-…"` gets the chart's name in front:
-    // the objects and the envFrom references to them. The generated container names, labels and value paths don't
-    // have that shape and stay as they are; scripts/check-chart.sh fails on a reference this misses. A template with
-    // no such name fails the publish: the generated shape changed, or an earlier publish left the template behind.
+    // checked on Aspire.Hosting.Kubernetes 13.6.4-preview.1.26523.11), and the TS SDK's publishAsKubernetesService
+    // callback exposes no object to rename, only a read-only name(). In a pod list across namespaces that name says
+    // nothing, so every `name: "<resource>-…"` gets the chart's name in front: the objects and the envFrom references
+    // to them. The generated container names, labels and value paths don't have that shape and stay as they are;
+    // scripts/check-chart.sh fails on a reference this misses. A template with no such name fails the publish: the
+    // generated shape changed, or an earlier publish left the template behind.
     await builder.pipeline().addStep('prefix-object-names', async () => {
       const templates = join(await publishDir('prefix-object-names'), 'templates');
       // Directories only: Finder leaves a .DS_Store in a folder it has shown.

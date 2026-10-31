@@ -6,9 +6,8 @@ import type { FullConfig } from "@playwright/test";
 // that connects. Astro (checked on astro 7.4.1) sends one when a dev start rewrites its content store, which every
 // `aspire start` does: Aspire gives `astro dev` a new port behind its 4321 proxy, and that port is part of the store's
 // config digest. Left in the buffer, the reload goes to the first page a test opens, sometimes under the form the test
-// is filling. This socket
-// connects first and takes it. Vite checks its connection token only when a request has an Origin header, and Node's
-// WebSocket sends none. A built app has no Vite client and is left alone.
+// is filling. This socket connects first and takes it. Vite checks its connection token only when a request has an
+// Origin header, and Node's WebSocket sends none. A built app has no Vite client and is left alone.
 // Both waits have a limit: Playwright puts none on global setup, and Aspire's proxy accepts a connection to a
 // stopped resource without answering it.
 async function takeBufferedReload(baseURL: string) {

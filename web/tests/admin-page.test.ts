@@ -54,6 +54,13 @@ describe("/admin", () => {
     expect(saveSiteSettings).not.toHaveBeenCalled();
   });
 
+  // A form filled from defaults would save them over the real row on the next submit.
+  it("fails rather than render a form when the row can't be read", async () => {
+    readSiteSettings.mockRejectedValue(new Error("database down"));
+    await expect(render("admin")).rejects.toThrow("database down");
+    expect(saveSiteSettings).not.toHaveBeenCalled();
+  });
+
   it("answers an invalid POST with the error and saves nothing", async () => {
     const res = await render("admin", form({ theme: "pro", proPalette: "neon", typeface: "sans" }));
     expect(res.status).toBe(200);

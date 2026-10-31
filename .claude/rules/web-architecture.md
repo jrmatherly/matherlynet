@@ -129,8 +129,8 @@ web/
                        also ages its session row in the database (APPDB_URI, loopback only: db.ts). live.spec.ts is
                        /playground's live path, run in two passes: model off, then against tests/fake-llama.ts (a
                        test for one mode skips itself on the other stack). Sign-up and reset call the live Have I
-                       Been Pwned range API, so a HIBP outage fails E2E; re-run the job. Add a PWNED_RANGE_URL
-                       parameter if it fails twice
+                       Been Pwned range API, so a HIBP outage fails E2E; re-run the job. pwned.ts hard-codes the
+                       URL; if a HIBP outage fails it twice, add an override
   public/              brand favicons, web manifest, brand raster logo, portrait.jpg (648x648) and
                        portrait-320.jpg (srcset for 2x screens); public/pro/ = Pro monogram set
 ```
@@ -154,13 +154,12 @@ web/
   is wider than `PHONE_MAX_W`; `draw()` also throws when the requests table lacks exactly one refused and one cached
   request, or a request's keyPoints and keyTimes differ in count; `flash()` throws for a check no request crosses, and
   `times()` on keyTimes outside the 12 s loop or out of order (each makes the browser drop the animation). The gate
-  and party counts are enforced by `Row<typeof CALLERS>` and `Gateway<typeof AI_GATES>`, whose fields use the private
-  `Per<T, V>` mapped type, so a frame with the wrong number fails `astro check`. If `times()` throws, move geometry,
-  never the requests or `SPEED`. `FIGURES` is computed at import, so a broken frame fails `pnpm test` in CI before an
-  image exists. `tests/gateway-path.test.ts`
-  pins those throws; `home.test.ts` pins each frame's pulse counts, labels and check order, that every `keyTimes` list
-  runs 0 to 1 in order and matches its `values` or `keyPoints` in length, and that nothing under
-  `motion-reduce:hidden` is text or a node rect.
+  and party counts are enforced by `Frame`'s `Row<…>` (callers, targets) and `Gateway<…>` (AI and MCP gates) fields,
+  which use the private `Per<T, V>` mapped type, so a frame with the wrong number fails `astro check`. If `times()`
+  throws, move geometry, never the requests or `SPEED`. `FIGURES` is computed at import, so a broken frame fails
+  `pnpm test` in CI before an image exists. `tests/gateway-path.test.ts` pins those throws; `home.test.ts` pins each
+  frame's pulse counts, labels and check order, that every `keyTimes` list runs 0 to 1 in order and matches its
+  `values` or `keyPoints` in length, and that nothing under `motion-reduce:hidden` is text or a node rect.
 - `web/tests/__snapshots__/gateway-path-wide.svg` and `gateway-path-stacked.svg` pin the home gateway figure's two
   SVGs, SMIL timings included (`home.test.ts`, `toMatchFileSnapshot`). Astro's dev `data-astro-source-file`/`-loc`
   attributes (an absolute path and a line number) are stripped before comparing. Never run `vitest -u` to make a

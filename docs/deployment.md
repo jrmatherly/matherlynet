@@ -135,6 +135,9 @@ of the security headers pages get (checked on a production build), and the clien
   The 2026-10-30 audit found this rule missing while the runbook described it, so check rather than trust. From
   outside the home network, `curl -s -o /dev/null -w '%{http_code}' https://matherly.net/_astro/<any script>.js.map`
   prints 403. From the house it prints 200, because the zone's first custom rule skips the WAF for the house IP.
+  Cloudflare's Trace tool (or the `request-tracer/trace` API) checks it from the house: a GET for that `.map` URL
+  with a US geolocation shows status 403 from this rule, and the `.js` beside it 200 (checked on 2026-10-30). The
+  zone's "Blocked Countries" rule also answers 403, so a non-US 403 does not prove this rule.
 - **Rate limiting rule**, required before the app is exposed. This repo does not create it. The zone is on the Free
   plan, which allows one rate limiting rule with a 10 s counting period and a 10 s block. That rule matches
   `http.request.uri.path eq "/api/playground"` (the route takes only POST) and allows 5 requests per 10 s per
@@ -235,13 +238,16 @@ With Umami enabled (`Umami__Enabled=true` at publish time), the chart also has `
 the same URI. The chart appends `?schema=umami` to it, so with Umami on the URI must carry no query string of its own.
 
 Two tables grow with traffic and are never pruned: `rate_limit` (better-auth's per-IP counters, one row per key, with
-`last_request` in epoch milliseconds) and `user` rows that never verified their email. At today's traffic neither
+`last_request` in epoch milliseconds) and email sign-ups that never verified their email. At today's traffic neither
 matters; if they grow, run these (the second cascades to the `account` and `session` rows; `verification` rows have
-no foreign key and expire on their own):
+no foreign key and expire on their own). The second deletes only users whose one account is the email/password
+(`credential`) one: a GitHub or Google user whose provider reports the email unverified also has
+`email_verified = false`, and can still sign in, because no provider sets `requireEmailVerification`:
 
 ```sql
 delete from rate_limit where last_request < extract(epoch from now() - interval '1 day') * 1000;
-delete from "user" where email_verified = false and created_at < now() - interval '30 days';
+delete from "user" u where u.email_verified = false and u.created_at < now() - interval '30 days'
+  and not exists (select 1 from account a where a.user_id = u.id and a.provider_id <> 'credential');
 ```
 
 ### Telemetry
@@ -396,7 +402,8 @@ docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U post
 ```
 
 Run it nightly from cron on the host (write `%` as `\%` in a crontab line) and copy the files off the host; keep 14
-days. Restore with web stopped, so nothing writes while the tables are replaced, then start it again:
+days. Restore with web stopped, and `umami` too when it is enabled (it writes to the same database's `umami`
+schema), so nothing writes while the tables are replaced, then start them again:
 
 ```sh
 docker compose stop web
@@ -418,8 +425,17 @@ docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgre
 
 CloudNativePG backs up the `matherlynet-db` cluster itself: a `ScheduledBackup` runs daily at 03:00 UTC through the
 barman-cloud plugin, which also archives WAL continuously, into the object store that the `postgres-backup`
-`ObjectStore` names (an S3-compatible bucket, 30-day retention). Both are in the home-cluster repository
-(`kubernetes/apps/matherlynet/matherlynet/app/scheduledbackup.yaml` and `cluster.yaml`). Nothing in this repository
-runs or checks them. To restore, create a new `Cluster` whose `bootstrap.recovery` points at that object store
-(optionally with a `recoveryTarget` time, which the WAL archive makes possible), then repoint `secrets.web.appdb_uri`
-at the new cluster's `-rw` service.
+`ObjectStore` names (a Cloudflare R2 bucket, 30-day retention). They live in the home-cluster repository: the
+`ScheduledBackup` in `kubernetes/apps/matherlynet/matherlynet/app/scheduledbackup.yaml`, the plugin and WAL archiving
+in `cluster.yaml` beside it, and the `ObjectStore` in `kubernetes/components/postgres/objectstore.yaml`. Nothing in
+this repository runs or checks them.
+
+To restore, create a `Cluster` under a new name with `bootstrap.recovery.source` naming an `externalClusters` entry
+that uses the barman-cloud plugin with `barmanObjectName: postgres-backup` and `serverName: matherlynet-db` (the
+backups are stored under the old cluster's name); a `recoveryTarget` time is possible because WAL is archived. The
+recovered cluster archives no WAL until it gets its own `plugins` entry. CloudNativePG generates the new cluster's own
+`<name>-app` and `<name>-ca` Secrets, so the HelmRelease needs both repointed: the `valuesFrom` Secret that fills
+`secrets.web.appdb_uri` (`matherlynet-db-app` today) and the `db-ca` volume's Secret (`matherlynet-db-ca`). Moving
+only the URI leaves web verifying TLS against the old cluster's CA, and every connection fails. Point the
+`ScheduledBackup`'s `cluster.name` at the new cluster too, or it keeps targeting the old one and nothing new is backed
+up.

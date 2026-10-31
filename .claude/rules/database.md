@@ -5,6 +5,10 @@ paths:
   - "web/drizzle.config.ts"
   - "web/migrate.mjs"
   - "web/src/lib/auth.ts"
+  - "web/src/lib/playground*.ts"
+  - "web/src/pages/api/playground.ts"
+  - "web/tests/playground*.test.ts"
+  - "web/e2e/live.spec.ts"
 ---
 
 # Database and auth schema (Drizzle 0.45 + better-auth 1.7)
@@ -32,8 +36,8 @@ paths:
   claimed under a Postgres advisory lock, so at most three are seated at once. `liveIo.claim` takes a pool client and
   releases it itself rather than call `db.transaction()`: drizzle-orm leaks the client when BEGIN fails
   (checked on drizzle-orm 0.45.4). `routed_at` is never cleared: a row with it held a seat and counts toward the
-  site's day. The table never stores prompt text, answer text or an IP, only a visitor key, the caller, lengths, token counts,
-  timestamps and enum reasons. `visitorKey()` in `playground-io.ts` is the only playground code that reads
+  site's day. The table never stores prompt text, answer text or an IP, only a visitor key, the caller, lengths, token
+  counts, timestamps and enum reasons. `visitorKey()` in `playground-io.ts` is the only playground code that reads
   `cf-connecting-ip` (`lib/auth.ts` gives better-auth the same header), and keys an IPv6 visitor on their /64. The route
   takes an 8 KB form body. Each process holds at most 6 calls (`IN_FLIGHT_MAX`), and more answer 503. The playground
   queries on its own pg pool (`playgroundDb` in `web/src/db/index.ts`), sized to that number. A model failure is

@@ -59,8 +59,26 @@
       enabled: false,
     },
     {
-      description: "Aspire moves as one set through `aspire update` (/bump-deps), and the CLI pin has a checksum: list updates on the dashboard, open a PR only when asked",
-      matchPackageNames: ["/^Aspire\\./", "/^CommunityToolkit\\.Aspire\\./", "microsoft/aspire"],
+      description: "The markdownlint-cli2 hook and the workflow's npx pin move together",
+      matchDepNames: ["DavidAnson/markdownlint-cli2", "markdownlint-cli2"],
+      groupName: "markdownlint-cli2",
+    },
+    {
+      description: "Postgres in the AppHost and the image smoke test: one PR",
+      matchDepNames: ["postgres"],
+      matchDatasources: ["docker"],
+      groupName: "postgres",
+    },
+    {
+      description: "A Postgres major needs pg_upgrade on the Compose volume: no PR for one",
+      matchDepNames: ["postgres"],
+      matchDatasources: ["docker"],
+      matchUpdateTypes: ["major"],
+      enabled: false,
+    },
+    {
+      description: "Aspire moves as one set through `aspire update` (/bump-deps), and the CLI pin has a checksum: list updates on the dashboard, open a PR only when asked. `aspire update` leaves the Compose dashboard image tag alone; this group's PR bumps it",
+      matchPackageNames: ["/^Aspire\\./", "/^CommunityToolkit\\.Aspire\\./", "microsoft/aspire", "mcr.microsoft.com/dotnet/aspire-dashboard"],
       groupName: "aspire",
       dependencyDashboardApproval: true,
     },
@@ -82,6 +100,24 @@
       matchStrings: ["npx --yes markdownlint-cli2@(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
       depNameTemplate: "markdownlint-cli2",
       datasourceTemplate: "npm",
+    },
+    {
+      description: "The Postgres image the AppHost publishes and the image smoke test runs against",
+      customType: "regex",
+      managerFilePatterns: ["/^apphost\\.mts$/", "/^scripts/smoke-image\\.sh$/"],
+      matchStrings: [
+        "addPostgres\\('pg'\\)\\s*\\.withImageTag\\('(?<currentValue>[^']+)'\\)",
+        "docker\\.io/library/postgres:(?<currentValue>\\d+\\.\\d+)",
+      ],
+      depNameTemplate: "postgres",
+      datasourceTemplate: "docker",
+    },
+    {
+      description: "The Aspire dashboard image published with Compose",
+      customType: "regex",
+      managerFilePatterns: ["/^apphost\\.mts$/"],
+      matchStrings: ["withImage\\('(?<depName>mcr\\.microsoft\\.com/dotnet/aspire-dashboard)', \\{ tag: '(?<currentValue>[^']+)' \\}\\)"],
+      datasourceTemplate: "docker",
     },
     {
       description: "Aspire hosting packages",

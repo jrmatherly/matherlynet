@@ -184,7 +184,8 @@ export interface Io {
    * than LIVE.sitePerDay were routed in the last day. open() counts the day outside this lock, so two calls it admitted
    * one under the cap would otherwise both take the last one. true when it did. A call refused "busy" never gets
    * routed_at. run() reads every false as "busy", so the loser of that race sees the seats-taken refusal, and its retry
-   * is refused "site daily" at open(): accepted, rather than a second query or a reason type.
+   * is refused "site daily" at open(). That misleading reason is accepted rather than adding a second query or a new
+   * refusal reason.
    */
   claim(id: CallId): Promise<boolean>;
   /**

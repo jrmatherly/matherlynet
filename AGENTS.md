@@ -54,8 +54,9 @@ web/                   Astro SSR app (start.mjs entry, otel.mjs, migrate.mjs, se
                        PRs (web/** + AppHost), called
 .github/pull_request_template.md  PR body: summary, verification evidence, deployment impact, docs
 .github/renovate.json5 Renovate version updates: weekly, 7-day release age, exact pins, the version caps, and
-                       pins outside package.json (Sentry CLI, Aspire packages and CLI); Dependabot security
-                       updates, CodeQL default setup and private reporting are repo settings
+                       pins outside package.json (Sentry CLI, Aspire packages and CLI, the Postgres and Compose
+                       dashboard images, the markdownlint-cli2 hook); Dependabot security updates, CodeQL default
+                       setup and private reporting are repo settings
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported
 docs/deployment.md     production runbook: publish settings, .env, Cloudflare Tunnel + rules, Umami, Sentry, K8s,
                        live playground
