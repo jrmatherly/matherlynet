@@ -258,7 +258,7 @@ out/                   aspire publish output (gitignored)
   into `parameters.web.web_image` and renders the packaged chart to confirm it: `aspire publish` leaves the value
   as `web:latest`. The chart name comes from `withChartName` in `apphost.mts`; the chart is not attested.
   A release is a signed `v<chart version>` tag (e.g. `v0.46.1`) on the commit that chart was built from, with a GitHub
-  Release, cut by hand (no workflow creates it); fixes land on `main` only.
+  Release, cut by hand with `/release` (no workflow creates it); fixes land on `main` only.
 - Chart upgrade from 0.29.1 or earlier is not a rolling update: object names gained the `matherlynet-` prefix, so Helm
   deletes and recreates them and the site is down until the new pod is ready. Each pod logs one better-auth "Rate
   limiting could not determine a client IP" warning at start (the first kubelet probe has no `cf-connecting-ip`;

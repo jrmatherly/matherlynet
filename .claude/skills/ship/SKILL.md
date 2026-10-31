@@ -30,6 +30,5 @@ Push, then watch CI until it finishes and report what happened.
 
 - `gh run list` right after a push can be empty: GitHub needs a few seconds to queue runs.
 - A pushed docs-only change may start no workflow at all; that's expected, not a failure.
-- Shipping doesn't tag. A release is a signed `v<chart version>` tag on the commit the chart was built from, plus a
-  GitHub Release, cut by hand only when asked (README "Deploy").
+- Shipping doesn't tag. Releases are `/release`, only when asked.
 - Never push to `main` from a feature branch's session without the user saying so; merging is a separate decision.

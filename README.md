@@ -45,7 +45,7 @@ that can change it, with a Helm chart pinned to that image
 (`oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`, version `0.<run number>.<run attempt>`). Both packages
 are public. If a new package comes out private, make it public under Package settings, Danger Zone (one-way for
 that package). The image tag is the commit SHA. A release is a signed `v<chart version>` tag (for example `v0.46.1`)
-on the commit that chart was built from, with a GitHub Release, cut by hand; no workflow creates them.
+on the commit that chart was built from, with a GitHub Release, cut by hand with `/release`; no workflow creates them.
 
 ```sh
 aspire publish -o out/compose                  # Docker Compose: docker-compose.yaml + .env + Dockerfile
