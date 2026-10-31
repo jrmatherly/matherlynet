@@ -19,7 +19,7 @@ Bring every direct dependency to its latest stable version as an exact pin, then
      `minimumReleaseAgeExclude` entry to `web/pnpm-workspace.yaml`; keep it. Drop the entries for versions you
      replaced, then check `pnpm --dir web install --frozen-lockfile` still passes its supply-chain check.
    - root: `npm install --save-exact <pkg>@<version>`. npm has no release-age guard unless `~/.npmrc` sets
-     `min-release-age` (it doesn't as of 2026-10-21); if it does, add `--min-release-age-exclude=<package-name>`
+     `min-release-age` (`npm config get min-release-age`); to go past it, add `--min-release-age-exclude=<package-name>`
      (names, not `name@version`; globs work, e.g. `'@typescript-eslint/*'`).
    - Renovate waits 7 days (`minimumReleaseAge` in `.github/renovate.json5`); a manual bump may take newer versions.
 5. If pnpm reports `ERR_PNPM_IGNORED_BUILDS`, approve the named package: `pnpm --dir web approve-builds <pkg>`.
@@ -60,6 +60,8 @@ The drizzle cap has no Renovate rule: Renovate skips 1.0 only while it stays a p
 
 ## Gotchas
 
-- Changing `packageManager` in `web/package.json` requires `pnpm --dir web install` to refresh the lockfile, or the
-  Docker build fails with `ERR_PNPM_FROZEN_LOCKFILE_WITH_OUTDATED_LOCKFILE`.
+- `packageManager` in `web/package.json` sets the pnpm that CI and the image install. Keep the local pnpm on the same
+  version: `pmOnFail: ignore` (`web/pnpm-workspace.yaml`) means pnpm doesn't switch to the pin or warn about a mismatch.
+- On each bump, re-check every `overrides` entry (root `package.json`, `web/pnpm-workspace.yaml`): `npm view <parent>
+  dependencies` shows what a parent asks for. Delete an entry once its parents accept the fix or drop the package.
 - Root `tsconfig.apphost.json` must keep `"types": ["node"]` (TypeScript 6 no longer auto-includes `@types`).

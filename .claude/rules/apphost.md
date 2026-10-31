@@ -19,7 +19,7 @@ paths:
     `withHttpEndpoint`.
   - `ASTRO_DEV_BACKGROUND=0` is required: Astro 7 detaches `astro dev` when it detects an AI agent.
   - The Dockerfile's pnpm version comes from `web/package.json` `packageManager`; base images from
-    `withDockerfileBaseImage`. Changing `packageManager` requires `pnpm install` to refresh the lockfile.
+    `withDockerfileBaseImage`.
   - `aspire deploy` to Kubernetes requires a container registry; `Aspire.Hosting.Kubernetes` is preview.
   - Kubernetes output has no Job support; migrations therefore run inside `web` on start.
   - Under `DEPLOY_TARGET=k8s` there is no `pg`: web gets `APPDB_URI` from the `appdb-uri` parameter (chart value
