@@ -62,8 +62,8 @@ export default defineConfig({
     {
       // Geist and Geist Mono: Latin only, through the local provider. The npm provider reads every @font-face in the
       // package, so Cyrillic, Greek and Latin Extended were preloaded on every page too. With `remote: false`
-      // unifont 0.7.5 still pointed the files at jsDelivr, and unifont 1.x returns file:// URLs that Astro 7.4.1's
-      // font fetcher hands to fetch(), which can't read them.
+      // unifont 0.7.5 still pointed the files at jsDelivr, and unifont 1.x returns file:// URLs that Astro's font
+      // fetcher hands to fetch(), which can't read them (checked on astro 7.4.1).
       provider: fontProviders.local(),
       name: "Geist Variable",
       cssVariable: "--font-geist",

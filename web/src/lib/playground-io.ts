@@ -183,7 +183,8 @@ export interface Io {
    * Takes a seat under a lock: marks the row routed only while fewer than LIVE.seats open routed rows exist and fewer
    * than LIVE.sitePerDay were routed in the last day. open() counts the day outside this lock, so two calls it admitted
    * one under the cap would otherwise both take the last one. true when it did. A call refused "busy" never gets
-   * routed_at.
+   * routed_at. run() reads every false as "busy", so the loser of that race sees the seats-taken refusal, and its retry
+   * is refused "site daily" at open(): accepted, rather than a second query or a reason type.
    */
   claim(id: CallId): Promise<boolean>;
   /**
@@ -559,8 +560,8 @@ let inFlight = 0;
 /**
  * The Response. Starts run() from the stream's start() and returns at once. The client-gone signal has two paths,
  * neither trusted alone: requestSignal before the stream is read, cancel() after. Owns the call's deadline. In the
- * built server the body is read by writeResponse() in Astro core (astro 7.3.5, dist/core/app/node.js), which the
- * comments below name; `astro dev` reads it with writeWebResponse() instead.
+ * built server the body is read by writeResponse() in Astro core (checked on astro 7.4.1, dist/core/app/node.js),
+ * which the comments below name; `astro dev` reads it with writeWebResponse() instead.
  */
 export function respond(call: Call, requestSignal: AbortSignal, io: Io = liveIo): Response {
   if (inFlight >= IN_FLIGHT_MAX) return new Response(null, { status: 503 });

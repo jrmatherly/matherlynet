@@ -208,18 +208,17 @@ service (`<cluster>-rw`): migrations and sign-ups write. What the role needs:
 - Up to 16 connections per web pod: the server's two pools (sizes in `web/src/db/index.ts`). Migrations run first,
   on 2 connections closed before the server opens any. Size `max_connections` for your replica count.
 
-The connection is encrypted and verified only when the install says so. CloudNativePG's `-app` secret builds its
-`uri` with no query string, so `sslmode` cannot ride in the URI, and node-postgres 8.23 with no `sslmode` and no
-`ssl` option opens a plain TCP connection. The home cluster ran that way until 2026-10-30 (`app | f | 1` from the
-query below). The fix is in the environment: node-postgres reads `PGSSLMODE` when the URI names no mode, and
-`require` there means `ssl: true`, which Node verifies against its trust store (libpq's `require` does not verify).
-It reads no `PGSSLROOTCERT`, so the cluster CA goes into Node's store instead. The install mounts secret
-`<cluster>-ca` key `ca.crt` into the web container and sets `PGSSLMODE=require` and
-`NODE_EXTRA_CA_CERTS=/etc/cnpg/ca.crt` on it (a Flux patch in the home cluster). `PGSSLMODE=no-verify` would
-encrypt without verifying. The home cluster has run verified TLS this way since 2026-10-30, with the CNPG URI
-unchanged; the query then showed `app|t|TLSv1.3|TLS_AES_256_GCM_SHA384` for the web pod's connection. Check the live
-state from the Postgres pod; `t` means encrypted. The pool closes idle clients quickly, so right after a start the
-query shows no `app` row: load a few pages first.
+The connection is encrypted and verified only when the install says so. CloudNativePG's `-app` secret builds its `uri`
+with no query string, so `sslmode` cannot ride in the URI, and node-postgres with no `sslmode` and no `ssl` option
+(checked on pg 8.23.1) opens a plain TCP connection. The home cluster ran that way until 2026-10-30 (`app | f | 1` from
+the query below). The fix is in the environment: node-postgres reads `PGSSLMODE` when the URI names no mode, and
+`require` there means `ssl: true`, which Node verifies against its trust store (libpq's `require` does not verify). It
+reads no `PGSSLROOTCERT`, so the cluster CA goes into Node's store instead. The install mounts secret `<cluster>-ca` key
+`ca.crt` into the web container and sets `PGSSLMODE=require` and `NODE_EXTRA_CA_CERTS=/etc/cnpg/ca.crt` on it (a Flux
+patch in the home cluster). `PGSSLMODE=no-verify` would encrypt without verifying. The home cluster has run verified TLS
+this way since 2026-10-30, with the CNPG URI unchanged; the query then showed `app|t|TLSv1.3|TLS_AES_256_GCM_SHA384` for
+the web pod's connection. Check the live state from the Postgres pod; `t` means encrypted. The pool closes idle clients
+quickly, so right after a start the query shows no `app` row: load a few pages first.
 
 ```sh
 kubectl exec -n matherlynet <cluster>-1 -c postgres -- psql -X -d app -tA \
@@ -406,8 +405,9 @@ docker compose start web
 ```
 
 `--clean --if-exists` drops and recreates each object from the dump, so a restore onto a database that is already
-populated works. Checked on 2026-10-30 against the published `pg` service (postgres:18.3): one `site_settings` row,
-dump, `delete from site_settings`, restore, and the row was back with its values and the 7 migration rows intact.
+populated works. Checked on 2026-10-30 against the published `pg` service on postgres:18.3, before the 18.6 bump:
+one `site_settings` row, dump, `delete from site_settings`, restore, and the row was back with its values and the 7
+migration rows intact.
 Confirm with the same wrapper:
 
 ```sh
