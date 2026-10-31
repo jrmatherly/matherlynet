@@ -8,21 +8,34 @@ allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/preflight.sh *)
 
 # Release
 
-A release names a chart CI already built. A pushed tag can't be deleted or moved (SECURITY.md), so nothing gets pushed
-until preflight passes.
+A release names a chart CI already built. A pushed tag can't be deleted or force-updated (SECURITY.md), so nothing gets
+pushed until preflight passes.
 
 1. **Approval.** Tag only if the user asked in this turn. Approval from an earlier release doesn't count.
 2. **Preflight.** Run `${CLAUDE_SKILL_DIR}/scripts/preflight.sh $ARGUMENTS`. With no argument it takes the newest
    commit on `main` with a successful publish run; say if newer commits exist. Stop on any FAIL: show it and fix the
-   cause. Never work around one.
+   cause. Never work around one. For "already released", see "No new chart" below.
 3. **Notes.** Write them to a file in the scratchpad from preflight's output and the commits' PRs, in the format below.
    Say what changed for someone running the site, and check each claim against the diff.
 4. **Tag, push, publish, verify.** Run the commands preflight printed, in order, changing only the notes file path, and
    stop at any failure. If an earlier run stopped partway, preflight prints only what's left. A 1Password prompt appears
    when tagging; if signing fails, ask the user. Never bypass signing. Report the final `--recheck`, which checks the
-   signature through GitHub: `git tag -v` fails here because this machine has no `gpg.ssh.allowedSignersFile`.
-5. **Deploy.** Not part of a release. Only if the user asks, send the home-cluster session the chart, digest, what
-   changed and the rollout checks, and tell it that it does the deploy. Never touch the cluster from here.
+   signature through GitHub. A local `git tag -v` needs `gpg.ssh.allowedSignersFile`, so don't read its failure as a bad
+   signature.
+5. **Deploy.** Not part of a release. Only if the user asks, send the session working in `~/dev/home-cluster` the chart,
+   digest, what changed and these checks: the pod runs the digest, `/api/auth/ok` answers, and the public pages answer
+   200. Tell it that it does the deploy. Never touch the cluster from here.
+
+## No new chart
+
+The path filter skips commits that can't change the image or chart, so they have no chart, and the newest chart may
+already be released. Tell the user there's nothing new to release. If a run stopped after publishing, run `--recheck`
+to finish it.
+
+If they still want a version and the head of `main` has no chart, ask before running
+`gh workflow run publish-images.yml --ref main`, wait for it to succeed, then run preflight again. Don't dispatch on a
+commit that already has a chart: the new image takes over the commit's tag, so the old release's verify line would
+resolve to a different digest.
 
 ## Notes format
 
@@ -45,6 +58,6 @@ chart changed only in its version, image pin and SENTRY_RELEASE, say so.>
 
 ## Gotchas
 
-- Version numbers skip: they follow the run number, so 0.48.1 doesn't exist. Re-running only another job raises the run
-  attempt without a new chart, so take the version from preflight.
+- Version numbers skip: a run that pushes no chart leaves a gap (run 48 was cancelled, so 0.48.1 doesn't exist). Take
+  the version from preflight.
 - Notes can change after publishing (`gh release edit`). A bad pushed tag gets a new release, not a replacement.

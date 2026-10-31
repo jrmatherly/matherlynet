@@ -251,8 +251,8 @@ out/                   aspire publish output (gitignored)
   -R jrmatherly/matherlynet`.
 - `publish-images.yml`'s `chart` job pushes the Helm chart to
   `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet` as `0.<run number>.<run attempt>` (`appVersion` =
-  commit SHA), from `main` only (a manual run on another branch must not publish a higher version). A re-run gets
-  a new version, and the job refuses to replace one that exists. The `push` job generates the chart and runs
+  commit SHA), from `main` only (a manual run on another branch must not publish a higher version). A re-run of that
+  job gets a new version, and it refuses to replace one that exists. The `push` job generates the chart and runs
   `scripts/check-chart.sh` (also run on PRs by `e2e.yml`) before the image push, so a chart that fails its checks
   publishes nothing; a failed chart push can't skip the source maps. CI writes the pushed image (`web@<digest>`)
   into `parameters.web.web_image` and renders the packaged chart to confirm it: `aspire publish` leaves the value
