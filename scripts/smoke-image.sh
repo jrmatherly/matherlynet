@@ -67,7 +67,7 @@ user=$(docker image inspect -f '{{.Config.User}}' "$image")
 [ "$user" = node ] || fail "the image runs as '$user', not node"
 
 docker network create "$net" > /dev/null
-docker run -d --name "$pg" --network "$net" -e POSTGRES_PASSWORD=admin-pw docker.io/library/postgres:18.3 > /dev/null
+docker run -d --name "$pg" --network "$net" -e POSTGRES_PASSWORD=admin-pw docker.io/library/postgres:18.6 > /dev/null
 for _ in $(seq 60); do
   docker exec "$pg" pg_isready -U postgres -h 127.0.0.1 > /dev/null 2>&1 && break
   sleep 1

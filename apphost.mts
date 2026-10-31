@@ -27,6 +27,8 @@ await target.withContainerRegistry(ghcr);
 // port would be published on all host interfaces; bind it to loopback and reach it through an SSH tunnel.
 if (!k8s) {
   await target.configureDashboard(async (dashboard) => {
+    // The publisher's default is the dotnet/nightly dashboard image; pin the release image at Aspire's own version.
+    await dashboard.withImage('mcr.microsoft.com/dotnet/aspire-dashboard', { tag: '13.6' });
     await dashboard.publishAsDockerComposeService(async (_resource, service) => {
       await service.ports.clear();
       await service.ports.add('127.0.0.1:18888:18888');
@@ -86,6 +88,7 @@ const playgroundModel = await optionalParameter('playground-model');
 
 // Kubernetes uses the cluster's existing Postgres: the chart takes its URI as one secret value at install time.
 const pg = k8s ? undefined : await builder.addPostgres('pg')
+  .withImageTag('18.6')
   .withDataVolume()
   // addDatabase() only creates the database under `aspire run`; published Compose relies on this.
   .withEnvironment('POSTGRES_DB', 'appdb');
