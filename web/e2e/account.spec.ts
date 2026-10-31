@@ -72,6 +72,44 @@ test("signing out ends the session", async ({ page }) => {
   await expect(page).toHaveURL(/\/sign-in$/);
 });
 
+// Earlier tests leave sessions behind, and in E2E they share an IP and sign-in time, so only the user agent tells the rows apart.
+async function otherDevice(browser: import("@playwright/test").Browser, userAgent: string) {
+  const context = await browser.newContext({ userAgent });
+  const other = await context.newPage();
+  await signIn(other, password);
+  await expect(other).toHaveURL(/\/account$/);
+  return { context, other };
+}
+
+test("revoking another device's session signs that device out", async ({ page, browser }) => {
+  const { context, other } = await otherDevice(browser, "e2e-other");
+  await signIn(page, password);
+  await expect(page).toHaveURL(/\/account$/);
+  const row = page.getByRole("listitem").filter({ hasText: "e2e-other" });
+  await expect(row).toHaveCount(1);
+  await row.getByRole("button", { name: "Revoke" }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByText("e2e-other")).toHaveCount(0);
+  await expect(page.getByText("(this device)")).toBeVisible();
+  await other.goto("/account");
+  await expect(other).toHaveURL(/\/sign-in$/);
+  await context.close();
+});
+
+test("signing out other devices leaves only this session", async ({ page, browser }) => {
+  const { context, other } = await otherDevice(browser, "e2e-third");
+  await signIn(page, password);
+  await expect(page).toHaveURL(/\/account$/);
+  await page.getByRole("button", { name: "Sign out other devices" }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByText("(this device)")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Revoke" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sign out other devices" })).toHaveCount(0);
+  await other.goto("/account");
+  await expect(other).toHaveURL(/\/sign-in$/);
+  await context.close();
+});
+
 test("a password reset by email replaces the old password", async ({ page }) => {
   await page.goto("/forgot-password");
   await page.getByLabel("Email").fill(email);
