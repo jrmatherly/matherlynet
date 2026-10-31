@@ -8,7 +8,8 @@
 - Area rules load on demand from `.claude/rules/` (AppHost, database, workflows, web architecture, integrations).
 - `/verify` runs the full local check (AppHost lint and tsc, Markdown and workflow lint, web check, lint, tests and
   build, then the Aspire smoke test and Playwright E2E; `--no-stack` skips the last two).
-  `/bump-deps` is the dependency-update procedure; `/ship` pushes and watches CI (only when asked to push).
+  `/bump-deps` is the dependency-update procedure; `/ship` pushes and watches CI (only when asked to push); `/release`
+  cuts a signed tag and GitHub Release (only when asked).
 - A PostToolUse hook lints each edited file; fix what it reports before moving on. Order a multi-file change
   definition-first (the file that declares a prop or export, then its users): a report the next edit in the same
   batch resolves gets one set-wide `eslint` + `astro check` at the end, not a fix per file.

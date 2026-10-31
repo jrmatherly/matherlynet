@@ -139,7 +139,8 @@ jobs:
 
   # The chart pins the image just pushed by digest, so a chart version is a whole release. It lands at
   # oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet as 0.<run number>.<run attempt>: SemVer that goes up
-  # with every run, and a re-run gets a new version instead of replacing one a cluster may already have pulled.
+  # with every run, and a re-run of this job gets a new version instead of replacing one a cluster may already have
+  # pulled.
   # Its own job: a failed chart push can be re-run without rebuilding the image, and can't skip the source maps.
   # main only: a manual run on another branch would otherwise publish unmerged code as the newest version.
   chart:
