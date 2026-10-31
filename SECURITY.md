@@ -14,3 +14,9 @@ few days.
 
 Only the current `main` branch (what's deployed) is supported. Tagged releases are snapshots of it; fixes land on
 `main` only.
+
+## Repository settings
+
+Since 2026-10-30: workflows may use only actions pinned to a full commit SHA (`sha_pinning_required`); the workflow
+`GITHUB_TOKEN` is read-only by default and cannot approve pull requests; and the "Protect release tags" ruleset blocks
+deleting or force-updating `v*` tags, with no bypass. A release tag is a lightweight tag whose commit is SSH-signed.
