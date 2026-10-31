@@ -17,6 +17,8 @@
   // Dependabot security updates raise the fix PRs; Renovate would raise each one again.
   vulnerabilityAlerts: { enabled: false },
   lockFileMaintenance: { enabled: true, schedule: ["before 6am on monday"] },
+  // The markdownlint-cli2 hook pin in .pre-commit-config.yaml (off by default in Renovate).
+  "pre-commit": { enabled: true },
   packageRules: [
     {
       description: "AppHost (root npm project): one PR for minor and patch updates",
