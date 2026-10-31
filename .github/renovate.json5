@@ -70,11 +70,11 @@
       groupName: "postgres",
     },
     {
-      description: "A Postgres major needs pg_upgrade on the Compose volume: no PR for one",
+      description: "A Postgres major needs pg_upgrade on the Compose volume: list it on the dashboard, open a PR only when asked",
       matchDepNames: ["postgres"],
       matchDatasources: ["docker"],
       matchUpdateTypes: ["major"],
-      enabled: false,
+      dependencyDashboardApproval: true,
     },
     {
       description: "Aspire moves as one set through `aspire update` (/bump-deps), and the CLI pin has a checksum: list updates on the dashboard, open a PR only when asked. `aspire update` leaves the Compose dashboard image tag alone; this group's PR bumps it",

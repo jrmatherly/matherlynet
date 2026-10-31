@@ -130,7 +130,7 @@ web/
                        /playground's live path, run in two passes: model off, then against tests/fake-llama.ts (a
                        test for one mode skips itself on the other stack). Sign-up and reset call the live Have I
                        Been Pwned range API, so a HIBP outage fails E2E; re-run the job. pwned.ts hard-codes the
-                       URL; if a HIBP outage fails it twice, add an override
+                       URL; if HIBP outages fail the job twice, add an env var for that base URL and point E2E at a stub
   public/              brand favicons, web manifest, brand raster logo, portrait.jpg (648x648) and
                        portrait-320.jpg (srcset for 2x screens); public/pro/ = Pro monogram set
 ```

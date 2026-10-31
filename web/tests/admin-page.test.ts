@@ -11,18 +11,23 @@ const { readSiteSettings, saveSiteSettings } = vi.hoisted(() => ({
 }));
 vi.mock("../src/lib/site-settings", async (orig) => ({ ...(await orig<object>()), readSiteSettings, saveSiteSettings }));
 
+// Every field differs from the defaults in locals, so a form filled from anything but this row fails a test.
 const row: SiteSettings = {
   theme: "pro",
   proPalette: "merlot",
   typeface: "serif",
-  sentry: { dsn: null, server: false, browser: false },
-  umami: { enabled: false, scriptUrl: null, websiteId: null },
+  sentry: { dsn: "https://key@o1.ingest.sentry.io/2", server: true, browser: false },
+  umami: { enabled: true, scriptUrl: "https://analytics.example.com/script.js", websiteId: "site-id-1" },
 };
 // The page reads only user.role; the rest of better-auth's user shape is not rendered.
 const locals = (role: string | null): App.Locals => ({
   user: role ? ({ role } as App.Locals["user"]) : null,
   session: null,
-  siteSettings: { ...SITE_DEFAULTS, sentry: row.sentry, umami: row.umami },
+  siteSettings: {
+    ...SITE_DEFAULTS,
+    sentry: { dsn: null, server: false, browser: false },
+    umami: { enabled: false, scriptUrl: null, websiteId: null },
+  },
   theme: resolveTheme({}),
 });
 
@@ -51,6 +56,12 @@ describe("/admin", () => {
     expect(html).toMatch(/name="theme" value="pro"[^>]*checked/);
     expect(html).toMatch(/<option value="merlot"[^>]*selected/);
     expect(html).toMatch(/name="typeface" value="serif"[^>]*checked/);
+    expect(html).toContain('name="sentryDsn" value="https://key@o1.ingest.sentry.io/2"');
+    expect(html).toMatch(/name="sentryServer"[^>]*checked/);
+    expect(html).not.toMatch(/name="sentryBrowser"[^>]*checked/);
+    expect(html).toContain('name="umamiScriptUrl" value="https://analytics.example.com/script.js"');
+    expect(html).toContain('name="umamiWebsiteId" value="site-id-1"');
+    expect(html).toMatch(/name="umamiEnabled"[^>]*checked/);
     expect(saveSiteSettings).not.toHaveBeenCalled();
   });
 
@@ -81,5 +92,11 @@ describe("/admin", () => {
     expect(res.status).toBe(404);
     expect(await res.text()).toContain("That page doesn");
     expect(readSiteSettings).not.toHaveBeenCalled();
+  });
+
+  it.each([null, "user"])("answers 404 to a valid POST from a visitor with role %j and saves nothing", async (role) => {
+    const res = await render(role, form({ theme: "brand", proPalette: "cobalt", typeface: "sans" }));
+    expect(res.status).toBe(404);
+    expect(saveSiteSettings).not.toHaveBeenCalled();
   });
 });

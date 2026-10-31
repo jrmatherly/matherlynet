@@ -82,7 +82,7 @@ export function configureSentry(dsn: string | null): void {
       ),
     // Request bodies stay out of events (sign-up bodies carry emails). Visitor IPs are personal data the site stores
     // nowhere else: userInfo false drops user.ip_address and the client-IP headers (cf-connecting-ip, x-forwarded-for,
-    // …; @sentry/core 11.8.0 requestdata.js). Query strings and other headers keep the SDK's key filtering.
+    // …; requestdata.js, checked on @sentry/core 11.8.0). Query strings and other headers keep the SDK's key filtering.
     dataCollection: { httpBodies: [], userInfo: false },
   });
 }

@@ -181,10 +181,11 @@ export interface Io {
   open(opening: Opening): Promise<{ id: CallId; load: Load | null }>;
   /**
    * Takes a seat under a lock: marks the row routed only while fewer than LIVE.seats open routed rows exist and fewer
-   * than LIVE.sitePerDay were routed in the last day. open() counts the day outside this lock, so two calls it admitted
-   * one under the cap would otherwise both take the last one. true when it did. A call refused "busy" never gets
-   * routed_at. run() reads every false as "busy", so the loser of that race sees the seats-taken refusal, and its retry
-   * is refused "site daily" at open(). That misleading reason is accepted rather than adding a second query or a new
+   * than LIVE.sitePerDay were routed in the last day, and returns true when it marked it. A call refused "busy" never
+   * gets routed_at. open() counts the day outside this lock, so two calls it admitted while the day stood at
+   * LIVE.sitePerDay - 1 could otherwise both take the last slot. run() reads every false as "busy", so the loser of
+   * that race sees the seats-taken refusal, its row closes with reason "busy" (one extra per race, at the cap only),
+   * and its retry is refused "site daily" at open(). That is accepted rather than adding a second query or a new
    * refusal reason.
    */
   claim(id: CallId): Promise<boolean>;
@@ -394,10 +395,10 @@ async function* modelStream(base: string, key: string, text: PromptText, signal:
 
 type Stage = "open" | "claim" | "model" | "stream" | "close" | "run";
 
-// Failures that carry no code, by their fixed message (pg 8.23.1, pg-pool 3.14.0). Without this a full pool, a dead
-// socket, a connect timeout and a client-side query timeout all report as "Error". A connect timeout's cause is
-// "Connection terminated unexpectedly", so the error's own message is looked up before its cause's. The message is
-// only looked up, never sent.
+// Failures that carry no code, by their fixed message (checked on pg 8.23.1 and pg-pool 3.14.0). Without this a full
+// pool, a dead socket, a connect timeout and a client-side query timeout all report as "Error". A connect timeout's
+// cause is "Connection terminated unexpectedly", so the error's own message is looked up before its cause's. The
+// message is only looked up, never sent.
 const UNCODED = new Map([
   ["timeout exceeded when trying to connect", "pool timeout"],
   ["Connection terminated due to connection timeout", "connect timeout"],

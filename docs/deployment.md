@@ -144,8 +144,9 @@ of the security headers pages get (checked on a production build), and the clien
   address, then blocks the address for 10 s. The route writes a `playground_call` row for every accepted POST even
   with the model off, and the app's own limits only stop the model call.
 - **No rule for mail.** The Free plan has no second rate limiting rule, so the auth routes that send mail are
-  limited in the app. better-auth's defaults (`api/rate-limiter/index.mjs` in 1.7.11) allow 3 requests per 10 s on
-  sign-in and sign-up and 3 per 60 s on password reset and resending the verification mail, all per IP and path;
+  limited in the app. better-auth's defaults (`api/rate-limiter/index.mjs`, checked on better-auth 1.7.11) allow 3
+  requests per 10 s on sign-in and sign-up and 3 per 60 s on password reset and resending the verification mail, all
+  per IP and path;
   nothing counts per recipient. `web/src/lib/mail-throttle.ts` adds that: at most 5 mails an hour to one address,
   counted in the `mail_throttle` table so the cap holds across replicas. A refused mail is dropped silently and
   the response is unchanged, so a client can't tell whether an address exists. The owner of a flooded address
@@ -237,12 +238,13 @@ waiting.
 With Umami enabled (`Umami__Enabled=true` at publish time), the chart also has `secrets.umami.appdb_uri`: set it to
 the same URI. The chart appends `?schema=umami` to it, so with Umami on the URI must carry no query string of its own.
 
-Two tables grow with traffic and are never pruned: `rate_limit` (better-auth's per-IP counters, one row per key, with
-`last_request` in epoch milliseconds) and email sign-ups that never verified their email. At today's traffic neither
-matters; if they grow, run these (the second cascades to the `account` and `session` rows; `verification` rows have
-no foreign key and expire on their own). The second deletes only users whose one account is the email/password
-(`credential`) one: a GitHub or Google user whose provider reports the email unverified also has
-`email_verified = false`, and can still sign in, because no provider sets `requireEmailVerification`:
+Users who signed up with email and never verified it are never pruned. At today's traffic that doesn't matter; if the
+table grows, run the second statement below (it cascades to the `account` and `session` rows; `verification` rows have
+no foreign key and expire on their own). It spares any user with a GitHub or Google account: a provider that reports
+the email unverified leaves `email_verified = false`, and that user can still sign in, because no provider sets
+`requireEmailVerification`. Unverified users with no account row at all are deleted too. `rate_limit` (better-auth's
+per-IP counters, `last_request` in epoch milliseconds) prunes itself: each time a key's window resets, better-auth
+deletes rows older than its longest window (checked on better-auth 1.7.11). The first statement is only a fallback:
 
 ```sql
 delete from rate_limit where last_request < extract(epoch from now() - interval '1 day') * 1000;
@@ -401,24 +403,48 @@ allocating a TTY that would corrupt the custom-format dump:
 docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U postgres -Fc appdb' > appdb-$(date +%F).dump
 ```
 
-Run it nightly from cron on the host (write `%` as `\%` in a crontab line) and copy the files off the host; keep 14
-days. Restore with web stopped, and `umami` too when it is enabled (it writes to the same database's `umami`
-schema), so nothing writes while the tables are replaced, then start them again:
+The redirect creates the file before `pg_dump` runs, so a failed dump (pg stopped, the wrong directory) still leaves an
+empty or partial `.dump`. For the nightly run, save this as `/usr/local/bin/appdb-backup` on the host. A failed run
+leaves no file and prunes nothing, so failures never rotate out the last good dump, and the files stay private (they
+hold password hashes and OAuth tokens):
+
+```sh
+#!/bin/sh
+# appdb-backup <compose dir> <backup dir>: one complete dump, then prune dumps older than 14 days.
+set -eu
+cd "$1"
+umask 077
+out="$2/appdb-$(date +%F).dump"
+trap 'rm -f "$out.tmp"' EXIT
+docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U postgres -Fc appdb' > "$out.tmp"
+mv "$out.tmp" "$out"
+find "$2" -name 'appdb-*.dump' -mtime +14 -delete
+```
+
+Run it from root's crontab with `MAILTO` set, so a failed run (exit 1) reaches someone, and copy the files off the
+host: `0 3 * * * /usr/local/bin/appdb-backup /srv/matherlynet /srv/backups/appdb` (your Compose and backup
+directories). Checked on 2026-10-31 against a scratch Compose project on postgres:18.6: a good run wrote a
+`-rw-------` dump and pruned a 30-day-old one; with pg stopped it exited 1 and left no file.
+
+Restore with web stopped, and `umami` too when it is enabled (it writes to the same database's `umami` schema): with
+Umami, name both services in the `stop` and `start` commands below (`web umami`). `--single-transaction
+--exit-on-error` makes the restore all or nothing, and `&&` starts web again only when it succeeded; without them, a
+truncated dump empties the tables and web starts on that.
 
 ```sh
 docker compose stop web
-docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d appdb --clean --if-exists' < appdb-<date>.dump
-docker compose start web
+docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d appdb --clean --if-exists --single-transaction --exit-on-error' < appdb-<date>.dump && docker compose start web
 ```
 
-`--clean --if-exists` drops and recreates each object from the dump, so a restore onto a database that is already
-populated works. Checked on 2026-10-30 against the published `pg` service on postgres:18.3, before the 18.6 bump:
-one `site_settings` row, dump, `delete from site_settings`, restore, and the row was back with its values and the 7
-migration rows intact.
-Confirm with the same wrapper:
+`--clean --if-exists` drops and recreates each object in the dump, so a restore onto a populated database works.
+Objects the dump lacks stay, so restore a dump with the image that took it: a newer image's migrations would find
+their tables already there, and `migrate.mjs` fails the start (`CREATE TABLE` without `IF NOT EXISTS`). Checked on
+2026-10-31 on postgres:18.6: with these flags, a dump cut short left the data in place and web stopped, a good dump
+restored and started web, and a table the dump lacked survived; without them, a dump cut at 60% left every table
+empty. A nonzero exit is the failure signal; afterwards, confirm the rows you expect:
 
 ```sh
-docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d appdb -tc "select count(*) from site_settings"'
+docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d appdb -tc "select (select count(*) from site_settings), (select count(*) from \"user\")"'
 ```
 
 ### Cluster
@@ -428,14 +454,18 @@ barman-cloud plugin, which also archives WAL continuously, into the object store
 `ObjectStore` names (a Cloudflare R2 bucket, 30-day retention). They live in the home-cluster repository: the
 `ScheduledBackup` in `kubernetes/apps/matherlynet/matherlynet/app/scheduledbackup.yaml`, the plugin and WAL archiving
 in `cluster.yaml` beside it, and the `ObjectStore` in `kubernetes/components/postgres/objectstore.yaml`. Nothing in
-this repository runs or checks them.
+this repository runs or checks them, and a failure (expired R2 credentials, say) stops both backups and WAL archiving
+without a signal here. Check that a recent one completed: `kubectl -n matherlynet get backups.postgresql.cnpg.io`
+lists each `Backup` the schedule made, with its phase.
 
 To restore, create a `Cluster` under a new name with `bootstrap.recovery.source` naming an `externalClusters` entry
 that uses the barman-cloud plugin with `barmanObjectName: postgres-backup` and `serverName: matherlynet-db` (the
 backups are stored under the old cluster's name); a `recoveryTarget` time is possible because WAL is archived. The
-recovered cluster archives no WAL until it gets its own `plugins` entry. CloudNativePG generates the new cluster's own
+recovered cluster archives no WAL until it gets its own `plugins` entry; leave that entry's `serverName` unset so it
+writes under its own name (the `ObjectStore` notes that each cluster does), never `matherlynet-db`, whose backups it
+was restored from. CloudNativePG generates the new cluster's own
 `<name>-app` and `<name>-ca` Secrets, so the HelmRelease needs both repointed: the `valuesFrom` Secret that fills
 `secrets.web.appdb_uri` (`matherlynet-db-app` today) and the `db-ca` volume's Secret (`matherlynet-db-ca`). Moving
 only the URI leaves web verifying TLS against the old cluster's CA, and every connection fails. Point the
 `ScheduledBackup`'s `cluster.name` at the new cluster too, or it keeps targeting the old one and nothing new is backed
-up.
+up; its backups need that `plugins` entry as well.

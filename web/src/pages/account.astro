@@ -78,13 +78,22 @@ const others = sessions.filter((s) => s.id !== session.id);
     }
     <button id="sign-out" type="button" class={primary}>Sign out</button>
   </div>
+  <p id="sign-out-message" role="alert" class="text-sm text-danger empty:hidden"></p>
 </AuthCard>
 
 <script>
   import { authClient } from "../lib/auth-client";
 
-  document.querySelector("#sign-out")!.addEventListener("click", async () => {
-    await authClient.signOut();
-    location.assign("/");
+  const message = document.querySelector("#sign-out-message")!;
+  const button = document.querySelector<HTMLButtonElement>("#sign-out")!;
+  button.addEventListener("click", async () => {
+    message.textContent = "";
+    button.disabled = true;
+    // The client resolves an HTTP error as { error } and rejects only when the request never completes
+    // (checked on @better-fetch/fetch 1.3.2).
+    const { error } = await authClient.signOut().catch(() => ({ error: { message: "" } }));
+    if (!error) return location.assign("/");
+    button.disabled = false;
+    message.textContent = error.message || "Sign-out failed. Try again.";
   });
 </script>

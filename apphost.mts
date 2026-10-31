@@ -27,8 +27,8 @@ await target.withContainerRegistry(ghcr);
 // port would be published on all host interfaces; bind it to loopback and reach it through an SSH tunnel.
 if (!k8s) {
   await target.configureDashboard(async (dashboard) => {
-    // The publisher's default is the dotnet/nightly dashboard image; pin the newest release image (MCR has no tag
-    // for every SDK patch).
+    // The publisher's default is the dotnet/nightly dashboard image; pin a release image instead (MCR has no tag for
+    // every SDK patch; Renovate's aspire group bumps it).
     await dashboard.withImage('mcr.microsoft.com/dotnet/aspire-dashboard', { tag: '13.6.2' });
     await dashboard.publishAsDockerComposeService(async (_resource, service) => {
       await service.ports.clear();
