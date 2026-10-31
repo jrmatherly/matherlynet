@@ -3,11 +3,11 @@
 // migrate.mjs's pg and drizzle before otel.mjs runs (server.mjs imports its own graph dynamically). One process, so
 // SIGTERM reaches server.mjs's handlers.
 
-// nodemailer (10.0.13) takes a string that is not an smtp: or smtps: URL as a transport object and throws when
-// src/lib/mail.ts loads. The middleware imports it through lib/auth.ts, so the server starts and then fails every
-// request, probes included. nodemailer's error quotes the value, which can hold a password, so these messages never
-// print it. The pattern is nodemailer's own, without `direct:`. The parse refuses what nodemailer throws on (an
-// unencoded character in the password) and `smtp:` with no host, which nodemailer accepts.
+// nodemailer (checked on nodemailer 10.1.7) takes a string that is not an smtp: or smtps: URL as a transport object
+// and throws when src/lib/mail.ts loads. The middleware imports it through lib/auth.ts, so the server starts and then
+// fails every request, probes included. nodemailer's error quotes the value, which can hold a password, so these
+// messages never print it. The pattern is nodemailer's own, without `direct:`. The parse refuses what nodemailer
+// throws on (an unencoded character in the password) and `smtp:` with no host, which nodemailer accepts.
 const refuse = (why) => {
   console.error(`start: SMTP_URL ${why}. Leave it unset to run without mail.`);
   process.exit(1);

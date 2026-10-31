@@ -162,34 +162,8 @@ out/                   aspire publish output (gitignored)
   A caller that changes the width class passes the matching `sizes` with it (the props type requires both or
   neither); `lazy` adds `loading="lazy"` and `decoding="async"`. /about's is eager (above the fold); the other two are
   lazy, so a phone never downloads the one /changelog hides below `md`. `pages.test.ts` pins this.
-- The home gateway figure (`GatewayPath.astro`) animates with SMIL, not script or inline style, so the CSP holds. It
-  renders `FIGURES` from `lib/gateway-path.ts`, `draw()` of `FRAMES.wide` (`hidden sm:block`) and `FRAMES.stacked`
-  (`phone: true`, so `sm:hidden` and no wider than `PHONE_MAX_W`, 246; 240 units wide: callers on top, the gateways as
-  columns of checks, targets below, the audit log a bar at the bottom), each with its own ids and `role="img"`. A
-  `Figure` is render-ready, so `GatewayPath.astro` and `GatewayLabel.astro` do no math (`GatewayLabel` takes a label's
-  classes from `FONT[tone].class`; the tones are `bold15`, `bold13`, `text12` and `text11`, and `Frame.names` picks the
-  callers' and targets'), and its `motion` object is the only part under `motion-reduce:hidden`. The engine works in
-  flow coordinates, so both frames share one requests table and `SPEED`, and pulse timings are computed there from
-  lane lengths. `Rect`, `Point`, `Segment`, `overlaps()`, `path()` and the Geist `width()` come from `gateway-map.ts`.
-  `draw()` wraps a name onto two lines or throws naming it; `check()` throws when a label leaves its box or touches
-  another label, a box, a lane or a check's dot (the drawn r=6 ring, under the same `CLEAR`), a check sits off its
-  line, two boxes overlap, a gateway line leaves its box or passes through another, an audit drop bends diagonally
-  (`path()` would draw it as a plain H), leaves the drawing or does not run from a gateway box's edge to the audit
-  log's top, the audit log has fewer marks than requests or its marks leave it or touch its label, or a phone frame
-  is wider than `PHONE_MAX_W`; `draw()` also throws when the requests table lacks exactly one refused and one cached
-  request, or a request's keyPoints and keyTimes differ in count; `flash()` throws for a check no request crosses, and
-  `times()` on keyTimes outside the 12 s loop or out of order (each makes the browser drop the animation). The gate
-  and party counts are types (`Per<typeof AI_GATES, Check>`, `Per<typeof CALLERS, number>`), so a frame with the
-  wrong number fails `astro check`. If `times()` throws, move geometry, never the requests or `SPEED`. `FIGURES` is
-  computed at import, so a broken frame fails `pnpm test` in CI before an image exists. `tests/gateway-path.test.ts`
-  pins those throws; `home.test.ts` pins each frame's pulse counts, labels and check order, that every `keyTimes` list
-  runs 0 to 1 in order and matches its `values` or `keyPoints` in length, and that nothing under
-  `motion-reduce:hidden` is text or a node rect.
-- `web/tests/__snapshots__/gateway-path-wide.svg` and `gateway-path-stacked.svg` pin the home gateway figure's two
-  SVGs, SMIL timings included (`home.test.ts`, `toMatchFileSnapshot`). Astro's dev `data-astro-source-file`/`-loc`
-  attributes (an absolute path and a line number) are stripped before comparing. Never run `vitest -u` to make a
-  layout change pass: a diff means that drawing changed, so fix the change, and update a file only for an intended
-  change to its figure.
+- The home gateway figure (`GatewayPath.astro`), its engine and its SVG snapshots: see the "Gateway figure" section of
+  `.claude/rules/web-architecture.md`.
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
 - /playground is a browser simulation of the gateway, with a live path when `PLAYGROUND_MODEL_URL` is set. Live, the
   page POSTs the visitor's own request to `/api/playground`, and the server checks it, sends it to a self-hosted
@@ -228,10 +202,10 @@ out/                   aspire publish output (gitignored)
   default directory, which `astro dev` uses, a check run under a
   running stack replaced the dev server's optimized client deps: page scripts answered `504 Outdated Optimize Dep`
   and E2E form tests failed until `aspire resource web restart`.
-- `web/e2e/global-setup.ts` opens Vite's HMR socket from Node and takes the `full-reload` Vite 8.3.1 keeps for the first
-  client: Astro 7.3.8 sends it when a dev start rewrites its content store (every `aspire start`: `astro dev` gets a
-  new port behind the 4321 proxy, and that port is in the store's config digest). A first test's browser would
-  otherwise take it mid-test and reload the page.
+- `web/e2e/global-setup.ts` opens Vite's HMR socket from Node and takes the `full-reload` Vite keeps for the first
+  client (checked on vite 8.3.4): Astro sends it (checked on astro 7.4.1) when a dev start rewrites its content
+  store (every `aspire start`: `astro dev` gets a new port behind the 4321 proxy, and that port is in the store's
+  config digest). A first test's browser would otherwise take it mid-test and reload the page.
 - `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
   Postgres restart or failover drops idle connections and the unhandled `error` event kills the web process. Each
   pool also puts an `error` listener on every client it connects: pg-pool removes its own from a client taken with
@@ -257,9 +231,9 @@ out/                   aspire publish output (gitignored)
   `NodeSDK` itself because `register.js`'s SIGTERM listener never exits. `scripts/smoke-image.sh` (CI: `e2e.yml`)
   builds the image and runs this entry as UID 1000 on a read-only root filesystem: migrations, serving, the fast
   failures, and a stop before and after the server is up.
-- `session.freshAge` is 0 in `web/src/lib/auth.ts`: better-auth 1.7.7 gates `listSessions` (the /account page) on a
-  session created within `freshAge` (default one day), so a visitor signed in longer got a 500 there. The E2E suite
-  ages a session row through `APPDB_URI` to keep the page open (`account.spec.ts`).
+- `session.freshAge` is 0 in `web/src/lib/auth.ts`: better-auth gates `listSessions` (the /account page) on a
+  session created within `freshAge` (default one day; checked on better-auth 1.7.11), so a visitor signed in longer
+  got a 500 there. The E2E suite ages a session row through `APPDB_URI` to keep the page open (`account.spec.ts`).
 - Server Sentry is initialised once (`web/src/lib/sentry.ts`); a /admin DSN change only retargets
   `makeMultiplexedTransport` (`@sentry/core`). A second `Sentry.init` inside a request binds to that request's scope
   only and stacks process handlers, so later requests kept the old client.
@@ -332,22 +306,8 @@ out/                   aspire publish output (gitignored)
 - Database: never edit migrations in `web/drizzle/` by hand. Change the better-auth config or
   `web/src/db/`, then run `pnpm db:generate` and commit the new SQL. `web/migrate.mjs` applies
   migrations on every start under a Postgres advisory lock.
-- `playground_call` (`web/src/db/schema.ts`) holds one row per accepted live /playground call, written before any
-  gate and closed with one decision (`forwarded`, `refused`, `cut`, `lost`). No row is written for Astro's 403,
-  `parseCall()`'s 400, 408, 413 or 415, the per-process 503, or a failed insert. If the count after the insert fails,
-  `open()` returns the row's id with no load, so the call is refused at Rate limits ("unavailable") and `run()`
-  closes it like any other. The same rows are the rate limiter and the seat counter, so limits hold across replicas.
-  A seat is claimed under a Postgres advisory lock, so at most three are seated at once. `liveIo.claim` takes a pool
-  client and releases it itself rather than call `db.transaction()`: drizzle-orm 0.45.4 leaks the client when BEGIN
-  fails. `routed_at` is never cleared: a row with it held a seat and counts toward the site's day. The table never
-  stores prompt text, answer text or an IP, only a visitor key, the caller, lengths, token counts, timestamps and
-  enum reasons. `visitorKey()` in `playground-io.ts` is the only playground code that reads `cf-connecting-ip`
-  (`lib/auth.ts` gives better-auth the same header), and keys an IPv6 visitor on their /64. The route takes an 8 KB
-  form body. Each process holds at most 6 calls (`IN_FLIGHT_MAX`), and more answer 503. The playground queries on
-  its own pg pool (`playgroundDb` in `web/src/db/index.ts`), sized to that number. A model failure is reported to
-  the log and Sentry as a code: a connection failure (DNS, TLS, refused), any status but 503 (a 400 is "model
-  error"; a 2xx with no body too), an unreadable frame, or a 200 with no usable frame. A stream that drops
-  mid-answer is reported as `playground: stream failed (<code>)`. A 503 and an abort are not reported.
+- `playground_call` (one row per accepted live /playground call, the rate limiter and the seat counter): see
+  `.claude/rules/database.md`.
 - Dependencies: exact versions, latest stable. pnpm refuses versions under a day old (its default
   `minimumReleaseAge`): pinning one makes pnpm record a `minimumReleaseAgeExclude` entry. npm has no release-age guard
   unless `~/.npmrc` sets `min-release-age` (then pass `--min-release-age-exclude=<package-name>`); Renovate waits 7

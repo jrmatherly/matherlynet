@@ -257,9 +257,9 @@ unreachable (site settings fall back; better-auth's database rate limiter skips 
 restart pods.
 
 Each pod logs `WARN [Better Auth]: Rate limiting could not determine a client IP` once, a few seconds after it
-starts. The first probe causes it: a kubelet request carries no `cf-connecting-ip`, and better-auth (1.7.7 through
-1.7.11) warns before it applies the `/ok` exemption. Probes are still not limited. The warning is logged once per
-process, so it will not appear again if a visitor's request later arrives without the header.
+starts. The first probe causes it: a kubelet request carries no `cf-connecting-ip`, and better-auth warns before
+it applies the `/ok` exemption (checked on better-auth 1.7.11). Probes are still not limited. The warning is logged
+once per process, so it will not appear again if a visitor's request later arrives without the header.
 
 ## 8. Live playground (when a model URL is set)
 

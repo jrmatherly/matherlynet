@@ -260,8 +260,9 @@ export const liveIo: Io = {
   },
 
   async claim(id) {
-    // Not db.transaction(): drizzle-orm 0.45.3 (node-postgres/session.js) sends BEGIN outside the try/finally that
-    // releases its pool client, so a BEGIN that fails (a dead socket) would cost the pool that connection for good.
+    // Not db.transaction(): drizzle-orm's node-postgres/session.js (checked on drizzle-orm 0.45.4) sends BEGIN outside
+    // the try/finally that releases its pool client, so a BEGIN that fails (a dead socket) would cost the pool that
+    // connection for good.
     const client = await db.$client.connect();
     try {
       // The lock serializes claims across replicas, so each count sees every earlier claim's commit.

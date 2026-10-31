@@ -24,7 +24,11 @@ Bring every direct dependency to its latest stable version as an exact pin, then
    - Renovate waits 7 days (`minimumReleaseAge` in `.github/renovate.json5`); a manual bump may take newer versions.
 5. If pnpm reports `ERR_PNPM_IGNORED_BUILDS`, approve the named package: `pnpm --dir web approve-builds <pkg>`.
 6. Run `/verify`. Also confirm `npm ci` and `pnpm --dir web install --frozen-lockfile` succeed from the new lockfiles.
-7. Summarize: old → new per package, held-back packages with reasons, verification result. Don't commit unless asked.
+7. Re-check the version-pinned workarounds: `git grep -nE "checked on [A-Za-z0-9@/._-]+ [0-9]"` lists every comment
+   and doc line of the form `checked on <package> <version>`. For each hit whose package the bump touched, read the
+   installed source again: still needed, update the version in the label; behaviour gone, delete the workaround, its
+   comment and the test that covered it.
+8. Summarize: old → new per package, held-back packages with reasons, verification result. Don't commit unless asked.
 
 ## Version caps (verified 2026-10-21; re-check when the reason may have changed)
 
