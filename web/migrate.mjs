@@ -1,5 +1,5 @@
 // Applies ./drizzle migrations before the server starts (dev and production).
-// drizzle-orm 0.45's pg migrator takes no lock, so concurrent replicas would race;
+// drizzle-orm's pg migrator takes no lock (checked on drizzle-orm 0.45.4), so concurrent replicas would race;
 // a session-level advisory lock serializes them.
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";

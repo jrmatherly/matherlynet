@@ -5,6 +5,10 @@ paths:
   - "web/drizzle.config.ts"
   - "web/migrate.mjs"
   - "web/src/lib/auth.ts"
+  - "web/src/lib/playground*.ts"
+  - "web/src/pages/api/playground.ts"
+  - "web/tests/playground*.test.ts"
+  - "web/e2e/live.spec.ts"
 ---
 
 # Database and auth schema (Drizzle 0.45 + better-auth 1.7)
@@ -16,8 +20,30 @@ paths:
 - App tables live in `web/src/db/schema.ts` (`site_settings`, `mail_throttle`, `playground_call`). A table in a new file
   must also be added to `drizzle.config.ts` `schema` and spread into the `schema` object in `web/src/db/index.ts`.
 - `web/migrate.mjs` runs before `astro dev` and the production server. It retries until Postgres accepts
-  connections and serializes replicas with `pg_advisory_lock`; drizzle-orm 0.45's migrator has no lock of its own.
+  connections and serializes replicas with `pg_advisory_lock`; drizzle-orm's migrator has no lock of its own
+  (checked on drizzle-orm 0.45.4).
 - Drizzle stays on the stable 0.45 line: 1.0 is a release candidate and better-auth's generator emits
   0.45-style `relations()`.
 - Verify a schema change by restarting the stack (`aspire stop && aspire start`) and checking `aspire logs web`
   for migration errors.
+
+## The live playground's table
+
+- `playground_call` (`web/src/db/schema.ts`) holds one row per accepted live /playground call, written before any gate
+  and closed with one decision (`forwarded`, `refused`, `cut`, `lost`). No row is written for Astro's 403,
+  `parseCall()`'s 400, 408, 413 or 415, the per-process 503, or a failed insert. If the count after the insert fails,
+  `open()` returns the row's id with no load, so the call is refused at Rate limits ("unavailable") and `run()` closes
+  it like any other. The same rows are the rate limiter and the seat counter, so limits hold across replicas. A seat is
+  claimed under a Postgres advisory lock, so at most three are seated at once, and the claim also enforces the site's
+  daily cap (`open()` counts the day outside the lock; a call that loses that race at the cap is refused "busy").
+  `liveIo.claim` takes a pool client and releases it itself rather than call `db.transaction()`: drizzle-orm leaks the
+  client when BEGIN fails
+  (checked on drizzle-orm 0.45.4). `routed_at` is never cleared: a row with it held a seat and counts toward the
+  site's day. The table never stores prompt text, answer text or an IP, only a visitor key, the caller, lengths, token
+  counts, timestamps and enum reasons. `visitorKey()` in `playground-io.ts` is the only playground code that reads
+  `cf-connecting-ip` (`lib/auth.ts` gives better-auth the same header), and keys an IPv6 visitor on their /64. The route
+  takes an 8 KB form body. Each process holds at most 6 calls (`IN_FLIGHT_MAX`), and more answer 503. The playground
+  queries on its own pg pool (`playgroundDb` in `web/src/db/index.ts`), sized to that number. A model failure is
+  reported to the log and Sentry as a code: a connection failure (DNS, TLS, refused), any status but 503 (a 400 is
+  "model error"; a 2xx with no body too), an unreadable frame, or a 200 with no usable frame. A stream that drops
+  mid-answer is reported as `playground: stream failed (<code>)`. A 503 and an abort are not reported.

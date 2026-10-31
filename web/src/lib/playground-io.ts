@@ -180,8 +180,13 @@ export interface Io {
    */
   open(opening: Opening): Promise<{ id: CallId; load: Load | null }>;
   /**
-   * Takes a seat under a lock: marks the row routed only while fewer than LIVE.seats open routed rows exist. true when
-   * it did. A call refused "busy" never gets routed_at.
+   * Takes a seat under a lock: marks the row routed only while fewer than LIVE.seats open routed rows exist and fewer
+   * than LIVE.sitePerDay were routed in the last day, and returns true when it marked it. A call refused "busy" never
+   * gets routed_at. open() counts the day outside this lock, so two calls it admitted while the day stood at
+   * LIVE.sitePerDay - 1 could otherwise both take the last slot. run() reads every false as "busy", so the loser of
+   * that race sees the seats-taken refusal, its row closes with reason "busy" (one extra per race, at the cap only),
+   * and its retry is refused "site daily" at open(). That is accepted rather than adding a second query or a new
+   * refusal reason.
    */
   claim(id: CallId): Promise<boolean>;
   /**
@@ -258,8 +263,9 @@ export const liveIo: Io = {
   },
 
   async claim(id) {
-    // Not db.transaction(): drizzle-orm 0.45.3 (node-postgres/session.js) sends BEGIN outside the try/finally that
-    // releases its pool client, so a BEGIN that fails (a dead socket) would cost the pool that connection for good.
+    // Not db.transaction(): drizzle-orm's node-postgres/session.js (checked on drizzle-orm 0.45.4) sends BEGIN outside
+    // the try/finally that releases its pool client, so a BEGIN that fails (a dead socket) would cost the pool that
+    // connection for good.
     const client = await db.$client.connect();
     try {
       // The lock serializes claims across replicas, so each count sees every earlier claim's commit.
@@ -271,6 +277,7 @@ export const liveIo: Io = {
              and (select count(*) from playground_call
                    where routed_at is not null and ended_at is null
                      and routed_at > now() - make_interval(secs => ${staleSecs})) < ${LIVE.seats}
+             and (select count(*) from playground_call where routed_at > now() - interval '1 day') < ${LIVE.sitePerDay}
           returning id`);
       });
       client.release();
@@ -388,10 +395,10 @@ async function* modelStream(base: string, key: string, text: PromptText, signal:
 
 type Stage = "open" | "claim" | "model" | "stream" | "close" | "run";
 
-// Failures that carry no code, by their fixed message (pg 8.23.1, pg-pool 3.14.0). Without this a full pool, a dead
-// socket, a connect timeout and a client-side query timeout all report as "Error". A connect timeout's cause is
-// "Connection terminated unexpectedly", so the error's own message is looked up before its cause's. The message is
-// only looked up, never sent.
+// Failures that carry no code, by their fixed message (checked on pg 8.23.1 and pg-pool 3.14.0). Without this a full
+// pool, a dead socket, a connect timeout and a client-side query timeout all report as "Error". A connect timeout's
+// cause is "Connection terminated unexpectedly", so the error's own message is looked up before its cause's. The
+// message is only looked up, never sent.
 const UNCODED = new Map([
   ["timeout exceeded when trying to connect", "pool timeout"],
   ["Connection terminated due to connection timeout", "connect timeout"],
@@ -555,8 +562,8 @@ let inFlight = 0;
 /**
  * The Response. Starts run() from the stream's start() and returns at once. The client-gone signal has two paths,
  * neither trusted alone: requestSignal before the stream is read, cancel() after. Owns the call's deadline. In the
- * built server the body is read by writeResponse() in Astro core (astro 7.3.5, dist/core/app/node.js), which the
- * comments below name; `astro dev` reads it with writeWebResponse() instead.
+ * built server the body is read by writeResponse() in Astro core (checked on astro 7.4.1, dist/core/app/node.js),
+ * which the comments below name; `astro dev` reads it with writeWebResponse() instead.
  */
 export function respond(call: Call, requestSignal: AbortSignal, io: Io = liveIo): Response {
   if (inFlight >= IN_FLIGHT_MAX) return new Response(null, { status: 503 });

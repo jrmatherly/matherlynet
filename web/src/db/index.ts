@@ -18,8 +18,9 @@ function newPool(max?: number) {
   // Node exits the process. The pool discards that client and the next query connects afresh.
   // The code (e.g. 57P01 admin shutdown, ECONNRESET) tells a restart or failover from an auth or TLS problem.
   pool.on("error", (err: Error & { code?: string }) => console.error("db: idle connection lost", err.code ?? "", err.message));
-  // A client checked out by hand (pool.connect()) has no "error" listener: pg-pool 3.14.0 takes its own off at checkout,
-  // and pg 8.23.1 emits "error" when the socket drops, which unheard is an uncaught exception that ends the process.
+  // A client checked out by hand (pool.connect()) has no "error" listener: pg-pool takes its own off at checkout, and
+  // pg emits "error" when the socket drops, which unheard is an uncaught exception that ends the process
+  // (checked on pg-pool 3.14.0 and pg 8.23.1).
   // This one stays on every client. It logs only the code (else the name): the next query may report just "not
   // queryable", and a message can quote SQL parameters.
   pool.on("connect", (client) =>

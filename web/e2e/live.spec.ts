@@ -19,6 +19,13 @@ test.afterAll(() => db.end());
 
 // The default visitor of the rows a test inserts.
 const SEED = "e2e-seed";
+// SEAT_LOCK in src/lib/playground-io.ts (not exported): a test holding it keeps every claim waiting.
+const SEAT_LOCK = 727_002;
+// Never throws, so a broken connection can't hide the test's own failure; it is destroyed instead of returned.
+const unlock = async (client: pg.PoolClient) => {
+  const failed = await client.query("rollback").then(() => false, () => true);
+  client.release(failed);
+};
 
 interface CallRow {
   id: number;
@@ -319,7 +326,7 @@ test.describe("model on", () => {
     const lock = await db.connect();
     try {
       await lock.query("begin");
-      await lock.query("select pg_advisory_xact_lock(727002)");
+      await lock.query("select pg_advisory_xact_lock($1)", [SEAT_LOCK]);
       const answer = await stream(randomUUID(), "hello");
       const gates = [];
       for (let i = 0; i < 4; i++) gates.push((await answer.next()).value.step.gate);
@@ -333,8 +340,54 @@ test.describe("model on", () => {
       for await (const event of answer) rest.push(event);
       expect(rest.find((event) => event.type === "end")?.decision).toEqual({ verdict: "forwarded", to: LIVE.model });
     } finally {
-      await lock.query("rollback");
-      lock.release();
+      await unlock(lock);
+    }
+  });
+
+  // open() counts the day outside the seat lock; the claim must count it again inside, or a call admitted at one under
+  // the cap takes a seat after another call filled the day.
+  test("a call admitted one under the daily cap is refused when the day fills while it waits for a seat", async () => {
+    const day = { ago: "1 minute", routed: true, decision: "forwarded", reason: "stop" };
+    // Earlier tests in this run seated calls too; fill the day to one under the cap from wherever it stands.
+    const [{ n }] = await query<{ n: number }>(
+      "select count(*)::int as n from playground_call where routed_at > now() - interval '1 day'",
+    );
+    expect(n, "the day already holds this many seated calls").toBeLessThan(LIVE.sitePerDay - 1);
+    const seeded = await seed(LIVE.sitePerDay - 1 - n, day);
+    const lock = await db.connect();
+    // Holds the seat lock while the call passes open() at one under the cap, runs `meanwhile`, then lets it claim.
+    const routingAfter = async (meanwhile?: () => Promise<unknown>) => {
+      await lock.query("begin");
+      await lock.query("select pg_advisory_xact_lock($1)", [SEAT_LOCK]);
+      const answer = await stream(randomUUID(), "hello");
+      const gates = [];
+      for (let i = 0; i < 4; i++) gates.push((await answer.next()).value?.step);
+      expect(gates.find((step) => step?.gate === "Rate limits")).toMatchObject({ verdict: "passed" });
+      const routing = answer.next();
+      await meanwhile?.();
+      await lock.query("commit");
+      const step = (await routing).value.step;
+      const rest = [];
+      for await (const event of answer) rest.push(event);
+      expect(rest.filter((event) => event.type === "end")).toHaveLength(1);
+      return step;
+    };
+    try {
+      // No seat is held, so the refusal below can only come from the day.
+      expect(await query("select id from playground_call where routed_at is not null and ended_at is null")).toEqual([]);
+      const before = await lastId();
+      const lateFill = await routingAfter(async () => seeded.push(...(await seed(1, day))));
+      expect(lateFill).toMatchObject({ gate: "Routing", verdict: "refused", why: "busy" });
+      const seededIds = new Set(seeded.map((row) => row.id));
+      const late = async () => (await rowsAfter(before)).filter((row) => !seededIds.has(row.id));
+      await expect.poll(async () => (await late())[0]?.decision).toBe("refused");
+      expect(await late()).toEqual([expect.objectContaining({ routed_at: null, reason: "busy" })]);
+
+      await query("delete from playground_call where id = $1", [seeded.pop()!.id]);
+      expect(await routingAfter()).toMatchObject({ gate: "Routing", verdict: "routed" });
+    } finally {
+      await unlock(lock);
+      await query("delete from playground_call where id = any($1)", [seeded.map((row) => row.id)]);
     }
   });
 

@@ -53,8 +53,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    // Enforced by every password route except /admin/create-user (better-auth 1.7.7), where the breached-password hook
-    // (pwned.ts) applies it.
+    // Enforced by every password route except /admin/create-user, where the breached-password hook (pwned.ts) applies
+    // it (checked on better-auth 1.7.11).
     minPasswordLength: 12,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) =>
@@ -78,9 +78,10 @@ export const auth = betterAuth({
       sendThrottled(user.email, "Verify your email", `Confirm your email to finish signing up for matherlynet:\n\n${url}\n\nIf you didn't sign up, ignore this email.`),
   },
   socialProviders,
-  // No freshness rule: /account lists sessions through listSessions, which better-auth 1.7.7 refuses once the session
-  // is older than freshAge (default one day), so anyone signed in longer saw a 500 there. The rule also gated
-  // /unlink-account and a password-less /delete-user; the site has no UI for either and delete-user is not enabled.
+  // No freshness rule: /account lists sessions through listSessions, which better-auth refuses once the session is
+  // older than freshAge (default one day; checked on better-auth 1.7.11), so anyone signed in longer saw a 500 there.
+  // The rule also gated /unlink-account and a password-less /delete-user; the site has no UI for either and
+  // delete-user is not enabled.
   session: { freshAge: 0 },
   // Shared across replicas; better-auth enables limiting in production only. /ok is the K8s probe path: limiting
   // it would read and write rate_limit on every probe and fail the probes whenever Postgres is down.
@@ -114,7 +115,7 @@ export const auth = betterAuth({
   },
   // APIErrors thrown inside an endpoint become responses before onAPIError (api/dispatch.mjs), e.g. a 500 from a
   // failed session insert: this hook reports those. One thrown by a before hook (the breached-password lookup's 503)
-  // skips this hook and reaches onAPIError instead (checked against 1.7.7 through auth.handler).
+  // skips this hook and reaches onAPIError instead (checked on better-auth 1.7.11 through auth.handler).
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       const returned = ctx.context.returned;

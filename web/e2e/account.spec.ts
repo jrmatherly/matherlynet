@@ -72,6 +72,77 @@ test("signing out ends the session", async ({ page }) => {
   await expect(page).toHaveURL(/\/sign-in$/);
 });
 
+test("a failed sign-out says so and keeps the visitor on the page", async ({ page }) => {
+  await signIn(page, password);
+  await expect(page).toHaveURL(/\/account$/);
+  await page.route("**/api/auth/sign-out", (route) => route.fulfill({ status: 500, json: { message: "down" } }));
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveText("down");
+  await expect(page).toHaveURL(/\/account$/);
+  await page.unroute("**/api/auth/sign-out");
+  await page.route("**/api/auth/sign-out", (route) => route.abort());
+  const logged = page.waitForEvent("console", (m) => m.type() === "error" && m.text().startsWith("sign-out request failed"));
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveText("Sign-out failed. Try again.");
+  await logged;
+  await expect(page).toHaveURL(/\/account$/);
+});
+
+// Earlier tests leave sessions behind, and in E2E they share an IP and sign-in time, so only the user agent tells the rows apart.
+async function otherDevice(browser: import("@playwright/test").Browser, userAgent: string) {
+  const context = await browser.newContext({ userAgent });
+  try {
+    const other = await context.newPage();
+    await signIn(other, password);
+    await expect(other).toHaveURL(/\/account$/);
+    return { context, other };
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
+}
+
+test("revoking another device's session signs out that device only", async ({ page, browser }) => {
+  const { context, other } = await otherDevice(browser, "e2e-other");
+  let bystander: Awaited<ReturnType<typeof otherDevice>> | undefined;
+  try {
+    bystander = await otherDevice(browser, "e2e-bystander");
+    await signIn(page, password);
+    await expect(page).toHaveURL(/\/account$/);
+    const row = page.getByRole("listitem").filter({ hasText: "e2e-other" });
+    await expect(row).toHaveCount(1);
+    await row.getByRole("button", { name: "Revoke" }).click();
+    await expect(page).toHaveURL(/\/account$/);
+    await expect(page.getByText("e2e-other")).toHaveCount(0);
+    await expect(page.getByText("e2e-bystander")).toHaveCount(1);
+    await expect(page.getByText("(this device)")).toBeVisible();
+    await other.goto("/account");
+    await expect(other).toHaveURL(/\/sign-in$/);
+    await bystander.other.goto("/account");
+    await expect(bystander.other).toHaveURL(/\/account$/);
+  } finally {
+    await context.close();
+    await bystander?.context.close();
+  }
+});
+
+test("signing out other devices leaves only this session", async ({ page, browser }) => {
+  const { context, other } = await otherDevice(browser, "e2e-third");
+  try {
+    await signIn(page, password);
+    await expect(page).toHaveURL(/\/account$/);
+    await page.getByRole("button", { name: "Sign out other devices" }).click();
+    await expect(page).toHaveURL(/\/account$/);
+    await expect(page.getByText("(this device)")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Revoke" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Sign out other devices" })).toHaveCount(0);
+    await other.goto("/account");
+    await expect(other).toHaveURL(/\/sign-in$/);
+  } finally {
+    await context.close();
+  }
+});
+
 test("a password reset by email replaces the old password", async ({ page }) => {
   await page.goto("/forgot-password");
   await page.getByLabel("Email").fill(email);

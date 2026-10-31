@@ -130,16 +130,23 @@ of the security headers pages get (checked on a production build), and the clien
 
 - **Response Header Transform Rule**, all requests to `matherly.net`: set `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`.
-- **WAF custom rule**, action Block: `ends_with(http.request.uri.path, ".map")`. CI uploads the maps to Sentry from
-  the image, so nobody needs them over HTTP.
+- **WAF custom rule** "matherlynet: block source maps (.map)", expression `ends_with(http.request.uri.path, ".map")`,
+  action Block, created on 2026-10-30. CI uploads the maps to Sentry from the image, so nobody needs them over HTTP.
+  The 2026-10-30 audit found this rule missing while the runbook described it, so check rather than trust. From
+  outside the home network, `curl -s -o /dev/null -w '%{http_code}' https://matherly.net/_astro/<any script>.js.map`
+  prints 403. From the house it prints 200, because the zone's first custom rule skips the WAF for the house IP.
+  Cloudflare's Trace tool (or the `request-tracer/trace` API) checks it from the house: a GET for that `.map` URL
+  with a US geolocation shows status 403 from this rule, and the `.js` beside it 200 (checked on 2026-10-30). The
+  zone's "Blocked Countries" rule also answers 403, so a non-US 403 does not prove this rule.
 - **Rate limiting rule**, required before the app is exposed. This repo does not create it. The zone is on the Free
   plan, which allows one rate limiting rule with a 10 s counting period and a 10 s block. That rule matches
   `http.request.uri.path eq "/api/playground"` (the route takes only POST) and allows 5 requests per 10 s per
   address, then blocks the address for 10 s. The route writes a `playground_call` row for every accepted POST even
   with the model off, and the app's own limits only stop the model call.
 - **No rule for mail.** The Free plan has no second rate limiting rule, so the auth routes that send mail are
-  limited in the app. better-auth's defaults (`api/rate-limiter/index.mjs` in 1.7.11) allow 3 requests per 10 s on
-  sign-in and sign-up and 3 per 60 s on password reset and resending the verification mail, all per IP and path;
+  limited in the app. better-auth's defaults (`api/rate-limiter/index.mjs`, checked on better-auth 1.7.11) allow 3
+  requests per 10 s on sign-in and sign-up and 3 per 60 s on password reset and resending the verification mail, all
+  per IP and path;
   nothing counts per recipient. `web/src/lib/mail-throttle.ts` adds that: at most 5 mails an hour to one address,
   counted in the `mail_throttle` table so the cap holds across replicas. A refused mail is dropped silently and
   the response is unchanged, so a client can't tell whether an address exists. The owner of a flooded address
@@ -205,18 +212,17 @@ service (`<cluster>-rw`): migrations and sign-ups write. What the role needs:
 - Up to 16 connections per web pod: the server's two pools (sizes in `web/src/db/index.ts`). Migrations run first,
   on 2 connections closed before the server opens any. Size `max_connections` for your replica count.
 
-The connection is encrypted and verified only when the install says so. CloudNativePG's `-app` secret builds its
-`uri` with no query string, so `sslmode` cannot ride in the URI, and node-postgres 8.23 with no `sslmode` and no
-`ssl` option opens a plain TCP connection. The home cluster ran that way until 2026-10-30 (`app | f | 1` from the
-query below). The fix is in the environment: node-postgres reads `PGSSLMODE` when the URI names no mode, and
-`require` there means `ssl: true`, which Node verifies against its trust store (libpq's `require` does not verify).
-It reads no `PGSSLROOTCERT`, so the cluster CA goes into Node's store instead. The install mounts secret
-`<cluster>-ca` key `ca.crt` into the web container and sets `PGSSLMODE=require` and
-`NODE_EXTRA_CA_CERTS=/etc/cnpg/ca.crt` on it (a Flux patch in the home cluster). `PGSSLMODE=no-verify` would
-encrypt without verifying. The home cluster has run verified TLS this way since 2026-10-30, with the CNPG URI
-unchanged; the query then showed `app|t|TLSv1.3|TLS_AES_256_GCM_SHA384` for the web pod's connection. Check the live
-state from the Postgres pod; `t` means encrypted. The pool closes idle clients quickly, so right after a start the
-query shows no `app` row: load a few pages first.
+The connection is encrypted and verified only when the install says so. CloudNativePG's `-app` secret builds its `uri`
+with no query string, so `sslmode` cannot ride in the URI, and node-postgres with no `sslmode` and no `ssl` option
+(checked on pg 8.23.1) opens a plain TCP connection. The home cluster ran that way until 2026-10-30 (`app | f | 1` from
+the query below). The fix is in the environment: node-postgres reads `PGSSLMODE` when the URI names no mode, and
+`require` there means `ssl: true`, which Node verifies against its trust store (libpq's `require` does not verify). It
+reads no `PGSSLROOTCERT`, so the cluster CA goes into Node's store instead. The install mounts secret `<cluster>-ca` key
+`ca.crt` into the web container and sets `PGSSLMODE=require` and `NODE_EXTRA_CA_CERTS=/etc/cnpg/ca.crt` on it (a Flux
+patch in the home cluster). `PGSSLMODE=no-verify` would encrypt without verifying. The home cluster has run verified TLS
+this way since 2026-10-30, with the CNPG URI unchanged; the query then showed `app|t|TLSv1.3|TLS_AES_256_GCM_SHA384` for
+the web pod's connection. Check the live state from the Postgres pod; `t` means encrypted. The pool closes idle clients
+quickly, so right after a start the query shows no `app` row: load a few pages first.
 
 ```sh
 kubectl exec -n matherlynet <cluster>-1 -c postgres -- psql -X -d app -tA \
@@ -231,6 +237,20 @@ waiting.
 
 With Umami enabled (`Umami__Enabled=true` at publish time), the chart also has `secrets.umami.appdb_uri`: set it to
 the same URI. The chart appends `?schema=umami` to it, so with Umami on the URI must carry no query string of its own.
+
+Users who signed up with email and never verified it are never pruned. At today's traffic that doesn't matter; if the
+table grows, run the second statement below (it cascades to the `account` and `session` rows; `verification` rows have
+no foreign key and expire on their own). It spares any user with a GitHub or Google account: a provider that reports
+the email unverified leaves `email_verified = false`, and that user can still sign in, because no provider sets
+`requireEmailVerification`. Unverified users with no account row at all are deleted too. `rate_limit` (better-auth's
+per-IP counters, `last_request` in epoch milliseconds) prunes itself: each time a key's window resets, better-auth
+deletes rows older than its longest window (checked on better-auth 1.7.11). The first statement is only a fallback:
+
+```sql
+delete from rate_limit where last_request < extract(epoch from now() - interval '1 day') * 1000;
+delete from "user" u where u.email_verified = false and u.created_at < now() - interval '30 days'
+  and not exists (select 1 from account a where a.user_id = u.id and a.provider_id <> 'credential');
+```
 
 ### Telemetry
 
@@ -257,9 +277,9 @@ unreachable (site settings fall back; better-auth's database rate limiter skips 
 restart pods.
 
 Each pod logs `WARN [Better Auth]: Rate limiting could not determine a client IP` once, a few seconds after it
-starts. The first probe causes it: a kubelet request carries no `cf-connecting-ip`, and better-auth (1.7.7 through
-1.7.11) warns before it applies the `/ok` exemption. Probes are still not limited. The warning is logged once per
-process, so it will not appear again if a visitor's request later arrives without the header.
+starts. The first probe causes it: a kubelet request carries no `cf-connecting-ip`, and better-auth warns before
+it applies the `/ok` exemption (checked on better-auth 1.7.11). Probes are still not limited. The warning is logged
+once per process, so it will not appear again if a visitor's request later arrives without the header.
 
 ## 8. Live playground (when a model URL is set)
 
@@ -365,3 +385,96 @@ curl -N https://matherly.net/api/playground -H 'Origin: https://matherly.net' \
   buffers the stream.
 - Disconnect: press Ctrl-C while the answer streams, then read the newest `playground_call` row. `decision` is `cut`
   and `reason` is `left` when the disconnect reached web.
+
+## 9. Backups
+
+The database holds everything that is not in the image or in `.env`: accounts and their password hashes, OAuth
+account links and their tokens, sessions, verification and reset tokens, the site settings row (theme, Sentry DSN,
+Umami ids), the `mail_throttle` and `rate_limit` counters and the `playground_call` rows. With Umami enabled, its
+`umami` schema lives in the same database and rides along in every dump.
+
+### Compose
+
+From the Compose directory. The published `pg` service initialises with `--auth-local=scram-sha-256`, so even the
+socket connection needs the password, which the container has as `POSTGRES_PASSWORD`; `-T` keeps Compose from
+allocating a TTY that would corrupt the custom-format dump:
+
+```sh
+docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U postgres -Fc appdb' > appdb-$(date +%F).dump
+```
+
+The redirect creates the file before `pg_dump` runs, so a failed dump (pg stopped, the wrong directory) still leaves an
+empty or partial `.dump`. For the nightly run, save this as `/usr/local/bin/appdb-backup` on the host. A failed run
+leaves no file and prunes nothing, so failures never rotate out the last good dump, and the files stay private (they
+hold password hashes and OAuth tokens):
+
+```sh
+#!/bin/sh
+# appdb-backup <compose dir> <backup dir>: one complete dump, then prune dumps 14 days old or more.
+set -eu
+cd "$1"
+umask 077
+out="$2/appdb-$(date +%F).dump"
+trap 'rm -f "$out.tmp"' EXIT
+trap 'exit 1' INT TERM HUP
+docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U postgres -Fc appdb' > "$out.tmp"
+mv "$out.tmp" "$out"
+find "$2" -name 'appdb-*.dump' -mtime +13 -delete
+find "$2" -name 'appdb-*.dump.tmp' -mtime +1 -delete
+```
+
+Make it executable (`chmod 700 /usr/local/bin/appdb-backup`), copy the files off the host, and run it from root's
+crontab with your Compose and backup directories. Cron mails a job's output only if `MAILTO` is set and the host can
+send mail; the second line prints when no dump is under 2 days old, which also catches a backup that never ran:
+
+```text
+0 3 * * * /usr/local/bin/appdb-backup /srv/matherlynet /srv/backups/appdb
+0 9 * * * find /srv/backups/appdb -name 'appdb-*.dump' -mtime -2 | grep -q . || echo "no appdb dump in the last 2 days"
+```
+
+Checked on 2026-10-31 on postgres:18.6: a failed run (pg stopped, a full disk, a TERM or HUP under dash or busybox
+`sh`) exits 1 and leaves no file, and the prune keeps 14 dumps. A run killed outright (`kill -9`, power loss) can leave
+a `.tmp`; the next good run deletes any 2 days old or more.
+
+Restore with web stopped, and `umami` too when it is enabled (it writes to the same database's `umami` schema; name
+both services, `web umami`). The `&&` chain and the two `pg_restore` flags make it all or nothing: web starts again
+only after a complete restore, and without the flags a truncated dump empties the tables. Compose 5.5.0 exits 0 for a
+misspelled service name, so type the names exactly.
+
+```sh
+docker compose stop web && docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d appdb --clean --if-exists --single-transaction --exit-on-error' < /srv/backups/appdb/appdb-<date>.dump && docker compose start web
+```
+
+`--clean --if-exists` drops and recreates each object in the dump, so a restore onto a populated database works.
+Objects the dump lacks stay, so restore a dump with the image that took it: a newer image's migrations would find
+their tables already there, and `migrate.mjs` fails the start (`CREATE TABLE` without `IF NOT EXISTS`). Checked on
+2026-10-31 on postgres:18.6: with these flags, a dump cut short left the data in place and web stopped, a good dump
+restored and started web, and a table the dump lacked survived; without them, a dump cut at 60% left every table
+empty. A nonzero exit is the failure signal; afterwards, confirm the rows you expect:
+
+```sh
+docker compose exec -T pg sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d appdb -tc "select (select count(*) from site_settings), (select count(*) from \"user\")"'
+```
+
+### Cluster
+
+CloudNativePG backs up the `matherlynet-db` cluster itself: a `ScheduledBackup` runs daily at 03:00 UTC through the
+barman-cloud plugin, which also archives WAL continuously, into the object store that the `postgres-backup`
+`ObjectStore` names (a Cloudflare R2 bucket, 30-day retention). They live in the home-cluster repository: the
+`ScheduledBackup` in `kubernetes/apps/matherlynet/matherlynet/app/scheduledbackup.yaml`, the plugin and WAL archiving
+in `cluster.yaml` beside it, and the `ObjectStore` in `kubernetes/components/postgres/objectstore.yaml`. Nothing in
+this repository runs or checks them, and a failure (expired R2 credentials, say) stops both backups and WAL archiving
+without a signal here. Check that a recent one completed: `kubectl -n matherlynet get backups.postgresql.cnpg.io`
+lists each `Backup` the schedule made, with its phase.
+
+To restore, create a `Cluster` under a new name with `bootstrap.recovery.source` naming an `externalClusters` entry
+that uses the barman-cloud plugin with `barmanObjectName: postgres-backup` and `serverName: matherlynet-db` (the
+backups are stored under the old cluster's name); a `recoveryTarget` time is possible because WAL is archived. The
+recovered cluster archives no WAL until it gets its own `plugins` entry; leave that entry's `serverName` unset so it
+writes under its own name (the `ObjectStore` notes that each cluster does), never `matherlynet-db`, whose backups it
+was restored from. CloudNativePG generates the new cluster's own
+`<name>-app` and `<name>-ca` Secrets, so the HelmRelease needs both repointed: the `valuesFrom` Secret that fills
+`secrets.web.appdb_uri` (`matherlynet-db-app` today) and the `db-ca` volume's Secret (`matherlynet-db-ca`). Moving
+only the URI leaves web verifying TLS against the old cluster's CA, and every connection fails. Point the
+`ScheduledBackup`'s `cluster.name` at the new cluster too, or it keeps targeting the old one and nothing new is backed
+up; its backups need that `plugins` entry as well.

@@ -2,24 +2,6 @@ allowBuilds:
   esbuild: true
   # Its postinstall only prints a version-scheme warning; nothing to build.
   protobufjs: false
-minimumReleaseAgeExclude:
-  - pg-cloudflare@1.4.1
-  - pg-connection-string@2.14.1
-  - pg-protocol@1.16.1
-  - pg@8.23.1
-  - '@sentry/conventions@0.27.0'
-  - '@takumi-rs/core-darwin-arm64@2.17.1'
-  - '@takumi-rs/core-darwin-x64@2.17.1'
-  - '@takumi-rs/core-linux-arm64-gnu@2.17.1'
-  - '@takumi-rs/core-linux-arm64-musl@2.17.1'
-  - '@takumi-rs/core-linux-x64-gnu@2.17.1'
-  - '@takumi-rs/core-linux-x64-musl@2.17.1'
-  - '@takumi-rs/core-win32-arm64-msvc@2.17.1'
-  - '@takumi-rs/core-win32-x64-msvc@2.17.1'
-  - '@takumi-rs/core@2.17.1'
-  - '@takumi-rs/helpers@2.17.1'
-  - '@takumi-rs/wasm@2.17.1'
-  - takumi-js@2.17.1
 # Aspire's Dockerfile installs on node:24-slim (glibc) but runs on node:24-alpine (musl):
 # keep musl builds of native packages (e.g. @takumi-rs/core) in the installed tree.
 supportedArchitectures:

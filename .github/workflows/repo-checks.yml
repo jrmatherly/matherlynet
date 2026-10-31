@@ -68,7 +68,7 @@ jobs:
       - name: 🔎 Type-check the AppHost
         run: node_modules/.bin/tsc -p tsconfig.apphost.json --noEmit
 
-      # Renovate moves this pin; when it does, bump the pre-commit hook's frozen rev (.pre-commit-config.yaml) to match.
+      # Renovate moves this pin and the pre-commit hook's frozen rev (.pre-commit-config.yaml) in one grouped PR.
       - name: 📝 Lint Markdown
         run: npx --yes markdownlint-cli2@0.23.3
 

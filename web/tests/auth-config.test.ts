@@ -14,8 +14,9 @@ describe("rate limiting", () => {
 });
 
 describe("breached-password check", () => {
-  // Before hooks all see the original body (better-auth 1.7.7 applies their context changes after every one has run),
-  // so another before hook that rewrote a password would have it stored unchecked (pwned.ts).
+  // Before hooks all see the original body (better-auth applies their context changes after every one has run;
+  // checked on better-auth 1.7.11), so another before hook that rewrote a password would have it stored unchecked
+  // (pwned.ts).
   it("is the only before hook on password routes", () => {
     expect(options.hooks?.before).toBeUndefined();
     const others = (options.plugins ?? []).filter((p) => p.id !== "pwned-password-check");
