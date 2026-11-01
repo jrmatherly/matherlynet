@@ -64,4 +64,6 @@ The drizzle cap has no Renovate rule: Renovate skips 1.0 only while it stays a p
   version: `pmOnFail: ignore` (`web/pnpm-workspace.yaml`) means pnpm doesn't switch to the pin or warn about a mismatch.
 - On each bump, re-check every `overrides` entry (root `package.json`, `web/pnpm-workspace.yaml`): `npm view <parent>
   dependencies` shows what a parent asks for. Delete an entry once its parents accept the fix or drop the package.
+- Node 26 is its own plan: open one when `node:26-alpine` and `@types/node` 26 are both a week old and `@astrojs/node`
+  lists 26 in its engines.
 - Root `tsconfig.apphost.json` must keep `"types": ["node"]` (TypeScript 6 no longer auto-includes `@types`).

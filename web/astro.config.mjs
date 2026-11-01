@@ -5,21 +5,6 @@ import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
 import { sentryVitePlugin } from "@sentry/bundler-plugins/vite";
 
-// `astro check`, `astro sync` and `astro build` start a temporary Vite server whose config hash differs from the
-// dev server's. On the shared default cache directory, Vite (checked on vite 8.3.4) then replaces the optimized deps
-// of a running `astro dev`, which answers 504 for its client scripts until it restarts. So they get their own
-// directories: `astro check` runs this hook as "sync", so check and sync share node_modules/.vite-sync, and build has
-// .vite-build.
-/** @type {import("astro").AstroIntegration} */
-const viteCachePerCommand = {
-  name: "vite-cache-per-command",
-  hooks: {
-    "astro:config:setup": ({ command, updateConfig }) => {
-      if (command !== "dev") updateConfig({ vite: { cacheDir: `node_modules/.vite-${command}` } });
-    },
-  },
-};
-
 export default defineConfig({
   output: "server",
   adapter: node({ mode: "standalone" }),
@@ -30,7 +15,7 @@ export default defineConfig({
   // token classes, colored from the palette in global.css.
   markdown: { syntaxHighlight: "prism" },
   // MDX inherits the markdown config (Prism included); it lets a post embed a component such as GatewayPath.
-  integrations: [mdx(), viteCachePerCommand],
+  integrations: [mdx()],
   // Content Security Policy, sent as a response header for on-demand pages. `astro dev` doesn't apply it:
   // check against a build. Astro hashes its own scripts and styles; Telemetry.astro adds the Umami/Sentry
   // origins configured on /admin per request.
@@ -63,7 +48,7 @@ export default defineConfig({
       // Geist and Geist Mono: Latin only, through the local provider. The npm provider reads every @font-face in the
       // package, so Cyrillic, Greek and Latin Extended were preloaded on every page too. With `remote: false`
       // unifont 0.7.5 still pointed the files at jsDelivr, and unifont 1.x returns file:// URLs that Astro's font
-      // fetcher hands to fetch(), which can't read them (checked on astro 7.4.1).
+      // fetcher hands to fetch(), which can't read them (checked on astro 7.4.2).
       provider: fontProviders.local(),
       name: "Geist Variable",
       cssVariable: "--font-geist",

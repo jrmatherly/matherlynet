@@ -14,8 +14,8 @@ objects, so these can land between releases without a deploy.
 
 **Tech Stack:** as the platform plan.
 
-**Spec:** `docs/superpowers/specs/2026-10-30-project-audit.md`, findings 7, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23
-and 24. Finding 6 is in `2026-10-30-site-copy-corrections.md`.
+**Spec:** `docs/superpowers/specs/completed/2026-10-30-project-audit.md`, findings 7, 10, 15, 16, 17, 18, 19, 20, 21,
+22, 23 and 24. Finding 6 is in `2026-10-30-site-copy-corrections.md`.
 
 ## Global Constraints
 
@@ -337,8 +337,8 @@ git commit -m "chore(apphost): Postgres 18.6"
   line.
 - [ ] **`rate_limit` rows and unverified sign-ups (finding 22).** Accept at this traffic; add one sentence to
   `docs/deployment.md` section 7's Database subsection naming the two tables and the `delete` to run if they grow.
-- [ ] **npm token (finding 24).** Jason rotates it at npmjs.com if it was ever live; nothing in the repo or history
-  holds it (audit, gitleaks and `git log -p -G` checked).
+- [x] **npm token (finding 24).** Closed by the owner and no longer tracked; nothing in the repo or history holds it
+  (audit, gitleaks and `git log -p -G` checked).
 
 ### Task 9: Verify and open the PRs
 

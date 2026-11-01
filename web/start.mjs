@@ -3,7 +3,7 @@
 // migrate.mjs's pg and drizzle before otel.mjs runs (server.mjs imports its own graph dynamically). One process, so
 // SIGTERM reaches server.mjs's handlers.
 
-// nodemailer (checked on nodemailer 10.1.7) takes a string that is not an smtp: or smtps: URL as a transport object
+// nodemailer (checked on nodemailer 10.2.1) takes a string that is not an smtp: or smtps: URL as a transport object
 // and throws when src/lib/mail.ts loads. The middleware imports it through lib/auth.ts, so the server starts and then
 // fails every request, probes included. nodemailer's error quotes the value, which can hold a password, so these
 // messages never print it. The pattern is nodemailer's own, without `direct:`. The parse refuses what nodemailer

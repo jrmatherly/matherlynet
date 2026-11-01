@@ -347,7 +347,7 @@ describe("pwnedPasswordCheck and sessions", () => {
   });
 
   // Before hooks all see the original request: context changes they return (e.g. headers a bearer-style plugin
-  // derives) apply only after every before hook has run (api/dispatch.mjs, checked on better-auth 1.7.11), so the
+  // derives) apply only after every before hook has run (api/dispatch.mjs, checked on better-auth 1.7.12), so the
   // check can see no session where the endpoint sees one. It must refuse then, not skip the check.
   it("refuses, rather than skips the check, when it sees no session but the endpoint would", async () => {
     let cookie = "";
@@ -462,7 +462,7 @@ describe("pwnedPasswordCheck and admin permissions", () => {
   });
 
   // /admin/create-user also needs set-role when the body sets a role, and ban when it sets ban fields, each with its
-  // own 403 (plugins/admin/routes.mjs, checked on better-auth 1.7.11).
+  // own 403 (plugins/admin/routes.mjs, checked on better-auth 1.7.12).
   it("answers /admin/create-user's set-role and ban 403s too, without a lookup", async () => {
     const made = makeAuth(200, { adminOptions: scopedRoles });
     const { cookie } = await signedInAs(made, "a6@example.test", "creator");
@@ -486,7 +486,7 @@ describe("pwnedPasswordCheck and length limits", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  // better-auth's /admin/create-user checks only the maximum (checked on better-auth 1.7.11); the hook applies the
+  // better-auth's /admin/create-user checks only the maximum (checked on better-auth 1.7.12); the hook applies the
   // minimum there too.
   it("refuses a too-short password on /admin/create-user", async () => {
     const fetch = answer(CLEAN_RANGE);

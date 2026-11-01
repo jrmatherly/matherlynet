@@ -70,7 +70,7 @@ jobs:
 
       # Renovate moves this pin and the pre-commit hook's frozen rev (.pre-commit-config.yaml) in one grouped PR.
       - name: 📝 Lint Markdown
-        run: npx --yes markdownlint-cli2@0.23.3
+        run: npx --yes markdownlint-cli2@0.24.0
 
       # Version and checksum are bumped together by hand (checksums file on the release), like the Aspire CLI.
       - name: 🔧 Lint workflows
