@@ -155,6 +155,27 @@ it("keeps a failed query's text but not its parameters, in the error, a log line
   expect(JSON.stringify(bodies[0])).toContain("Failed query: select");
 });
 
+it("removes the column values Postgres puts on a failed query's cause, and keeps its code and message", async () => {
+  vi.stubEnv("APPDB_URI", "postgresql://u:p@127.0.0.1:9/x");
+  const { db } = await import("../src/db");
+  vi.unstubAllEnvs();
+  const secret = crypto.randomUUID();
+  const violation = Object.assign(new Error('duplicate key value violates unique constraint "user_email_unique"'), {
+    code: "23505",
+    detail: `Key (email)=(${secret}) already exists.`,
+  });
+  const query = vi.spyOn(db.$client, "query").mockImplementation(() => Promise.reject(violation) as never);
+  const failed: unknown = await db.execute(sql`select 1`).then(
+    () => null,
+    (error: unknown) => error,
+  );
+  query.mockRestore();
+
+  expect(inspect(failed, { depth: null })).not.toContain(secret);
+  expect(inspect(failed, { depth: null })).toContain("23505");
+  expect(inspect(failed, { depth: null })).toContain("user_email_unique");
+});
+
 it("sends no visitor identity: no user.ip_address, no client IP headers, request url and method kept", async () => {
   const { dsn, bodies } = await sink();
   configureSentry(dsn);

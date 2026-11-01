@@ -18,6 +18,9 @@ prepared.queryWithCache = function (...args) {
       error.stack = error.stack?.replace(error.message, () => message);
       error.message = message;
       error.params = [];
+      // Postgres puts column values here ("Key (email)=(…) already exists"); its code and message stay for debugging.
+      const cause = error.cause as unknown as Record<string, unknown> | undefined;
+      for (const field of ["detail", "where", "hint", "internalQuery"]) delete cause?.[field];
     }
     throw error;
   });
