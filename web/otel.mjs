@@ -7,7 +7,7 @@ import { register } from "node:module";
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   // ESM imports are only instrumented through this loader hook.
   // ponytail: module.register is deprecated in newer @types/node; OpenTelemetry ships only this hook.mjs
-  // (checked on @opentelemetry/instrumentation 0.223.0).
+  // (checked on @opentelemetry/instrumentation 0.300.0).
   // Switch to module.registerHooks once @opentelemetry/instrumentation provides a hook for it.
   register("@opentelemetry/instrumentation/hook.mjs", import.meta.url);
   // fs/dns/net spans are noise next to the http, undici and pg spans.

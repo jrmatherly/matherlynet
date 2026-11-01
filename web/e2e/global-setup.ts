@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import type { FullConfig } from "@playwright/test";
 
 // Vite (checked on vite 8.3.4) keeps a full-reload sent while no client is connected and hands it to the first socket
-// that connects. Astro (checked on astro 7.4.1) sends one when a dev start rewrites its content store, which every
+// that connects. Astro (checked on astro 7.4.2) sends one when a dev start rewrites its content store, which every
 // `aspire start` does: Aspire gives `astro dev` a new port behind its 4321 proxy, and that port is part of the store's
 // config digest. Left in the buffer, the reload goes to the first page a test opens, sometimes under the form the test
 // is filling. This socket connects first and takes it. Vite checks its connection token only when a request has an

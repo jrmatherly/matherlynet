@@ -23,7 +23,9 @@ export const enabledProviders = Object.keys(socialProviders) as ("github" | "goo
 
 // The account matching the admin-email parameter becomes admin when its email is proven, and only then: at
 // creation when an OAuth provider vouches for it, or when one of verifyingPaths writes emailVerified: true (the
-// emailed link, or OAuth sign-in linking to an unverified account). Without verification anyone could claim it.
+// emailed link, or OAuth sign-in on an account already linked to that provider; by default better-auth refuses to link
+// a new provider to an unverified account: oauth2/link-account.mjs, checked on better-auth 1.7.12). Without
+// verification anyone could claim it.
 // Nothing else promotes, so a demotion through the admin plugin sticks (even an admin re-setting emailVerified);
 // an account verified before admin-email was set is therefore never promoted.
 const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
@@ -54,7 +56,7 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     // Enforced by every password route except /admin/create-user, where the breached-password hook (pwned.ts) applies
-    // it (checked on better-auth 1.7.11).
+    // it (checked on better-auth 1.7.12).
     minPasswordLength: 12,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) =>
@@ -79,7 +81,7 @@ export const auth = betterAuth({
   },
   socialProviders,
   // No freshness rule: /account lists sessions through listSessions, which better-auth refuses once the session is
-  // older than freshAge (default one day; checked on better-auth 1.7.11), so anyone signed in longer saw a 500 there.
+  // older than freshAge (default one day; checked on better-auth 1.7.12), so anyone signed in longer saw a 500 there.
   // The rule also gated /unlink-account and a password-less /delete-user; the site has no UI for either and
   // delete-user is not enabled.
   session: { freshAge: 0 },
@@ -115,7 +117,7 @@ export const auth = betterAuth({
   },
   // APIErrors thrown inside an endpoint become responses before onAPIError (api/dispatch.mjs), e.g. a 500 from a
   // failed session insert: this hook reports those. One thrown by a before hook (the breached-password lookup's 503)
-  // skips this hook and reaches onAPIError instead (checked on better-auth 1.7.11 through auth.handler).
+  // skips this hook and reaches onAPIError instead (checked on better-auth 1.7.12 through auth.handler).
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       const returned = ctx.context.returned;

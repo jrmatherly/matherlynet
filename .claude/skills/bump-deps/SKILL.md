@@ -41,7 +41,7 @@ The drizzle cap has no Renovate rule: Renovate skips 1.0 only while it stays a p
 | `vscode-jsonrpc` (root) | 8.x | Aspire 13.6's generated `transport.mts` imports `vscode-jsonrpc/node.js`, removed in 9.x |
 | `typescript` (root) | 6.0.x | `typescript-eslint` peer range is `<6.1.0` |
 | `@types/node` | Node runtime major (24) | Types must match the runtime, not the newest Node |
-| `drizzle-orm` / `drizzle-kit` | 0.45.x / 0.31.x stable | 1.0 is still a release candidate (better-auth 1.7.11 accepts it; the cap is ours) |
+| `drizzle-orm` / `drizzle-kit` | 0.45.x / 0.31.x stable | 1.0 is still a release candidate (better-auth 1.7.12 accepts it; the cap is ours) |
 | Aspire packages | Aspire CLI version | Update with `aspire update`, not npm (see Aspire below) |
 
 ## Aspire
@@ -64,4 +64,7 @@ The drizzle cap has no Renovate rule: Renovate skips 1.0 only while it stays a p
   version: `pmOnFail: ignore` (`web/pnpm-workspace.yaml`) means pnpm doesn't switch to the pin or warn about a mismatch.
 - On each bump, re-check every `overrides` entry (root `package.json`, `web/pnpm-workspace.yaml`): `npm view <parent>
   dependencies` shows what a parent asks for. Delete an entry once its parents accept the fix or drop the package.
+- Node 26 (LTS since 2026-10-28) is its own plan, not a bump: `withDockerfileBaseImage` in `apphost.mts` and the
+  `@types/node` cap move together, and `scripts/smoke-image.sh` proves the image. No engines field decides it: astro's
+  has no ceiling and `@astrojs/node` declares none (checked on astro 7.4.2 and @astrojs/node 11.1.9).
 - Root `tsconfig.apphost.json` must keep `"types": ["node"]` (TypeScript 6 no longer auto-includes `@types`).

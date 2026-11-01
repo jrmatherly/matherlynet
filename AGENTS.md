@@ -49,14 +49,16 @@ web/                   Astro SSR app (start.mjs entry, otel.mjs, migrate.mjs, se
                        attests the web image; a `chart` job pushes the Helm chart pinned to it, and a separate
                        no-permission job uploads Sentry source maps from the image
                        web-checks.yml: astro check, lint, test, build on PRs (web/** only) and when called
+                       repo-checks.yml: AppHost lint/tsc, Markdown and workflow lint on PRs (AppHost, Markdown and
+                       workflow paths)
                        e2e.yml: Playwright on `aspire start` + `aspire publish` check, the image smoke
                        (scripts/smoke-image.sh), then `live.spec.ts` again on a stack restarted with the fake model;
                        PRs (web/** + AppHost), called
 .github/pull_request_template.md  PR body: summary, verification evidence, deployment impact, docs
 .github/renovate.json5 Renovate version updates: weekly, 7-day release age, exact pins, the version caps, and
                        pins outside package.json (Sentry CLI, Aspire packages and CLI, the Postgres and Compose
-                       dashboard images, the markdownlint-cli2 hook); Dependabot security updates, CodeQL default
-                       setup and private reporting are repo settings
+                       dashboard images, the markdownlint-cli2 hook, workflow and config `$schema`); Dependabot
+                       security updates, CodeQL default setup and private reporting are repo settings
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported
 docs/deployment.md     production runbook: publish settings, .env, Cloudflare Tunnel + rules, Umami, Sentry, K8s,
                        live playground
@@ -122,7 +124,7 @@ out/                   aspire publish output (gitignored)
   `.prose-content` read the same variables, h3 stays Geist). All three families (Geist, Geist Mono, Newsreader) go
   through Astro's local font provider on the `@fontsource-variable/*` Latin woff2 files; avoid the npm provider: it
   parses one CSS file per family (none declares both Newsreader's normal and italic), and with unifont 1.x it returns
-  `file://` URLs that Astro's font fetcher passes to `fetch()`, which fails (checked on astro 7.4.1). Newsreader is
+  `file://` URLs that Astro's font fetcher passes to `fetch()`, which fails (checked on astro 7.4.2). Newsreader is
   preloaded only when serif is active. Cross-document view transitions are on (`@view-transition` in `global.css`); the
   header keeps its own `view-transition-name`. `Base.astro` marks the outgoing page's transition `ready` promise handled
   on `pageswap`: Safari rejects it at teardown and browser Sentry reported the unhandled rejection (WebKit bug 289078).
@@ -197,13 +199,8 @@ out/                   aspire publish output (gitignored)
 - Astro sessions are disabled (`session: false` in `web/astro.config.mjs`, Astro 7.2+): the Node adapter's default
   filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
-- `astro check` and `astro sync` keep their Vite cache in `node_modules/.vite-sync` (check runs the config hook as
-  `sync`) and `astro build` in `node_modules/.vite-build` (an inline integration in `web/astro.config.mjs`). On the
-  default directory, which `astro dev` uses, a check run under a
-  running stack replaced the dev server's optimized client deps: page scripts answered `504 Outdated Optimize Dep`
-  and E2E form tests failed until `aspire resource web restart`.
 - `web/e2e/global-setup.ts` opens Vite's HMR socket from Node and takes the `full-reload` Vite keeps for the first
-  client (checked on vite 8.3.4): Astro sends it (checked on astro 7.4.1) when a dev start rewrites its content
+  client (checked on vite 8.3.4): Astro sends it (checked on astro 7.4.2) when a dev start rewrites its content
   store (every `aspire start`: `astro dev` gets a new port behind the 4321 proxy, and that port is in the store's
   config digest). A first test's browser would otherwise take it mid-test and reload the page.
 - `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
@@ -214,6 +211,10 @@ out/                   aspire publish output (gitignored)
   a proxy that accepts TCP (Aspire's, locally) hung every request. The live playground queries on its own pool of 6
   connections (`playgroundDb`), one per call a process admits. A call that stops waiting for a query leaves the query
   holding its connection, so on the pool auth uses a flood of calls could take the connections sign-in needs.
+  It also wraps Drizzle's internal `queryWithCache`, which is where `DrizzleQueryError` is made, to remove a failed
+  query's parameters (session and reset tokens, emails) from its message, stack and `params`, and the column values
+  Postgres puts on its `cause` (`detail`, `where`, `hint`, `internalQuery`; code and message stay): otherwise every log
+  line, Sentry event and span that sees the error repeats them. `sentry-wiring.test.ts` fails if a Drizzle bump moves it.
 - `security.allowedDomains` (`matherly.net`, https) in `web/astro.config.mjs` makes Astro trust `X-Forwarded-Proto`
   behind Cloudflare; without it form POSTs fail the origin check with 403. Don't use `Astro.clientAddress`: a client
   can spoof it through `X-Forwarded-Host`/`X-Forwarded-For`.
@@ -228,15 +229,17 @@ out/                   aspire publish output (gitignored)
   or an unparseable URI, and retries anything else for 60 s.
   `server.mjs` sets `ASTRO_NODE_AUTOSTART=disabled`, calls `startServer()`, and on SIGTERM/SIGINT drains 7 s,
   flushes Sentry 1 s and OpenTelemetry 1.5 s, then exits 0, inside Docker's 10 s stop timeout. `otel.mjs` builds
-  `NodeSDK` itself because `register.js`'s SIGTERM listener never exits. `scripts/smoke-image.sh` (CI: `e2e.yml`)
+  `NodeSDK` itself because `register.mjs`'s SIGTERM listener never exits. `scripts/smoke-image.sh` (CI: `e2e.yml`)
   builds the image and runs this entry as UID 1000 on a read-only root filesystem: migrations, serving, the fast
   failures, and a stop before and after the server is up.
 - `session.freshAge` is 0 in `web/src/lib/auth.ts`: better-auth gates `listSessions` (the /account page) on a
-  session created within `freshAge` (default one day; checked on better-auth 1.7.11), so a visitor signed in longer
+  session created within `freshAge` (default one day; checked on better-auth 1.7.12), so a visitor signed in longer
   got a 500 there. The E2E suite ages a session row through `APPDB_URI` to keep the page open (`account.spec.ts`).
 - Server Sentry is initialised once (`web/src/lib/sentry.ts`); a /admin DSN change only retargets
   `makeMultiplexedTransport` (`@sentry/core`). A second `Sentry.init` inside a request binds to that request's scope
-  only and stacks process handlers, so later requests kept the old client.
+  only and stacks process handlers, so later requests kept the old client. It collects no request bodies, query strings
+  or Referer and redacts the reset token in the URL path (the SDK filters only query and header values by key);
+  `sentry-wiring.test.ts` sends a real request through the SDK to a local sink to check it.
 - The Sentry DSN is admin-supplied and the server posts to it, so `web/src/lib/settings-form.ts` rejects private,
   loopback, link-local and shared (100.64/10) hosts, including IPv6 forms that embed IPv4. `isPrivateAddress()` is
   reused at connect time by server Sentry's DNS lookup (`sentry.ts`), so a name that resolves locally is refused;
@@ -262,7 +265,7 @@ out/                   aspire publish output (gitignored)
 - Chart upgrade from 0.29.1 or earlier is not a rolling update: object names gained the `matherlynet-` prefix, so Helm
   deletes and recreates them and the site is down until the new pod is ready. Each pod logs one better-auth "Rate
   limiting could not determine a client IP" warning at start (the first kubelet probe has no `cf-connecting-ip`;
-  checked on better-auth 1.7.11); it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not
+  checked on better-auth 1.7.12); it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not
   buffer the playground stream, and a disconnect reaches web (the row closed as `cut` / `left`).
 - The image workflow runs only when the image, the chart or their checks can change (`web/**` minus docs, AppHost
   files, root `package*.json`, `scripts/check-chart.sh` and `smoke-image.sh`, the workflow itself and the

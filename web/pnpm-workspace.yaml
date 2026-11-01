@@ -17,7 +17,7 @@ pmOnFail: ignore
 # (`npm view <parent> dependencies`; `pnpm why` shows only the overridden version).
 overrides:
   # GHSA-67mh-4wv8-2f99: drizzle-kit's @esbuild-kit/core-utils asks for esbuild 0.18.
-  "@esbuild-kit/core-utils>esbuild": 0.25.12
+  "@esbuild-kit/core-utils>esbuild": 0.28.2
   # GHSA-3g3m-2fjr-6pw4: @sentry/bundler-plugins asks for glob 13, gaxios's rimraf for glob 10.
   glob: 14.0.3
   # GHSA-g3hv-75wg-m249: no 10.x patch; eslint, @eslint/config-array, typescript-estree and jsx-a11y-x ask for 10.x.

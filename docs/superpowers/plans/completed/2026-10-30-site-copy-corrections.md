@@ -14,7 +14,8 @@ pin the removed phrases so they cannot come back, in the style of the existing "
 **Tech Stack:** Astro 7 SSR, Vitest with the Astro Container API, pnpm, markdownlint.
 
 **Spec:** `/Users/jason/dev/job-search/private/findings/matherlynet/2026-10-30-gateway-case-study-fixes.md` (section 1,
-the corrections, and section 5, the do-not list) and finding 6 of `docs/superpowers/specs/2026-10-30-project-audit.md`.
+the corrections, and section 5, the do-not list) and finding 6 of
+`docs/superpowers/specs/completed/2026-10-30-project-audit.md`.
 
 ## Global Constraints
 
@@ -237,7 +238,7 @@ git commit -m "fix(copy): credit the team, drop the user count and unslop the wo
 - [ ] **Step 1: Edit the four lines**
 
 Replace each school mention with `[education]` so the historical documents still read, and drop the degree years
-where they appear beside it (line 1037 carries `2008 to 2012`).
+where they appear beside it (line 1037 carries them).
 
 - [ ] **Step 2: Confirm nothing tracked names it**
 
@@ -246,7 +247,7 @@ Expected: no paths, `exit=1`. Then `markdownlint-cli2 docs/superpowers/**/*.md` 
 
 - [ ] **Step 3: Edit the PR body**
 
-The body names no school; it says the degree years stay `2008 to 2012` (its line 22) and names the education section
+The body names no school; it says the degree years stay (its line 22) and names the education section
 (line 20). Run `gh pr view 24 --json body -q .body > /tmp/pr24.md`, drop the degree years and the sentence about them,
 then `gh pr edit 24 --body-file /tmp/pr24.md`. This edits a public page and needs Jason's go in chat before it runs.
 
@@ -288,7 +289,7 @@ once the open facts below arrive.
 
 ## Open decisions for Jason
 
-- The as-of month for "about 2 billion tokens a month" (spec 1.2).
+- The as-of month for "about 2 billion tokens a month" (spec 1.2). Answered 2026-10-31: 2B+, reached in March 2026.
 - The June 2026 build's language and name, and the one-clause reason for the August TokenHub rebuild (spec 1.4).
-- Whether `bio` drops "or risk" (spec 1.5).
+- Whether `bio` drops "or risk" (spec 1.5). Decided: it stays.
 - Whether the five calls to action share one wording (this plan's default) or keep the two variants.

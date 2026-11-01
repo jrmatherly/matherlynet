@@ -3,7 +3,7 @@ import { BASE_ERROR_CODES, type BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthMiddleware, getSession } from "better-auth/api";
 import type { admin } from "better-auth/plugins/admin";
 
-// Routes that set a password, and the body field each reads (checked on better-auth 1.7.11, admin plugin). Not covered:
+// Routes that set a password, and the body field each reads (checked on better-auth 1.7.12, admin plugin). Not covered:
 // server-only setPassword (no route) and the email-otp/phone-number reset routes (plugins not installed). The test
 // "matches better-auth's own routes" catches renamed routes and new newPassword routes on a better-auth upgrade.
 export const PASSWORD_FIELDS: Readonly<Record<string, "password" | "newPassword">> = {
@@ -15,7 +15,7 @@ export const PASSWORD_FIELDS: Readonly<Record<string, "password" | "newPassword"
 };
 
 // Password routes that refuse a call without a session (401; getAuthoritativeSessionFromCtx in better-auth's
-// sensitiveSessionMiddleware, adminMiddleware and createUser; checked on better-auth 1.7.11), even server-side, except
+// sensitiveSessionMiddleware, adminMiddleware and createUser; checked on better-auth 1.7.12), even server-side, except
 // /admin/create-user: it accepts a server-side call (no request, no headers) without one.
 export const SESSION_PATHS: ReadonlySet<string> = new Set(["/change-password", "/admin/create-user", "/admin/set-user-password"]);
 
@@ -30,7 +30,7 @@ export interface AdminCheck {
 }
 
 // The admin permissions a request to an admin password route needs, in the order its endpoint checks them, each
-// with the error code that endpoint refuses (403) with (plugins/admin/routes.mjs, checked on better-auth 1.7.11):
+// with the error code that endpoint refuses (403) with (plugins/admin/routes.mjs, checked on better-auth 1.7.12):
 // creating a user also needs set-role when the body sets a role, and ban when it sets ban fields.
 export function adminChecks(path: string, body: unknown): AdminCheck[] {
   if (path === "/admin/set-user-password") return [{ permissions: { user: ["set-password"] }, code: "YOU_ARE_NOT_ALLOWED_TO_SET_USERS_PASSWORD" }];
@@ -92,7 +92,7 @@ async function isBreached(password: string, timeoutMs: number): Promise<boolean>
 
 // Have I Been Pwned, checked before the endpoint runs. Replaces better-auth's haveIBeenPwned plugin, which checks
 // inside password.hash. Before 1.7.8 /reset-password had consumed the token by then, so a refused password burned the
-// reset link (better-auth#10632, fixed by #11646); its lookup still has no timeout or abort (checked on better-auth 1.7.11). Re-evaluate
+// reset link (better-auth#10632, fixed by #11646); its lookup still has no timeout or abort (checked on better-auth 1.7.12). Re-evaluate
 // this plugin once #11051 ships.
 // Fails closed: if the lookup fails or takes longer than timeoutMs, the password is refused with a 503. It runs
 // before the endpoint's own validation, so during an outage sign-up, reset, signed-in password changes, permitted
@@ -147,7 +147,7 @@ export function pwnedPasswordCheck(timeoutMs = 5_000): BetterAuthPlugin {
             }
             // The endpoints' own length rules, before the lookup, so a short password is reported as short (not
             // compromised) and costs no lookup. /admin/create-user checks only the maximum, so this adds the minimum
-            // (checked on better-auth 1.7.11).
+            // (checked on better-auth 1.7.12).
             const { minPasswordLength, maxPasswordLength } = ctx.context.password.config;
             if (password.length < minPasswordLength) throw APIError.from("BAD_REQUEST", BASE_ERROR_CODES.PASSWORD_TOO_SHORT);
             if (password.length > maxPasswordLength) throw APIError.from("BAD_REQUEST", BASE_ERROR_CODES.PASSWORD_TOO_LONG);

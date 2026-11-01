@@ -14,7 +14,7 @@ const currentTitle = "Manager, Infrastructure Services";
 // foreground color, so a skim of those alone still tells the story.
 export const intro = [
   "In *twenty years* at The Aaron's Company I designed and built its primary and disaster recovery *data centers*, the infrastructure for three corporate offices, and SD‑WAN to every store.",
-  "Now I lead its move into *agentic AI*. The gateway carries about *2 billion tokens a month* and took projected licensing from $100K+ a year to near zero.",
+  "Now I lead its move into *agentic AI*. The gateway carries *2B+ tokens a month* and took projected licensing from $100K+ a year to near zero.",
 ];
 // Rendered only when set. Jason supplies the wording (roles, remote/Atlanta, timing).
 export const availability: string | null = "Interested in roles leading AI platform, AI enablement or infrastructure teams.";
@@ -30,12 +30,12 @@ export const gateway = {
     {
       name: "In-house platform",
       since: "Jun 2026",
-      note: "Full control. Cost per user and team, routing across Azure AI Foundry and Anthropic, and guardrails, rate limits and an audit log on every call. Rebuilt in August 2026 on an open-source base, TokenHub, maintained as AIOps Hub.",
+      note: "Full control. A customized fork of the open-source TokenHub, maintained as AIOpsHub: cost per user and team, routing across Azure AI Foundry and Anthropic, and guardrails, rate limits and an audit log on every call.",
       current: true,
     },
   ],
   results: [
-    { value: "15M to about 2 billion", label: "tokens a month, launch to today" },
+    { value: "15M to 2B+", label: "tokens a month, launch to today" },
     { value: "$100K+ to near zero", label: "projected yearly licensing" },
     { value: "Every call", label: "signed in, rate limited, logged for 90 days" },
   ],
@@ -84,7 +84,7 @@ export const perspectives: Perspective[] = [
     headline: "A platform leader who still writes the code.",
     body: "I run infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime. I designed the AI Gateway and the MCP platform, both on GitOps-managed Kubernetes, and I write production code in Python, TypeScript and Go.",
     points: [
-      "AI Gateway carrying about 2 billion tokens a month across Azure AI Foundry and Anthropic",
+      "AI Gateway carrying 2B+ tokens a month across Azure AI Foundry and Anthropic",
       "Took the gateway from LiteLLM to Azure API Management to an in-house platform, and projected licensing from $100K+ a year to about $38K to near zero",
       "Led teams of up to 8 engineers, including an acquired company's infrastructure team",
       "Designed and built the primary and DR data centers, three corporate offices, and SD-WAN to 2,300+ stores (at the time)",
@@ -140,7 +140,7 @@ export const work: WorkItem[] = [
     summary:
       "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team. The current generation is a Go backend with a Next.js console, running on the on-prem Talos Kubernetes clusters through GitOps.",
     period: "2024 to now",
-    result: "About 2 billion tokens a month; projected licensing from $100K+ a year to near zero",
+    result: "2B+ tokens a month; projected licensing from $100K+ a year to near zero",
     group: "AI platform",
   },
   {

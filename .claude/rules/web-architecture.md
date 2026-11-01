@@ -34,7 +34,8 @@ web/
                        expired entries refresh in the background; database down: last known (or default) settings
   src/lib/settings-form.ts  SiteSettings type + /admin form validation (pure, unit-tested); isPrivateAddress()
   src/lib/sentry.ts    server Sentry (@sentry/node): errors only, one client; DSN changes retarget its transport;
-                       gateTransport() sends nothing while off (sessions too); request bodies not collected;
+                       gateTransport() sends nothing while off (sessions too); request bodies, query strings and
+                       the Referer not collected; the reset token redacted from the URL path (redactResetToken);
                        connects only to public addresses (publicOnlyLookup), directly (never via http(s)_proxy)
   src/lib/scrub-url.ts stripQuery(): path-only URLs for browser Sentry events/breadcrumbs (reset tokens)
   src/lib/auth-client.ts  better-auth browser client

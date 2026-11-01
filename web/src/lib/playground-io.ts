@@ -95,8 +95,9 @@ const BODY_MS = 1_000;
 
 /**
  * The HTTP boundary: not a call yet, so no row. Never throws and never quotes the body. Form-encoded only: Astro's
- * origin check covers that type (and no type at all), so a cross-site POST, or one with no Origin header, never gets
- * here. Content-Length is not trusted or required; bytes are counted as they arrive.
+ * origin check covers that type (and no type at all), so a cross-site POST from a browser never gets here. A POST
+ * with neither Origin nor Sec-Fetch-Site passes that check (core/app/origin-check.js, checked on astro 7.4.2), which
+ * only a non-browser client sends. Content-Length is not trusted or required; bytes are counted as they arrive.
  */
 export async function parseCall(request: Request, userId: string | null): Promise<ParsedCall> {
   const enteredAt = performance.now();
@@ -562,7 +563,7 @@ let inFlight = 0;
 /**
  * The Response. Starts run() from the stream's start() and returns at once. The client-gone signal has two paths,
  * neither trusted alone: requestSignal before the stream is read, cancel() after. Owns the call's deadline. In the
- * built server the body is read by writeResponse() in Astro core (checked on astro 7.4.1, dist/core/app/node.js),
+ * built server the body is read by writeResponse() in Astro core (checked on astro 7.4.2, dist/core/app/node.js),
  * which the comments below name; `astro dev` reads it with writeWebResponse() instead.
  */
 export function respond(call: Call, requestSignal: AbortSignal, io: Io = liveIo): Response {

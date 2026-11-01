@@ -42,7 +42,7 @@ medium (real but bounded), low (hygiene). Effort: S under an hour, M a half day,
 | 21 | low | Dead config: 17 `minimumReleaseAgeExclude` entries all past pnpm's one-day window; `allowScripts` does nothing in pnpm 12; Renovate never bumps the pre-commit hook pin | `npm view <pkg> time`; pnpm 12.16.1; Renovate pre-commit manager docs | Delete the entries and the field; enable Renovate's pre-commit manager | S |
 | 22 | low | Rows that are never pruned: better-auth `rate_limit` (database storage has no sweep) and unverified sign-ups | better-auth 1.7.11 `api/rate-limiter/index.mjs`; grep in `web/src` | Accept at this traffic, or a periodic delete | S |
 | 23 | low | `web/.dockerignore` does not exclude `.env*`; the image ships all of `/app` | `web/.dockerignore`; generated Dockerfile | Add `.env*` | S |
-| 24 | low | The npm token once printed in a session: not in the tracked tree or in any of 197 commits (gitleaks hits are fixtures). Rotation is still a human step | `git log --all -p -G '(ghp_\|github_pat_\|npm_\|...)'`; gitleaks | Rotate it if it was ever live | S |
+| 24 | low | The npm token once printed in a session: not in the tracked tree or in any of 197 commits (gitleaks hits are fixtures). Closed by the owner | `git log --all -p -G '(ghp_\|github_pat_\|npm_\|...)'`; gitleaks | None: not tracked | S |
 
 Two worker ratings were changed in this ranking. The playground worker rated the Sentry IP capture high; it is not
 exploitable and the Sentry project is private, so it is medium here, placed first among the mediums because it

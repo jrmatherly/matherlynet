@@ -17,7 +17,8 @@ with a unit test or a CI assertion that fails without it.
 **Tech Stack:** Aspire 13.6 TypeScript AppHost, Astro 7 SSR, better-auth 1.7.11, @sentry/node 11.8.0, pg 8, Flux,
 CloudNativePG, GitHub Actions, pnpm 12, Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-10-30-project-audit.md`, findings 1, 2, 3, 4, 5, 8, 9, 11, 12, 13 and 14.
+**Spec:** `docs/superpowers/specs/completed/2026-10-30-project-audit.md`, findings 1, 2, 3, 4, 5, 8, 9, 11, 12, 13
+and 14.
 Pointer files from the planning session (scratch, not tracked) backed the line numbers; re-grep before editing.
 
 ## Global Constraints

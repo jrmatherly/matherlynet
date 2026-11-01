@@ -94,10 +94,13 @@
       datasourceTemplate: "npm",
     },
     {
-      description: "markdownlint-cli2 in the repo checks workflow (keep it on the pre-commit hook's frozen version)",
+      description: "markdownlint-cli2 in the repo checks workflow and the config's $schema (keep them on the pre-commit hook's frozen version)",
       customType: "regex",
-      managerFilePatterns: ["/^\\.github/workflows/repo-checks\\.yml$/"],
-      matchStrings: ["npx --yes markdownlint-cli2@(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      managerFilePatterns: ["/^\\.github/workflows/repo-checks\\.yml$/", "/^\\.markdownlint-cli2\\.jsonc$/"],
+      matchStrings: [
+        "npx --yes markdownlint-cli2@(?<currentValue>\\d+\\.\\d+\\.\\d+)",
+        "markdownlint-cli2/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/schema",
+      ],
       depNameTemplate: "markdownlint-cli2",
       datasourceTemplate: "npm",
     },
