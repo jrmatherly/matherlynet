@@ -38,8 +38,9 @@ it done.
 - Server Sentry is initialised once (`web/src/lib/sentry.ts`); a /admin DSN change only retargets
   `makeMultiplexedTransport` (`@sentry/core`). A second `Sentry.init` inside a request binds to that request's scope
   only and stacks process handlers, so later requests kept the old client. It collects no request bodies, query strings
-  or cookies, sends only allow-listed headers, and redacts the reset token in the URL path (the SDK filters only query
-  and header values by key); `sentry-wiring.test.ts` sends a real request through the SDK to a local sink to check it.
+  or cookies, sends only allow-listed headers (browser events' headers go through `scrubEvent` instead), and redacts
+  the reset token in the URL path (the SDK filters only query and header values by key); `sentry-wiring.test.ts` sends
+  a real request through the SDK to a local sink to check it.
 - Don't widen the header allow list for debugging without checking `/privacy`, which promises no IP or location. Its
   terms match as substrings (`accept` also allows `accept-language`). Cloudflare adds visitor location headers
   (`cf-ipcity`, `cf-iplatitude`, …) that the SDK's IP filter doesn't cover.

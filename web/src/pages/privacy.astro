@@ -39,8 +39,8 @@ const heading = "display text-2xl";
       errorReports && (
         <section class="grid gap-3">
           <h2 class={heading}>Error reports</h2>
-          <p>When something breaks, a report goes to Sentry, stored in the United States for about 30 days. It holds the error, the page's path, your browser and operating system, the site that linked you here, and the steps leading up to it, such as pages visited, buttons clicked, network requests and log messages. It's set up to exclude your IP address, location, language, cookies, form contents and any query string.</p>
-          {browserReports && <p>Each page you open also sends Sentry an anonymous session count with your browser details, even when nothing breaks.</p>}
+          <p>When something breaks, a report goes to Sentry, stored in the United States for about 30 days. It holds the error, the page's path, your browser and operating system, and the log messages leading up to it. It's set up to exclude your IP address, location, language, cookies, form contents and any query string.</p>
+          {browserReports && <p>A report from your browser also holds the site that linked you here and the steps leading up to the error, such as pages visited, buttons clicked and network requests. Each page you open also sends Sentry an anonymous session count with your browser details, even when nothing breaks.</p>}
         </section>
       )
     }

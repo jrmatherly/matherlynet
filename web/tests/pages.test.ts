@@ -105,7 +105,17 @@ describe("Privacy", () => {
     expect(switchedOff).not.toContain("Sentry");
     expect(switchedOff).not.toContain("Umami");
 
-    expect(await render({ sentry: { dsn, server: true, browser: false } })).not.toContain("session count");
+    const noTarget = await render({
+      sentry: { dsn: null, server: true, browser: true },
+      umami: { enabled: false, scriptUrl: "https://stats.example/script.js", websiteId: "w" },
+    });
+    expect(noTarget).not.toContain("Sentry");
+    expect(noTarget).not.toContain("Umami");
+
+    const serverOnly = await render({ sentry: { dsn, server: true, browser: false } });
+    expect(serverOnly).toContain("Sentry");
+    expect(serverOnly).not.toContain("session count");
+    expect(serverOnly).not.toContain("buttons clicked");
     expect(await render({ sentry: { dsn, server: false, browser: true } })).toContain("session count");
   });
 

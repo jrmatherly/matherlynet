@@ -260,6 +260,7 @@ it("sends no visitor location or cookies, and keeps the headers that tie an even
           "cf-some-future-header": "SECRET-FUTURE",
           "accept-language": "SECRET-LANGUAGE",
           "x-forwarded-host": "SECRET-HOST",
+          referer: "SECRET-REFERER",
           cookie: "cf_clearance=SECRET-CLEARANCE",
           "cf-ray": "ray-1",
           "x-request-id": "req-1",

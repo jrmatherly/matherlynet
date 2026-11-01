@@ -12,6 +12,10 @@ export function scrubEvent<T extends Event>(event: T): T {
     if (request.headers?.Referer) request.headers.Referer = stripQuery(request.headers.Referer) as string;
     delete request.query_string;
   }
+  // A global error with no filename gets location.href as its frame (globalhandlers.js, @sentry/browser 11.9.0).
+  for (const { stacktrace } of event.exception?.values ?? []) {
+    for (const frame of stacktrace?.frames ?? []) if (frame.filename) frame.filename = stripQuery(frame.filename) as string;
+  }
   return event;
 }
 
