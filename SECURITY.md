@@ -20,4 +20,5 @@ Only the current `main` branch (what's deployed) is supported. Tagged releases a
 Since 2026-10-30: workflows may use only actions pinned to a full commit SHA (`sha_pinning_required`); the workflow
 `GITHUB_TOKEN` is read-only by default and cannot approve pull requests; and the "Protect release tags" ruleset blocks
 deleting or force-updating `v*` tags, with no bypass. A release tag is an annotated, SSH-signed tag (`git tag -s`) on
-a signed commit: SSH-signed, or signed by GitHub's key when it is a squash merge made on github.com.
+a signed commit: SSH-signed, or signed by GitHub's key when it is a squash merge made on github.com. The "Protect main"
+ruleset blocks deleting or force-pushing the default branch, also with no bypass.

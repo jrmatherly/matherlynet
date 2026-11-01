@@ -31,3 +31,4 @@
 
 - [ ] AGENTS.md, `.claude/rules/` or `docs/deployment.md` updated for anything another agent or operator needs to
       know
+- [ ] `/privacy` still true if this changes what's collected or who receives it
