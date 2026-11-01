@@ -35,9 +35,11 @@ web/
   src/lib/settings-form.ts  SiteSettings type + /admin form validation (pure, unit-tested); isPrivateAddress()
   src/lib/sentry.ts    server Sentry (@sentry/node): errors only, one client; DSN changes retarget its transport;
                        gateTransport() sends nothing while off (sessions too); request bodies, query strings and
-                       the Referer not collected; the reset token redacted from the URL path (redactResetToken);
-                       connects only to public addresses (publicOnlyLookup), directly (never via http(s)_proxy)
-  src/lib/scrub-url.ts stripQuery(): path-only URLs for browser Sentry events/breadcrumbs (reset tokens)
+                       cookies not collected, request headers allow-listed; the reset token redacted from the URL path
+                       (redactResetToken); connects only to public addresses (publicOnlyLookup), directly (never via
+                       http(s)_proxy)
+  src/lib/scrub-url.ts browser Sentry's options (browserSentryOptions): no inferred IP, timezone or locale; stripQuery():
+                       path-only URLs for its events/breadcrumbs (reset tokens)
   src/lib/auth-client.ts  better-auth browser client
   src/lib/form.ts      shared Tailwind class strings and whileBusy() for account forms
   src/lib/writing.ts   publishedPosts() and formatDate(): the feed, sitemap and writing pages
@@ -97,7 +99,7 @@ web/
                        header/footer (chrome full|minimal)
   src/components/       Seo (canonical, OG, Person JSON-LD, noindex, theme-color), SiteHeader (nav, ModeToggle,
                         Let's talk), SiteFooter (ThemeControls: Brand/Pro + Sans/Serif, page links from publicRoutes,
-                        LinkedIn, RSS, sign in), Logo (monogram at header size; `decorative` hides it beside the
+                        LinkedIn, RSS, Privacy, sign in), Logo (monogram at header size; `decorative` hides it beside the
                         name), Telemetry (Umami tag + lazy @sentry/browser, both from site settings), Portrait (the
                         portrait <img>: home strip, /about header, /changelog header; `lazy` below the fold or hidden);
                         home: GatewayPath (SVG request path: the wide frame from sm up, the stacked one below;
@@ -117,6 +119,7 @@ web/
                         gateway generations), about (person: aboutHeadline, portrait, availability, skills,
                         volunteering), playground (the gateway simulation, `?try=<scenario>`; passes `live` when
                         liveModelOn()), writing/ (+[slug]),
+                        privacy (what's collected; its Sentry and Umami sections follow the /admin switches),
                         404 (links the nav pages); robots/sitemap/rss per request
   src/pages/ (account)  sign-in, sign-up, forgot/reset-password, account (sessions), admin (role-gated, 404
                        otherwise); all noindex, AuthCard shell, form classes and whileBusy() in src/lib/form.ts

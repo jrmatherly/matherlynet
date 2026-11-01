@@ -243,3 +243,37 @@ it("sends no visitor identity: no user.ip_address, no client IP headers, request
   expect(event.request?.headers?.["cf-connecting-ip"]).toBeUndefined();
   expect(event.request).toMatchObject({ url: "https://matherly.net/x", method: "GET" });
 });
+
+it("sends no visitor location or cookies, and keeps the headers that tie an event to the logs", async () => {
+  const { dsn, bodies } = await sink();
+  configureSentry(dsn);
+  await Sentry.withIsolationScope(async () => {
+    Sentry.getIsolationScope().setSDKProcessingMetadata({
+      normalizedRequest: {
+        url: "https://matherly.net/x",
+        method: "GET",
+        headers: {
+          "cf-ipcity": "SECRET-CITY",
+          "cf-iplatitude": "SECRET-LAT",
+          "cf-iplongitude": "SECRET-LON",
+          "cf-postal-code": "SECRET-POSTAL",
+          "cf-some-future-header": "SECRET-FUTURE",
+          "accept-language": "SECRET-LANGUAGE",
+          "x-forwarded-host": "SECRET-HOST",
+          referer: "SECRET-REFERER",
+          cookie: "cf_clearance=SECRET-CLEARANCE",
+          "cf-ray": "ray-1",
+          "x-request-id": "req-1",
+          "user-agent": "agent-1",
+        },
+      },
+    });
+    Sentry.captureException(new Error("probe"));
+    await Sentry.flush(2000);
+  });
+  expect(bodies).toHaveLength(1);
+  const { request } = bodies[0] as { request?: { headers?: Record<string, string>; cookies?: unknown } };
+  expect(JSON.stringify(request)).not.toContain("SECRET");
+  expect(request?.cookies).toBeUndefined();
+  expect(request?.headers).toMatchObject({ "cf-ray": "ray-1", "x-request-id": "req-1", "user-agent": "agent-1" });
+});

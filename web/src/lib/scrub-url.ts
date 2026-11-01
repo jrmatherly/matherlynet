@@ -1,4 +1,5 @@
 import type { Breadcrumb, Event } from "@sentry/browser";
+import type { Integration } from "@sentry/core";
 
 // Path only: query strings and fragments can carry tokens (e.g. /reset-password?token=…).
 export const stripQuery = (url: unknown): unknown => (typeof url === "string" ? url.split(/[?#]/)[0] : url);
@@ -11,6 +12,10 @@ export function scrubEvent<T extends Event>(event: T): T {
     if (request.headers?.Referer) request.headers.Referer = stripQuery(request.headers.Referer) as string;
     delete request.query_string;
   }
+  // A global error with no filename gets location.href as its frame (globalhandlers.js, @sentry/browser 11.9.0).
+  for (const { stacktrace } of event.exception?.values ?? []) {
+    for (const frame of stacktrace?.frames ?? []) if (frame.filename) frame.filename = stripQuery(frame.filename) as string;
+  }
   return event;
 }
 
@@ -19,3 +24,12 @@ export function scrubBreadcrumb(crumb: Breadcrumb): Breadcrumb {
   for (const key of ["url", "from", "to"]) if (crumb.data && key in crumb.data) crumb.data[key] = stripQuery(crumb.data[key]);
   return crumb;
 }
+
+// userInfo false stops Sentry inferring the visitor's IP from the connection (infer_ip "never"). The CultureContext
+// integration collects the visitor's timezone and locale, which /privacy says stay out.
+export const browserSentryOptions = {
+  dataCollection: { userInfo: false },
+  integrations: (defaults: Integration[]) => defaults.filter((integration) => integration.name !== "CultureContext"),
+  beforeSend: scrubEvent,
+  beforeBreadcrumb: scrubBreadcrumb,
+};

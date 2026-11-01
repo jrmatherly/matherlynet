@@ -86,10 +86,17 @@ export function configureSentry(dsn: string | null): void {
       ),
     // Request bodies stay out of events (sign-up bodies carry emails and passwords). Visitor IPs are personal data that
     // a third party doesn't need: userInfo false drops user.ip_address and the client-IP headers (cf-connecting-ip,
-    // x-forwarded-for, …; requestdata.js, checked on @sentry/core 11.9.0). Query strings and the Referer can carry
-    // tokens, so neither is sent. A deny list adds to the SDK's sensitive-key filter (filterKeyValueData.js), so cookies
-    // stay filtered.
-    dataCollection: { httpBodies: [], userInfo: false, urlQueryParams: false, httpHeaders: { request: { deny: ["referer"] } } },
+    // x-forwarded-for, …; requestdata.js, checked on @sentry/core 11.9.0). Query strings can carry tokens. Cloudflare adds
+    // visitor location headers and a clearance cookie, so cookies are off and headers are an allow list: anything else,
+    // the Referer included, arrives as [Filtered]. Terms match as substrings (filterKeyValueData.js), so "accept" would
+    // let accept-language through: use full, specific names.
+    dataCollection: {
+      httpBodies: [],
+      userInfo: false,
+      urlQueryParams: false,
+      cookies: false,
+      httpHeaders: { request: { allow: ["user-agent", "x-request-id", "cf-ray", "x-forwarded-proto"] } },
+    },
     beforeSend(event) {
       if (event.transaction) event.transaction = redactResetToken(event.transaction);
       if (event.request?.url) event.request.url = redactResetToken(event.request.url);

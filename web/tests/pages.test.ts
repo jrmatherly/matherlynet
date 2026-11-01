@@ -4,10 +4,12 @@ import PlatformList from "../src/components/PlatformList.astro";
 import WorkCard from "../src/components/WorkCard.astro";
 import * as profile from "../src/data/profile";
 import { ogCards } from "../src/lib/og";
+import type { SiteSettings } from "../src/lib/settings-form";
 import About from "../src/pages/about.astro";
 import Changelog from "../src/pages/changelog.astro";
 import Home from "../src/pages/index.astro";
 import Playground from "../src/pages/playground.astro";
+import Privacy from "../src/pages/privacy.astro";
 import Work from "../src/pages/work.astro";
 import { SITE_DEFAULTS, resolveTheme } from "../src/theme/palettes";
 import { BANNED } from "./banned";
@@ -23,8 +25,8 @@ const locals = {
   theme: resolveTheme({}),
 };
 
-const page = async (Page: Parameters<AstroContainer["renderToString"]>[0], path: string, theme = locals.theme) =>
-  (await AstroContainer.create()).renderToString(Page, { locals: { ...locals, theme }, request: new Request(`http://localhost${path}`) });
+const page = async (Page: Parameters<AstroContainer["renderToString"]>[0], path: string, theme = locals.theme, siteSettings: SiteSettings = locals.siteSettings) =>
+  (await AstroContainer.create()).renderToString(Page, { locals: { ...locals, theme, siteSettings }, request: new Request(`http://localhost${path}`) });
 
 describe("About", () => {
   it("opens the résumé in a new tab and has no mono eyebrows", async () => {
@@ -74,6 +76,53 @@ describe("inner pages", () => {
     expect(mainLinks(await page(Changelog, "/changelog"))).toContain("/work");
     expect(mainLinks(await page(Work, "/work"))).toContain("/changelog");
     expect(mainLinks(await page(Playground, "/playground"))).toContain("/work");
+  });
+});
+
+describe("Privacy", () => {
+  const render = (siteSettings: Partial<SiteSettings>) => page(Privacy, "/privacy", locals.theme, { ...locals.siteSettings, ...siteSettings });
+
+  it("mentions Sentry and Umami only while they are switched on, and says how to get data removed", async () => {
+    const off = await render({});
+    expect(off).not.toContain("Sentry");
+    expect(off).not.toContain("Umami");
+    expect(off).toContain(`href="${profile.contact.href}"`);
+
+    const on = await render({
+      sentry: { dsn: "https://k@o1.ingest.sentry.io/1", server: true, browser: false },
+      umami: { enabled: true, scriptUrl: "https://stats.example/script.js", websiteId: "w" },
+    });
+    expect(on).toContain("Sentry");
+    expect(on).toContain("Umami");
+  });
+
+  it("follows each switch: session counts only with browser reporting, nothing without a switch or a script", async () => {
+    const dsn = "https://k@o1.ingest.sentry.io/1";
+    const switchedOff = await render({
+      sentry: { dsn, server: false, browser: false },
+      umami: { enabled: true, scriptUrl: null, websiteId: null },
+    });
+    expect(switchedOff).not.toContain("Sentry");
+    expect(switchedOff).not.toContain("Umami");
+
+    const noTarget = await render({
+      sentry: { dsn: null, server: true, browser: true },
+      umami: { enabled: false, scriptUrl: "https://stats.example/script.js", websiteId: "w" },
+    });
+    expect(noTarget).not.toContain("Sentry");
+    expect(noTarget).not.toContain("Umami");
+
+    const serverOnly = await render({ sentry: { dsn, server: true, browser: false } });
+    expect(serverOnly).toContain("Sentry");
+    expect(serverOnly).not.toContain("session count");
+    expect(serverOnly).not.toContain("buttons clicked");
+    expect(await render({ sentry: { dsn, server: false, browser: true } })).toContain("session count");
+  });
+
+  it("is linked from the footer, not the header nav", async () => {
+    const html = await render({});
+    expect(html.match(/<footer[\s\S]*<\/footer>/)?.[0]).toContain('href="/privacy"');
+    expect(html.match(/<header class=[\s\S]*?<\/header>/)?.[0]).not.toContain('href="/privacy"');
   });
 });
 

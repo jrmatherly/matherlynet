@@ -69,8 +69,8 @@ const hint = "text-sm text-muted";
     <fieldset class="grid gap-3">
       <legend class={legend}>Error monitoring (Sentry)</legend>
       <p class={hint}>
-        Any Sentry-compatible DSN (Project settings → Client Keys). Only errors are sent; traces go to
-        OpenTelemetry. The DSN is public by design: browsers see it.
+        Any Sentry-compatible DSN (Project settings → Client Keys). Errors are sent, plus an anonymous session count while browser
+        reporting is on; traces go to OpenTelemetry. The DSN is public by design: browsers see it.
       </p>
       <label class={label}>
         DSN

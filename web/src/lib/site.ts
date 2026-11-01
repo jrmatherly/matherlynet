@@ -24,4 +24,5 @@ export const publicRoutes: { path: string; label: string; nav: boolean }[] = [
   { path: "/playground", label: "Playground", nav: true },
   { path: "/writing", label: "Writing", nav: true },
   { path: "/about", label: "About", nav: true },
+  { path: "/privacy", label: "Privacy", nav: false },
 ];
