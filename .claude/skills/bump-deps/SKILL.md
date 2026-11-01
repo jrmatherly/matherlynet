@@ -40,7 +40,7 @@ The drizzle cap has no Renovate rule: Renovate skips 1.0 only while it stays a p
 | :--- | :--- | :--- |
 | `vscode-jsonrpc` (root) | 8.x | Aspire 13.6's generated `transport.mts` imports `vscode-jsonrpc/node.js`, removed in 9.x |
 | `typescript` (root) | 6.0.x | `typescript-eslint` peer range is `<6.1.0` |
-| `@types/node` | Node runtime major (24) | Types must match the runtime, not the newest Node |
+| `@types/node` (root, web) | Node runtime major (24) | Types must match the runtime. web's `overrides` entry follows its own pin and stays |
 | `drizzle-orm` / `drizzle-kit` | 0.45.x / 0.31.x stable | 1.0 is still a release candidate (better-auth 1.7.12 accepts it; the cap is ours) |
 | Aspire packages | Aspire CLI version | Update with `aspire update`, not npm (see Aspire below) |
 

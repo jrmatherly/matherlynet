@@ -22,3 +22,6 @@ overrides:
   glob: 14.0.3
   # GHSA-g3hv-75wg-m249: no 10.x patch; eslint, @eslint/config-array, typescript-estree and jsx-a11y-x ask for 10.x.
   minimatch: 11.0.3
+  # Not an advisory: keeps every package's Node types on web's own pin (the Node 24 runtime). @types/pg and others ask
+  # for any version, and `/// <reference types="node" />` would bring the newest one's globals into the type-check.
+  "@types/node": $@types/node
