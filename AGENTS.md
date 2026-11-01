@@ -212,8 +212,9 @@ out/                   aspire publish output (gitignored)
   connections (`playgroundDb`), one per call a process admits. A call that stops waiting for a query leaves the query
   holding its connection, so on the pool auth uses a flood of calls could take the connections sign-in needs.
   It also wraps Drizzle's internal `queryWithCache`, which is where `DrizzleQueryError` is made, to remove a failed
-  query's parameters (session and reset tokens, emails) from its message, stack and `params`: otherwise every log line,
-  Sentry event and span that sees the error repeats them. `sentry-wiring.test.ts` fails if a Drizzle bump moves it.
+  query's parameters (session and reset tokens, emails) from its message, stack and `params`, and the column values
+  Postgres puts on its `cause` (`detail`, `where`, `hint`, `internalQuery`; code and message stay): otherwise every log
+  line, Sentry event and span that sees the error repeats them. `sentry-wiring.test.ts` fails if a Drizzle bump moves it.
 - `security.allowedDomains` (`matherly.net`, https) in `web/astro.config.mjs` makes Astro trust `X-Forwarded-Proto`
   behind Cloudflare; without it form POSTs fail the origin check with 403. Don't use `Astro.clientAddress`: a client
   can spoof it through `X-Forwarded-Host`/`X-Forwarded-For`.
