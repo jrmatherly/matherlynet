@@ -908,7 +908,8 @@ a database outage doesn't mark web unhealthy.
 deploy/                docker-compose.override.yaml: web healthcheck; `aspire publish` copies it into out/compose
 ```
 
-  Confirm `wc -l AGENTS.md` stays under 200 and `markdownlint-cli2 docs/deployment.md AGENTS.md .claude/rules/apphost.md`
+  Confirm `wc -l AGENTS.md` stays under 200 and `markdownlint-cli2 docs/deployment.md AGENTS.md
+  .claude/rules/apphost.md`
   passes.
 
 - [ ] **Step 7: Commit.**

@@ -90,7 +90,8 @@ git commit -m "docs(deployment): backups and restore for Compose and the cluster
 - Modify: `apphost.mts:182,194`; `AGENTS.md:182,231,232,260`; `docs/deployment.md:222`; `web/start.mjs:6`;
   `web/otel.mjs:9`; `web/astro.config.mjs:9`; `web/e2e/global-setup.ts:5,6`; `web/src/lib/playground-io.ts:261`;
   `web/src/lib/pwned.ts:6,17,33,149`; `web/src/lib/auth.ts:56,81,117`; `web/tests/auth-config.test.ts:17`;
-  `web/tests/pwned.test.ts:350,465,489` (the full list is `git grep -nE "1\.7\.7|13\.6\.0-preview|8\.3\.1|7\.3\.8|0\.45\.3|10\.0\.13|0\.222"`)
+  `web/tests/pwned.test.ts:350,465,489` (the full list is `git grep -nE
+  "1\.7\.7|13\.6\.0-preview|8\.3\.1|7\.3\.8|0\.45\.3|10\.0\.13|0\.222"`)
 - Modify: `.claude/rules/web-architecture.md` and `.claude/rules/database.md` (receive the moved paragraphs)
 - Modify: `.claude/skills/bump-deps/SKILL.md` (add the sweep)
 

@@ -492,7 +492,8 @@ In `site-settings.test.ts` add:
   });
 ```
 
-Run: `cd web && env -u NODE_ENV pnpm vitest run tests/settings-form.test.ts tests/site-settings.test.ts` — Expected: FAIL.
+Run: `cd web && env -u NODE_ENV pnpm vitest run tests/settings-form.test.ts tests/site-settings.test.ts` — Expected:
+FAIL.
 
 - [ ] **Step 2: Schema column** (after `proPalette` in `schema.ts`)
 
@@ -1043,7 +1044,8 @@ pages renders `recruiterFacts` under its headline.
 
 - [ ] **Step 3: Run the test and type-check**
 
-Run: `cd web && env -u NODE_ENV pnpm vitest run tests/profile.test.ts && env -u NODE_ENV pnpm check` — Expected: PASS/clean.
+Run: `cd web && env -u NODE_ENV pnpm vitest run tests/profile.test.ts && env -u NODE_ENV pnpm check` — Expected:
+PASS/clean.
 
 - [ ] **Step 4: Commit**
 
@@ -1929,7 +1931,8 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   if it mentions the theme toggle
 
 - [ ] **Step 1: File map** — add lines for `src/components/ModeToggle.astro`, `ThemeControls.astro`,
-`GatewayPath.astro`, `CaseStudy.astro`, `PlatformList.astro`, `AboutStrip.astro`, `Cta.astro`, `Availability.astro`, `RailEntry.astro`,
+`GatewayPath.astro`, `CaseStudy.astro`, `PlatformList.astro`, `AboutStrip.astro`, `Cta.astro`, `Availability.astro`,
+`RailEntry.astro`,
 `src/pages/changelog.astro`, `src/lib/theme-cookie.ts`, `public/portrait.jpg`; remove `ThemeToggle.astro` and
 `StatusPanel.astro`; note `typeface` in the `site-settings.ts` line.
 

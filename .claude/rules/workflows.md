@@ -1,6 +1,8 @@
 ---
 paths:
   - ".github/workflows/**"
+  - "scripts/check-chart.sh"
+  - "scripts/smoke-image.sh"
 ---
 
 # GitHub Actions workflows
@@ -33,3 +35,20 @@ paths:
   `--plain-http` added to the helm registry commands.
 - `run:` steps use `bash -e` with no pipefail unless they set it (`shell: bash`, or `set -o pipefail`), so a
   pipeline's status is its last command's. When the left side must not fail silently, write to a file and grep that.
+- CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
+  Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
+  -R jrmatherly/matherlynet`.
+- `publish-images.yml`'s `chart` job pushes the Helm chart to
+  `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet` as `0.<run number>.<run attempt>` (`appVersion` =
+  commit SHA), from `main` only (a manual run on another branch must not publish a higher version). A re-run of that
+  job gets a new version, and it refuses to replace one that exists. The `push` job generates the chart and runs
+  `scripts/check-chart.sh` (also run on PRs by `e2e.yml`) before the image push, so a chart that fails its checks
+  publishes nothing; a failed chart push can't skip the source maps. CI writes the pushed image (`web@<digest>`)
+  into `parameters.web.web_image` and renders the packaged chart to confirm it: `aspire publish` leaves the value
+  as `web:latest`. The chart name comes from `withChartName` in `apphost.mts`; the chart is not attested.
+  A release is a signed `v<chart version>` tag (e.g. `v0.46.1`) on the commit that chart was built from, with a GitHub
+  Release, cut by hand with `/release` (no workflow creates it); fixes land on `main` only.
+- The image workflow runs only when the image, the chart or their checks can change (`web/**` minus docs, AppHost
+  files, root `package*.json`, `scripts/check-chart.sh` and `smoke-image.sh`, the workflow itself and the
+  `web-checks.yml` and `e2e.yml` it calls);
+  `workflow_dispatch` bypasses the filter. `paths-ignore` can't take `!` exceptions, so it is an include list.

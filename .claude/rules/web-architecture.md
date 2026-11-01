@@ -5,12 +5,12 @@ paths:
 
 # web/ file map
 
-The Astro app, file by file (moved out of AGENTS.md to keep it short; AGENTS.md's tree points here).
+The Astro app, file by file. Why it is built this way: `web-patterns.md`.
 
 ```text
 web/
-  astro.config.mjs     output: 'server', @astrojs/node standalone, MDX, Tailwind 4 (Vite plugin), fonts (Geist, Geist Mono
-                       and Newsreader normal + italic, Latin only, via the local provider), CSP directives,
+  astro.config.mjs     output: 'server', @astrojs/node standalone, MDX, Tailwind 4 (Vite plugin), fonts (Geist,
+                       Geist Mono and Newsreader normal + italic, Latin only, via the local provider), CSP directives,
                        security.allowedDomains (trust X-Forwarded-Proto behind Cloudflare)
   migrate.mjs          applies web/drizzle/ on start (retry + Postgres advisory lock)
   start.mjs            production entry (the image's `node start.mjs`, `pnpm start`): imports otel, migrate, server
@@ -39,6 +39,8 @@ web/
                        connects only to public addresses (publicOnlyLookup), directly (never via http(s)_proxy)
   src/lib/scrub-url.ts stripQuery(): path-only URLs for browser Sentry events/breadcrumbs (reset tokens)
   src/lib/auth-client.ts  better-auth browser client
+  src/lib/form.ts      shared Tailwind class strings and whileBusy() for account forms
+  src/lib/writing.ts   publishedPosts() and formatDate(): the feed, sitemap and writing pages
   src/lib/site.ts      public origin (from BETTER_AUTH_URL at run time), person details, public routes list (+ nav flag)
   src/lib/og.ts        share-card copy (ogCards), cardPalette(), ogImage(slug, site) with a ?v=<palette> cache key
   src/lib/theme-cookie.ts  browser helpers for ModeToggle and ThemeControls: remember() (one-year visitor theme
@@ -131,7 +133,9 @@ web/
                        /playground's live path, run in two passes: model off, then against tests/fake-llama.ts (a
                        test for one mode skips itself on the other stack). Sign-up and reset call the live Have I
                        Been Pwned range API, so a HIBP outage fails E2E; re-run the job. pwned.ts hard-codes the
-                       URL; if HIBP outages fail the job twice, add an env var for that base URL and point E2E at a stub
+                       URL; if HIBP outages fail the job twice, add an env var for that base URL and point E2E at a stub.
+                       csp.spec.ts checks the CSP header on a built server (skips itself on dev); mail.ts reads
+                       Mailpit (linkFromEmail()); global-setup.ts: see runtime.md
   public/              brand favicons, web manifest, brand raster logo, portrait.jpg (648x648) and
                        portrait-320.jpg (srcset for 2x screens); public/pro/ = Pro monogram set
 ```

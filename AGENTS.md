@@ -1,6 +1,9 @@
 # AGENTS.md
 
-This file provides guidance to AI coding agents when working with code in this repository.
+This file provides guidance to AI coding agents when working with code in this repository. Area detail lives in
+`.claude/rules/`: Claude Code loads each file when it touches matching paths; other tools should read the one for
+the area they change (`apphost.md`, `database.md`, `integrations.md`, `runtime.md`, `web-architecture.md`,
+`web-patterns.md`, `workflows.md`).
 
 <!-- AUTO-MANAGED: project-description -->
 ## Overview
@@ -30,7 +33,7 @@ to it, to `ghcr.io/jrmatherly/matherlynet`.
 | Compose web host port | `Web__HostPort=none` (default, cloudflared on the compose network) / `loopback` / `public` |
 | Enable Umami | `Umami__Enabled=true aspire start` (`Umami__Public=true` at publish time adds a Compose host port) |
 | Change Umami's admin password | `UMAMI_URL=<url> UMAMI_NEW_PASSWORD=<8+ chars> node scripts/umami-set-password.mjs` |
-| Live playground with a fake model | `node web/tests/fake-llama.ts 18080`, `aspire secret set Parameters:playground-model-url http://127.0.0.1:18080`, then `aspire stop && aspire start`. To turn it off, `aspire secret delete Parameters:playground-model-url` and restart. A model-on E2E run reads and seeds `playground_call` through the stack's `APPDB_URI` and, when it ends, deletes every row created while it ran (any other live call on that stack included), so runs don't use up the 300-a-day site cap. A run killed midway leaves its rows: inside the site-daily test, 300 seeded seated rows that refuse every local live call until the next model-on run deletes them or you run `delete from playground_call where visitor = 'e2e-seed'` |
+| Live playground with a fake model | `node web/tests/fake-llama.ts 18080`, `aspire secret set Parameters:playground-model-url http://127.0.0.1:18080`, then `aspire stop && aspire start`. To turn it off, `aspire secret delete Parameters:playground-model-url` and restart. E2E's effect on `playground_call`: `.claude/rules/web-patterns.md` |
 | Push images (CI does this) | `aspire do push` after `docker login ghcr.io` |
 
 <!-- END AUTO-MANAGED -->
@@ -48,7 +51,8 @@ web/                   Astro SSR app (start.mjs entry, otel.mjs, migrate.mjs, se
 .github/workflows/     publish-images.yml: on main (path-filtered) runs web-checks + e2e first, then builds, pushes and
                        attests the web image; a `chart` job pushes the Helm chart pinned to it, and a separate
                        no-permission job uploads Sentry source maps from the image
-                       web-checks.yml: astro check, lint, test, build on PRs (web/** only) and when called
+                       web-checks.yml: audit, astro check, schema drift, lint, test, build, server smoke on PRs
+                       (web/** only) and when called
                        repo-checks.yml: AppHost lint/tsc, Markdown and workflow lint on PRs (AppHost, Markdown and
                        workflow paths)
                        e2e.yml: Playwright on `aspire start` + `aspire publish` check, the image smoke
@@ -70,8 +74,9 @@ out/                   aspire publish output (gitignored)
 
 - Request flow: browser -> Astro middleware (session lookup) -> page render; auth calls hit `/api/auth/*`.
 - Config flow: Aspire injects `APPDB_URI`, `BETTER_AUTH_URL`, `BETTER_AUTH_SECRET`, OAuth ids/secrets, `ADMIN_EMAIL`,
-  `MAIL_FROM`, `SMTP_URL`, `PORT`, and the optional `PLAYGROUND_MODEL_URL`, `PLAYGROUND_MODEL_KEY` and `PLAYGROUND_MODEL`
-  (parameters `playground-model-url`, `playground-model-key` and `playground-model`, the key a secret; an empty model
+  `MAIL_FROM`, `SMTP_URL`, `PORT`, and the optional `PLAYGROUND_MODEL_URL`, `PLAYGROUND_MODEL_KEY` and
+  `PLAYGROUND_MODEL` (parameters `playground-model-url`, `playground-model-key` and `playground-model`, the key a
+  secret; an empty model
   means `LIVE.model`, read through `liveModel()` in `lib/playground-io.ts`).
 
 <!-- END AUTO-MANAGED -->
@@ -83,22 +88,8 @@ out/                   aspire publish output (gitignored)
 - Quotes: single quotes in `apphost.mts`; double quotes in `web/` TypeScript and scripts.
 - Read runtime config from `process.env` in server code (never `import.meta.env` for values injected at run time).
 - Dependencies are pinned to exact versions (no `^`/`~`) in both `package.json` files.
-- Markdown: 120-column limit; every file starts with a top-level heading.
-- Styling: Tailwind utilities on design tokens only (`bg-surface`, `text-muted`, `bg-accent`…); the default
-  Tailwind palette is disabled. New palettes need a block in `palettes.css` and a key in `palettes.ts` (a test
-  enforces the match). Each palette, light and dark, must keep text at WCAG AA (4.5:1): accent and muted on bg,
-  surface and accent-soft, muted on surface-2, and accent-ink on accent; `theme.test.ts` fails otherwise.
-- CSP (`security.csp` in `astro.config.mjs`, sent as a header; `astro dev` skips it, so check a build): no inline
-  `style` attributes, `on*=` handlers or unhashed inline scripts. Third-party origins are added per request with
-  `Astro.csp` (see Telemetry.astro). Code blocks use Prism (token classes, colored from the palette in
-  global.css), not Shiki, whose inline styles the CSP blocks. Post tables take no column alignment (`:---`
-  renders `style="text-align:…"`; `content.test.ts` enforces it). A post that embeds a component is `.mdx`.
-- Size images with classes (`w-28 h-auto aspect-square`), never a `style` attribute (string or object); give `<img>`
-  its real `width`/`height` for layout shift and `h-auto` so they don't stretch it. SVG figures take color from
-  `fill-*`/`stroke-*` token utilities, not `fill="#…"` or `style`.
-- Shared Tailwind class strings live in `web/src/lib/form.ts` (`inlineLink` for prose links, `choice` for radio-chip
-  labels, `badge` for small tag pills, `figureCard`/`figureScroll`/`figureNode`/`figureBox`/`figureWire` for SVG
-  figures); reuse them rather than copying the classes.
+- Markdown: 120-column limit, every file starts with a top-level heading (`.markdownlint-cli2.jsonc`, enforced by
+  the pre-commit hook and CI).
 
 <!-- END AUTO-MANAGED -->
 
@@ -111,171 +102,14 @@ out/                   aspire publish output (gitignored)
   and secret are non-empty.
 - Generated artifacts (AppHost SDK, auth schema, migrations, deploy output) are regenerated by their tools,
   not edited by hand.
-- Account forms handled by page script still declare `method="post"`, so a submit that beats the script can't put
-  the password in a query string.
-- Public pages come from `publicRoutes` in `src/lib/site.ts`; the public origin is `BETTER_AUTH_URL`.
-- Site settings (`site_settings` row, edited on /admin) carry the default theme, Pro palette and display typeface
-  (`sans`/`serif`). New columns need a DB default so the existing row migrates; `fromRow()` in `site-settings.ts`
-  falls back to `SITE_DEFAULTS` for unknown values, and `parseSettingsForm()` rejects them. The /admin form reads the
-  row with `readSiteSettings()`, which throws on a database error: `getSiteSettings()` falls back to defaults, and a
-  form filled from those would save them over the real row.
-- The display typeface is `data-type` on `<html>` (set in `Base.astro`); page and section titles use the `.display`
-  class, which reads `--display-face` (small card and list headings stay Geist bold; Markdown post h2s in
-  `.prose-content` read the same variables, h3 stays Geist). All three families (Geist, Geist Mono, Newsreader) go
-  through Astro's local font provider on the `@fontsource-variable/*` Latin woff2 files; avoid the npm provider: it
-  parses one CSS file per family (none declares both Newsreader's normal and italic), and with unifont 1.x it returns
-  `file://` URLs that Astro's font fetcher passes to `fetch()`, which fails (checked on astro 7.4.2). Newsreader is
-  preloaded only when serif is active. Cross-document view transitions are on (`@view-transition` in `global.css`); the
-  header keeps its own `view-transition-name`. `Base.astro` marks the outgoing page's transition `ready` promise handled
-  on `pageswap`: Safari rejects it at teardown and browser Sentry reported the unhandled rejection (WebKit bug 289078).
-- Visitor theme choices are cookies written by page script (`remember()` in `lib/theme-cookie.ts`): the header's
-  `ModeToggle` sets color mode; the footer's `ThemeControls` sets Brand/Pro and Sans/Serif. The server reads them back
-  into `Astro.locals.theme`.
-- Share cards follow the site theme: pages call `ogImage(slug, siteSettings)` and `cardPalette()` picks Signal for a
-  Brand site, else the Pro palette; the `?v=` palette key makes social caches refetch, and the route renders the
-  palette it names (so a replica with older cached settings can't cache the wrong card under it). `Seo.astro` takes
-  `themeColor` (a string for a forced mode, a light/dark pair when following the system; `themeColorFor()` decides)
-  and emits `theme-color` meta tags.
-- Nav visibility is the `nav` flag in `publicRoutes`; the same flag drives the footer's page links and the 404 page's
-  links. The header's "Let's talk" button links to `person.sameAs[0]`; RSS and Account/Sign in live in the footer.
-- Each page has one job, so facts aren't retold across pages: home is the overview (perspectives, case study),
-  /changelog the timeline (recruiter facts, roles with highlights and their year-dated milestones; the milestones
-  name what happened when, and leave the how and the results to /work),
-  /work the platforms (`workGroups`, newest first; the gateway generations), /about the person. Every inner page
-  links to another from its body (`pages.test.ts`).
-- The home perspective panels share one grid cell and switch with `visibility` (not `display`), so the block keeps the
-  tallest panel's height and the page below doesn't jump; the radio `:has()` rules in `Perspectives.astro` only flip
-  visibility. The hero grid is `1fr / 1.15fr` so the figure draws near full size.
-- Owner-supplied wording stays `null` in `profile.ts` until the owner provides it, and the page renders it only when
-  set; don't write placeholder copy. `availability` is the owner's own sentence, also on his LinkedIn summary.
-- `person` in `lib/site.ts` feeds the Person JSON-LD in `Seo.astro` (`jobTitle`, `worksFor`, `knowsAbout`; only
-  `knowsAbout` is not shown on a page, and `employer.name` in `profile.ts` reuses `worksFor`; it carries no
-  `alumniOf`: education is not published anywhere, by the owner's decision). `profile.ts` `intro` is
-  a list of paragraphs where `*word*` marks emphasis (home page splits on `*`); `og.ts` reuses `headline` for the home
-  card, swapping U+2011 (non-breaking hyphen, which keeps "15,000‑person" together) for "-": the card font lacks it.
-  `sameAs` holds LinkedIn only (the footer and JSON-LD read it).
-- `aboutHeadline` in `profile.ts` is /about's h1, its share card title (`og.ts`) and the home recruiters headline.
-  `currentTitle` (not exported) feeds `career[0].title`, the recruiter facts and the recruiters perspective, so a
-  retitle is one edit; `pages.test.ts` bans "Manager of Infrastructure" and "nearly 17" on the four content pages
-  (/, /about, /changelog, /work), in the profile data and on the share cards. /about's header carries the portrait
-  and the availability line (/changelog's header has both; home has the line in its hero and the portrait in
-  `AboutStrip`), and its skills are ruled rows with a label column like /work's: group name, then pills.
-- All three portraits (/about, /changelog, home `AboutStrip`) are `Portrait.astro`, with a 320w and a 648w `srcset`.
-  A caller that changes the width class passes the matching `sizes` with it (the props type requires both or
-  neither); `lazy` adds `loading="lazy"` and `decoding="async"`. /about's is eager (above the fold); the other two are
-  lazy, so a phone never downloads the one /changelog hides below `md`. `pages.test.ts` pins this.
-- The home gateway figure (`GatewayPath.astro`), its engine and its SVG snapshots: see the "Gateway figure" section of
-  `.claude/rules/web-architecture.md`.
 - Startup work that must be safe under multiple replicas (migrations) is serialized with a Postgres advisory lock.
-- /playground is a browser simulation of the gateway, with a live path when `PLAYGROUND_MODEL_URL` is set. Live, the
-  page POSTs the visitor's own request to `/api/playground`, and the server checks it, sends it to a self-hosted
-  model and streams the answer back. The scenario chips and the no-script replay stay simulated in both modes.
-  `lib/playground.ts` is pure and shared by the SSR replay, the page script, the server and the tests; every invented
-  value lives in its `SIM` and is labelled demo or example on the page. The live path's real values live in its
-  `LIVE`, except `PROMPT_MAX` beside it, and `BODY_MAX`, `BODY_MS`, `IN_FLIGHT_MAX` and the SQL's hour and day windows
-  in `lib/playground-io.ts`. That file is server-only (the `playground_call` row, the model fetch, the stream). The
-  page script must not import it. Prompt text must never be bound to a query or logged (a failed query's error
-  quotes its parameters).
-  A live "routed" decision's target is a branded `LiveTarget` (`playground.ts`) that only `liveModel()` makes, so the
-  page shows the model id the call really used.
-  `data/gateway.ts` is the one list of gates, callers and targets that the home figure and the playground share.
-  The scenario chips switch panels with generated CSS (`scenarioCss()`, an inline `<style>` whose hash
-  `GatewayConsole.astro` registers with `Astro.csp`). Without script each panel shows its scenario's `replay()`
-  and the log shows `RECORDED_TOUR`.
-- The writing post on the three gateway generations draws the two retired ones with `GatewayMap.astro` (static SVG,
-  one `generation` prop; data in `data/gateway-generations.ts`). Its geometry is `lib/gateway-map.ts`, pure: `layout()`
-  measures labels with Geist advance widths and throws, naming the label, when text would not fit its box or would
-  cross a lane, node, label or region edge, so a copy edit that overflows fails `gateway-map.test.ts` rather than
-  rendering badly. `W` (600) must match the component's `min-w-[600px]`; below `sm` it scrolls inside its card (an
-  edge fade and a "Swipe" caption say so), where `GatewayPath` draws its stacked frame instead.
 
 <!-- END AUTO-MANAGED -->
 
 <!-- AUTO-MANAGED: git-insights -->
 ## Git Insights
 
-- Migrations run inside the web container on start: Aspire's Kubernetes publisher can't emit Jobs, and a separate
-  run-once resource broke publishing.
-- Astro sessions are disabled (`session: false` in `web/astro.config.mjs`, Astro 7.2+): the Node adapter's default
-  filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
-- The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
-- `web/e2e/global-setup.ts` opens Vite's HMR socket from Node and takes the `full-reload` Vite keeps for the first
-  client (checked on vite 8.3.4): Astro sends it (checked on astro 7.4.2) when a dev start rewrites its content
-  store (every `aspire start`: `astro dev` gets a new port behind the 4321 proxy, and that port is in the store's
-  config digest). A first test's browser would otherwise take it mid-test and reload the page.
-- `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
-  Postgres restart or failover drops idle connections and the unhandled `error` event kills the web process. Each
-  pool also puts an `error` listener on every client it connects: pg-pool removes its own from a client taken with
-  `pool.connect()`, and a socket that drops then would be an uncaught exception. It also
-  sets connect (5 s), statement (10 s) and query (15 s) timeouts: node-postgres has none, and a stopped Postgres behind
-  a proxy that accepts TCP (Aspire's, locally) hung every request. The live playground queries on its own pool of 6
-  connections (`playgroundDb`), one per call a process admits. A call that stops waiting for a query leaves the query
-  holding its connection, so on the pool auth uses a flood of calls could take the connections sign-in needs.
-  It also wraps Drizzle's internal `queryWithCache`, which is where `DrizzleQueryError` is made, to remove a failed
-  query's parameters (session and reset tokens, emails) from its message, stack and `params`, and the column values
-  Postgres puts on its `cause` (`detail`, `where`, `hint`, `internalQuery`; code and message stay): otherwise every log
-  line, Sentry event and span that sees the error repeats them. `sentry-wiring.test.ts` fails if a Drizzle bump moves it.
-- `security.allowedDomains` (`matherly.net`, https) in `web/astro.config.mjs` makes Astro trust `X-Forwarded-Proto`
-  behind Cloudflare; without it form POSTs fail the origin check with 403. Don't use `Astro.clientAddress`: a client
-  can spoof it through `X-Forwarded-Host`/`X-Forwarded-For`.
-- The image runs `node start.mjs` as the `node` user (`publishAsNodeServer`; `publishAsPackageScript`'s
-  `pnpm run start` fails as non-root: pnpm 12 tries to reinstall into the root-owned `node_modules`). `start.mjs`
-  dynamically imports `otel.mjs`, `migrate.mjs`, then `server.mjs` in one process: static imports would load
-  `migrate.mjs`'s pg and drizzle before OpenTelemetry's hook registers, and one process means SIGTERM reaches
-  `server.mjs`. Node is PID 1, which drops a signal it has no handler for, so until `server.mjs` has loaded,
-  `start.mjs`'s own handlers exit on SIGTERM (143) and SIGINT (130). Before any import, `start.mjs` exits 1 on an
-  `SMTP_URL` that is not an `smtp://` or `smtps://` URL or does not parse: nodemailer would throw on every request
-  (`tests/start.test.ts`). `migrate.mjs` fails at once on a missing `APPDB_URI`, a login or unknown-database error
-  or an unparseable URI, and retries anything else for 60 s.
-  `server.mjs` sets `ASTRO_NODE_AUTOSTART=disabled`, calls `startServer()`, and on SIGTERM/SIGINT drains 7 s,
-  flushes Sentry 1 s and OpenTelemetry 1.5 s, then exits 0, inside Docker's 10 s stop timeout. `otel.mjs` builds
-  `NodeSDK` itself because `register.mjs`'s SIGTERM listener never exits. `scripts/smoke-image.sh` (CI: `e2e.yml`)
-  builds the image and runs this entry as UID 1000 on a read-only root filesystem: migrations, serving, the fast
-  failures, and a stop before and after the server is up.
-- `session.freshAge` is 0 in `web/src/lib/auth.ts`: better-auth gates `listSessions` (the /account page) on a
-  session created within `freshAge` (default one day; checked on better-auth 1.7.12), so a visitor signed in longer
-  got a 500 there. The E2E suite ages a session row through `APPDB_URI` to keep the page open (`account.spec.ts`).
-- Server Sentry is initialised once (`web/src/lib/sentry.ts`); a /admin DSN change only retargets
-  `makeMultiplexedTransport` (`@sentry/core`). A second `Sentry.init` inside a request binds to that request's scope
-  only and stacks process handlers, so later requests kept the old client. It collects no request bodies, query strings
-  or Referer and redacts the reset token in the URL path (the SDK filters only query and header values by key);
-  `sentry-wiring.test.ts` sends a real request through the SDK to a local sink to check it.
-- The Sentry DSN is admin-supplied and the server posts to it, so `web/src/lib/settings-form.ts` rejects private,
-  loopback, link-local and shared (100.64/10) hosts, including IPv6 forms that embed IPv4. `isPrivateAddress()` is
-  reused at connect time by server Sentry's DNS lookup (`sentry.ts`), so a name that resolves locally is refused;
-  a zone id is stripped first and unparseable IPv6 fails closed. Server Sentry ignores http(s)_proxy (it warns).
-- `web/src/lib/pwned.ts` answers what the route would refuse anyway before its breach lookup, in the endpoints' order:
-  no session 401, missing admin permission 403, then the length rules (12-128). It refuses rather than skips when its
-  session read disagrees with the endpoint's, so nothing gets through unchecked; its read passes `disableRefresh`
-  (this hook's Set-Cookie is dropped) and lets a database error surface as a 500. It must stay the only before hook on
-  password routes: before hooks see the original body (a test in `auth-config.test.ts` enforces this).
-- CI pins actions to commit SHAs, cancels superseded runs, and tags images with the commit SHA.
-  Images carry a build provenance attestation: `gh attestation verify oci://ghcr.io/jrmatherly/matherlynet/web:<sha>
-  -R jrmatherly/matherlynet`.
-- `publish-images.yml`'s `chart` job pushes the Helm chart to
-  `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet` as `0.<run number>.<run attempt>` (`appVersion` =
-  commit SHA), from `main` only (a manual run on another branch must not publish a higher version). A re-run of that
-  job gets a new version, and it refuses to replace one that exists. The `push` job generates the chart and runs
-  `scripts/check-chart.sh` (also run on PRs by `e2e.yml`) before the image push, so a chart that fails its checks
-  publishes nothing; a failed chart push can't skip the source maps. CI writes the pushed image (`web@<digest>`)
-  into `parameters.web.web_image` and renders the packaged chart to confirm it: `aspire publish` leaves the value
-  as `web:latest`. The chart name comes from `withChartName` in `apphost.mts`; the chart is not attested.
-  A release is a signed `v<chart version>` tag (e.g. `v0.46.1`) on the commit that chart was built from, with a GitHub
-  Release, cut by hand with `/release` (no workflow creates it); fixes land on `main` only.
-- Chart upgrade from 0.29.1 or earlier is not a rolling update: object names gained the `matherlynet-` prefix, so Helm
-  deletes and recreates them and the site is down until the new pod is ready. Each pod logs one better-auth "Rate
-  limiting could not determine a client IP" warning at start (the first kubelet probe has no `cf-connecting-ip`;
-  checked on better-auth 1.7.12); it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not
-  buffer the playground stream, and a disconnect reaches web (the row closed as `cut` / `left`).
-- The image workflow runs only when the image, the chart or their checks can change (`web/**` minus docs, AppHost
-  files, root `package*.json`, `scripts/check-chart.sh` and `smoke-image.sh`, the workflow itself and the
-  `web-checks.yml` and `e2e.yml` it calls);
-  `workflow_dispatch` bypasses the filter. `paths-ignore` can't take `!` exceptions, so it is an include list.
-- Vitest sees an empty `writing` collection on a clean checkout (the content store exists only after a dev server
-  or build has synced it), so which posts the feed and sitemap carry is asserted in `e2e/public.spec.ts`.
-- Markdown is linted by markdownlint-cli2 via a pre-commit hook (staged files only).
-- `.gitignore` excludes local tooling state: `.codegraph/`, `.remember/`, `.serena/cache/`, `private/`,
-  `.claude/settings.local.json`, `CLAUDE.local.md` and `.claude/auto-memory/dirty-files*`.
+- Decisions and what they rest on sit with their area in `.claude/rules/`, not here.
 
 <!-- END AUTO-MANAGED -->
 
@@ -284,7 +118,7 @@ out/                   aspire publish output (gitignored)
 
 - Verify before declaring work done: lint, type-check, build, and smoke-test the running stack.
 - Prefer the project's tools over ad-hoc edits for generated files (`aspire add`, `pnpm db:generate`).
-- Keep this file concise; area-specific detail belongs in the Rules below or tool-specific config.
+- Keep this file under 200 lines: what every session needs. A new area fact goes in that area's `.claude/rules/` file.
 
 <!-- END AUTO-MANAGED -->
 
@@ -309,8 +143,6 @@ out/                   aspire publish output (gitignored)
 - Database: never edit migrations in `web/drizzle/` by hand. Change the better-auth config or
   `web/src/db/`, then run `pnpm db:generate` and commit the new SQL. `web/migrate.mjs` applies
   migrations on every start under a Postgres advisory lock.
-- `playground_call` (one row per accepted live /playground call, the rate limiter and the seat counter): see
-  `.claude/rules/database.md`.
 - Dependencies: exact versions, latest stable. pnpm refuses versions under a day old (its default
   `minimumReleaseAge`): pinning one makes pnpm record a `minimumReleaseAgeExclude` entry. npm has no release-age guard
   unless `~/.npmrc` sets `min-release-age` (then pass `--min-release-age-exclude=<package-name>`); Renovate waits 7
@@ -335,35 +167,6 @@ out/                   aspire publish output (gitignored)
   keep it when adding native dependencies.
 - Secrets come from Aspire parameters (`aspire secret set Parameters:<name> <value>`), never from
   committed files. OAuth providers stay disabled until both their id and secret are set.
-- Optional AppHost parameters go through `optionalParameter()`: `addParameter`'s `value` overrides user
-  secrets and `Parameters__*` env vars, so a plain `{ value: '' }` default can never be set.
-- Admins: the verified account whose email matches the `admin-email` parameter is promoted on verify.
-  Keep `requireEmailVerification` on; without it anyone could register that email. Promotion happens only when
-  the email becomes verified (not on every update, so demotions stick): set `admin-email` before that account's
-  email is verified. Promotion failures are logged with the SQL to finish them; `/api/auth/*` errors go to Sentry
-  through better-auth's `onAPIError` and an after-hook, not the Astro middleware.
-- Observability: OpenTelemetry is infrastructure (Aspire injects OTEL_*; local and Compose dashboards). The
-  Kubernetes chart has no dashboard and no OTLP endpoint (`withDashboard({ enabled: false })`), so telemetry is off
-  there unless an install sets `OTEL_EXPORTER_OTLP_ENDPOINT`.
-  Sentry DSN/switches and Umami script/website id are runtime settings on /admin, not Aspire parameters.
-  Sentry is errors-only (`enableOpenTelemetrySetup` stays false); never add a second tracer provider.
-- Sentry stack traces: the build emits hidden source maps with debug IDs (`@sentry/bundler-plugins/vite`,
-  upload disabled: the Aspire-generated Dockerfile takes no build secrets). CI uploads from the image's `/app/dist`
-  with `--no-rewrite`. The release is `SENTRY_RELEASE` = `IMAGE_TAG`, so set `IMAGE_TAG` when publishing.
-- Umami uses appdb's `umami` schema (`?schema=umami`), not its own database: published Compose only creates
-  `POSTGRES_DB`, and under Kubernetes `secrets.umami.appdb_uri` names the same external database as web's. Don't
-  use the toolkit's `withPostgreSQL()`; it inlines the Postgres password when published.
-- Umami is opt-in (`Umami:Enabled`; config keys are read with `getConfiguration()`, since parameters resolve too
-  late to gate a resource). Off, it isn't in local runs or published output. Its default `admin/umami` login can
-  only be changed through its API: `scripts/umami-set-password.mjs`.
-- Compose-only settings (`publishAsDockerComposeService`) are guarded by `!k8s`: under `DEPLOY_TARGET=k8s` there is
-  no Compose environment and the publish fails validation.
-- GitHub Actions: pin actions to full commit SHAs with a `# vX.Y.Z` comment, keep the concurrency
-  group, emoji step names, and run `actionlint`.
-- Theme = palette × mode × typeface: visitor cookies `mn-theme`, `mn-mode`, `mn-type` over the /admin defaults (mode
-  has none; it defaults to `system`). Page transitions are native cross-document view transitions (`@view-transition`
-  in `global.css`); don't add `<ClientRouter />`. Page and section titles take `.display`; body text is always Geist.
-- Markdown follows `.markdownlint-cli2.jsonc` (120 columns); the pre-commit hook enforces it.
 - Don't push, publish images, or deploy without explicit approval.
 
 <!-- END MANUAL -->

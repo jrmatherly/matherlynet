@@ -4,6 +4,9 @@ paths:
   - "aspire.config.json"
   - "tsconfig.apphost.json"
   - "package.json"
+  - "scripts/check-chart.sh"
+  - "deploy/**"
+  - ".github/renovate.json5"
 ---
 
 # AppHost (Aspire 13.6, TypeScript)
@@ -59,3 +62,18 @@ paths:
     (UI port on loopback).
 - Root `package.json` is the AppHost's npm project: keep `vscode-jsonrpc` on 8.x and TypeScript on
   6.0.x (see AGENTS.md); `tsconfig.apphost.json` must keep `"types": ["node"]` for TypeScript 6.
+- Chart upgrade from 0.29.1 or earlier is not a rolling update: object names gained the `matherlynet-` prefix, so Helm
+  deletes and recreates them and the site is down until the new pod is ready. Each pod logs one better-auth "Rate
+  limiting could not determine a client IP" warning at start (the first kubelet probe has no `cf-connecting-ip`;
+  checked on better-auth 1.7.12); it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not
+  buffer the playground stream, and a disconnect reaches web (the row closed as `cut` / `left`).
+- Optional AppHost parameters go through `optionalParameter()`: `addParameter`'s `value` overrides user
+  secrets and `Parameters__*` env vars, so a plain `{ value: '' }` default can never be set.
+- Umami uses appdb's `umami` schema (`?schema=umami`), not its own database: published Compose only creates
+  `POSTGRES_DB`, and under Kubernetes `secrets.umami.appdb_uri` names the same external database as web's. Don't
+  use the toolkit's `withPostgreSQL()`; it inlines the Postgres password when published.
+- Umami is opt-in (`Umami:Enabled`; config keys are read with `getConfiguration()`, since parameters resolve too
+  late to gate a resource). Off, it isn't in local runs or published output. Its default `admin/umami` login can
+  only be changed through its API: `scripts/umami-set-password.mjs`.
+- Compose-only settings (`publishAsDockerComposeService`) are guarded by `!k8s`: under `DEPLOY_TARGET=k8s` there is
+  no Compose environment and the publish fails validation.

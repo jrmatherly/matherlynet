@@ -8,7 +8,10 @@ paths:
   - "web/src/lib/playground*.ts"
   - "web/src/pages/api/playground.ts"
   - "web/tests/playground*.test.ts"
+  - "web/tests/fake-llama.ts"
   - "web/e2e/live.spec.ts"
+  - "web/e2e/db.ts"
+  - "web/src/lib/mail-throttle.ts"
 ---
 
 # Database and auth schema (Drizzle 0.45 + better-auth 1.7)

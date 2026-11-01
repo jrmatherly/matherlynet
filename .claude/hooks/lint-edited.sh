@@ -8,26 +8,26 @@
 #
 #   *.md                      markdownlint-cli2 (repo config, this file only)
 #   apphost.mts               eslint + tsc -p tsconfig.apphost.json
-#   web/{src,tests}/**, web/*.{mjs,ts}  eslint (this file) + astro check (whole web project)
+#   web/**/*.{astro,ts,tsx,mjs}  eslint (this file) + astro check (whole web project); a case * crosses "/"
 #   .github/workflows/*.y*ml  actionlint
 
 set -uo pipefail
 
-project=${CLAUDE_PROJECT_DIR:-$(pwd -P)}
+# CLAUDE_PROJECT_DIR stays on the main checkout after a session enters a worktree; the input's cwd follows it
+{ read -r file; read -r cwd; } < <(jq -r '.tool_input.file_path // .tool_input.relative_path // "", .cwd // ""' 2>/dev/null)
+[ -n "${file:-}" ] || exit 0
 # Edit/Write send an absolute file_path; Serena's edit tools a relative_path
-file=$(jq -r '.tool_input.file_path // .tool_input.relative_path // empty' 2>/dev/null) || exit 0
-[ -n "$file" ] || exit 0
-[[ $file == /* ]] || file="$project/$file"
+[[ $file == /* ]] || file="${cwd:-${CLAUDE_PROJECT_DIR:-$PWD}}/$file"
 
-# Only existing files inside this checkout (directories, e.g. from replace_in_files, are skipped)
+# Only existing files in this repository or a worktree of it (directories, e.g. from replace_in_files, are skipped)
 [ -f "$file" ] || exit 0
-case $file in
-  "$project"/*) ;;
-  *) exit 0 ;;
-esac
+common() { git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null; }
+repo=$(common "$(dirname "$file")") || exit 0
+[ "$repo" = "$(common "${CLAUDE_PROJECT_DIR:-$PWD}")" ] || exit 0
 
-cd "$project" || exit 0
-rel=${file#"$project"/}
+cd "$(dirname "$file")" || exit 0
+rel="$(git rev-parse --show-prefix)$(basename "$file")"
+cd "$(git rev-parse --show-toplevel)" || exit 0
 
 # Generated or machine-local files (.aspire/, out/, private/, …) aren't ours to lint
 git check-ignore -q -- "$rel" && exit 0

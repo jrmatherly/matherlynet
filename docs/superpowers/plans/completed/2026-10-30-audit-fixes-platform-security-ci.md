@@ -133,7 +133,8 @@ Expected: 6 high, 4 moderate advisories (source-map-js, systeminformation, undic
 
 - [ ] **Step 2: Refresh the transitive versions**
 
-Run: `cd web && pnpm update undici source-map-js systeminformation && pnpm audit --prod --audit-level=high; echo "exit=$?"`
+Run: `cd web && pnpm update undici source-map-js systeminformation && pnpm audit --prod --audit-level=high; echo
+"exit=$?"`
 Expected: `exit=0`. If an advisory stays because a parent pins the range, add a `pnpm.overrides` entry in
 `web/package.json` for that package at the fixed version and say so in the PR body.
 
@@ -259,7 +260,8 @@ installed earlier in that job.
 
 - [ ] **Step 5: Run the image smoke locally**
 
-Run: `aspire publish -o out/k8s` (with `DEPLOY_TARGET=k8s`) then `SMOKE_E2E=1 scripts/smoke-image.sh out/k8s/web.Dockerfile`.
+Run: `aspire publish -o out/k8s` (with `DEPLOY_TARGET=k8s`) then `SMOKE_E2E=1 scripts/smoke-image.sh
+out/k8s/web.Dockerfile`.
 Expected: the script's final line prints as before and the spec reports 7 passed.
 
 - [ ] **Step 6: Commit**
@@ -616,7 +618,8 @@ against the same Postgres with the same env, wait for `/api/auth/ok`, stop it. T
 database that already holds the previous release's schema and rows (seed one `user` row through `psql` between the
 two runs so a migration that rewrites `user` meets data). In `e2e.yml`, set `SMOKE_FROM_IMAGE` to the image of the
 latest release: `ghcr.io/jrmatherly/matherlynet/web:$(gh release view --json tagName -q .tagName | ...)` is
-indirect; read it from the latest chart's `appVersion` with `helm show chart oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`
+indirect; read it from the latest chart's `appVersion` with `helm show chart
+oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`
 and tag `web:<appVersion>`.
 
 - [ ] **Step 4: Run the smoke locally with the current release as the previous image**

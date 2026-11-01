@@ -93,7 +93,8 @@ In `web/tests/pwned.test.ts`, change `makeAuth`'s plugins line from `plugins: [p
     plugins: [admin(), pwnedPasswordCheck(timeoutMs)],
 ```
 
-Change the import line `import { PASSWORD_FIELDS, breachCount, passwordFrom, pwnedPasswordCheck } from "../src/lib/pwned";`
+Change the import line `import { PASSWORD_FIELDS, breachCount, passwordFrom, pwnedPasswordCheck } from
+"../src/lib/pwned";`
 to:
 
 ```ts

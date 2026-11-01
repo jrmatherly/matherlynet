@@ -1,6 +1,7 @@
 # matherlynet
 
-Astro 7 (SSR, `@astrojs/node`) + better-auth + Drizzle/PostgreSQL, orchestrated by an Aspire 13.6 TypeScript AppHost (`apphost.mts`).
+Astro 7 (SSR, `@astrojs/node`) + better-auth + Drizzle/PostgreSQL, orchestrated by an Aspire 13.6 TypeScript AppHost
+(`apphost.mts`).
 
 ## Prerequisites
 
@@ -14,7 +15,8 @@ After cloning, enable the git hooks (Markdown lint via `.pre-commit-config.yaml`
 aspire run          # dashboard link is printed; app at http://localhost:4321
 ```
 
-Postgres runs in a container with a persistent volume. Migrations in `web/drizzle/` are applied before `astro dev` starts.
+Postgres runs in a container with a persistent volume. Migrations in `web/drizzle/` are applied before `astro dev`
+starts.
 
 ### OAuth (optional)
 
