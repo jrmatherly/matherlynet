@@ -1,8 +1,11 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { inspect } from "node:util";
 import * as Sentry from "@sentry/node";
+import { sql } from "drizzle-orm";
+import { DrizzleQueryError } from "drizzle-orm/errors";
 import { afterAll, expect, it, vi } from "vitest";
-import { configureSentry } from "../src/lib/sentry";
+import { captureError, captureServerError, configureSentry } from "../src/lib/sentry";
 
 // Local stand-ins for Sentry ingest: each records the item types of every envelope it receives. Besides error
 // events the SDK sends a `session` envelope when it knows a release (it reads one from env such as GITHUB_SHA in
@@ -41,7 +44,7 @@ it("sends errors to the current DSN, nothing at all while off, and follows a DSN
   expect(a.events()).toBe(1);
   // The sink is an http server in this process, so Sentry's server instrumentation starts a request session when the
   // first envelope lands, and @sentry/node then closes the process session (processSessionIntegration;
-  // checked on @sentry/node 11.8.0) and queues its "exited" update. That send is in the buffer before the flush above
+  // checked on @sentry/node 11.9.0) and queues its "exited" update. That send is in the buffer before the flush above
   // resolves but not awaited by it, so a second flush takes it before the switch to off.
   await Sentry.flush(2000);
 
@@ -98,6 +101,58 @@ it("connects directly even when a proxy is configured, and says so", async () =>
   expect(d.events()).toBe(1);
   expect(warn.mock.calls.flat().join(" ")).toMatch(/proxy is set, but server Sentry connects directly/);
   warn.mockRestore();
+});
+
+it("sends no reset token or other secret from a failed request, anywhere in the event", async () => {
+  const { dsn, bodies } = await sink();
+  configureSentry(dsn);
+  const app = createServer((req, res) => {
+    captureServerError(new Error("database down"), new Request(`http://matherly.net${req.url}`, { method: req.method }));
+    res.statusCode = 500;
+    res.end();
+  });
+  sinks.push(app);
+  await new Promise<void>((resolve) => app.listen(0, "127.0.0.1", resolve));
+  const url = `http://127.0.0.1:${(app.address() as AddressInfo).port}`;
+  await fetch(`${url}/api/auth/reset-password/SECRET1?token=SECRET2&code=SECRET3&callbackURL=/`, {
+    headers: { referer: `${url}/reset-password?token=SECRET4`, authorization: "Bearer SECRET5", cookie: "session=SECRET6" },
+  });
+  await Sentry.flush(2000);
+
+  expect(bodies).toHaveLength(1);
+  expect(JSON.stringify(bodies[0])).not.toMatch(/SECRET/);
+  const event = bodies[0] as { extra?: { path?: string }; request?: { url?: string } };
+  expect(event.extra?.path).toBe("/api/auth/reset-password/REDACTED");
+  expect(event.request?.url).toContain("/api/auth/reset-password/REDACTED");
+});
+
+it("keeps a failed query's text but not its parameters, in the error, a log line and the event", async () => {
+  const { dsn, bodies } = await sink();
+  configureSentry(dsn);
+  // Nothing listens on port 9, so this is a real failed query through the app's own db module.
+  vi.stubEnv("APPDB_URI", "postgresql://u:p@127.0.0.1:9/x");
+  const { db } = await import("../src/db");
+  vi.unstubAllEnvs();
+  // Random, not a literal: Sentry sends the source lines around each stack frame, and a literal would be on one.
+  const secret = crypto.randomUUID();
+  const failed: unknown = await db.execute(sql`select ${secret}`).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(failed).toBeInstanceOf(DrizzleQueryError);
+  // inspect is what a logger prints: the message, the stack and every property.
+  expect(inspect(failed, { depth: null })).not.toContain(secret);
+  expect(inspect(failed, { depth: null })).toContain("Failed query: select");
+  expect(inspect(failed, { depth: null })).toContain("ECONNREFUSED");
+
+  // Not mocked: a spy replaces Sentry's console wrapper, and no breadcrumb would be recorded.
+  console.error("auth request failed", failed);
+  captureError(failed);
+  await Sentry.flush(2000);
+  expect(bodies).toHaveLength(1);
+  expect(JSON.stringify(bodies[0])).not.toContain(secret);
+  expect(JSON.stringify(bodies[0])).toContain("Failed query: select");
 });
 
 it("sends no visitor identity: no user.ip_address, no client IP headers, request url and method kept", async () => {

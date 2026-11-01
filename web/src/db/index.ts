@@ -1,7 +1,27 @@
+import { DrizzleQueryError } from "drizzle-orm/errors";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { PgPreparedQuery } from "drizzle-orm/pg-core";
 import pg from "pg";
 import * as authSchema from "./auth-schema";
 import * as appSchema from "./schema";
+
+// A failed query's DrizzleQueryError quotes its parameters (session and reset tokens, emails) in its message, stack and
+// `params`, so every log line, Sentry event and span that sees the error would repeat them. Drizzle has no option for
+// this and makes the error in an internal method (pg-core/session.js, checked on drizzle-orm 0.45.4), so they are
+// removed there. sentry-wiring.test.ts runs a real failing query and fails if that method moves.
+const prepared = PgPreparedQuery.prototype as unknown as { queryWithCache(...args: unknown[]): Promise<unknown> };
+const queryWithCache = prepared.queryWithCache;
+prepared.queryWithCache = function (...args) {
+  return queryWithCache.apply(this, args).catch((error: unknown) => {
+    if (error instanceof DrizzleQueryError) {
+      const message = `Failed query: ${error.query}`;
+      error.stack = error.stack?.replace(error.message, () => message);
+      error.message = message;
+      error.params = [];
+    }
+    throw error;
+  });
+};
 
 // APPDB_URI is injected by Aspire: from the `appdb` Postgres resource, or under Kubernetes the `appdb-uri` parameter.
 // node-postgres has no connect or query timeout by default: an unreachable (or proxied, half-open) database hangs

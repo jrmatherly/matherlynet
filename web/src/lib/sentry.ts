@@ -61,6 +61,10 @@ const publicOnlyTransport = (options: Parameters<typeof Sentry.makeNodeTransport
   return Sentry.makeNodeTransport({ ...options, httpModule: publicOnlyHttp });
 };
 
+// The emailed link carries the reset token in its path, and the SDK filters only query and header values by key
+// (requestdata.js, checked on @sentry/core 11.9.0), so the URL and the transaction name would pass it through.
+const redactResetToken = (text: string) => text.replace(/(\/reset-password\/)[^/?#\s]+/, "$1REDACTED");
+
 // Called whenever site settings are (re)loaded. Sentry's options are fixed when the client is created, and a
 // second Sentry.init (inside a request) binds only to that request's scope and adds another set of process
 // handlers. So the client is created once, with the first DSN, and the multiplexed transport sends each event
@@ -82,8 +86,14 @@ export function configureSentry(dsn: string | null): void {
       ),
     // Request bodies stay out of events (sign-up bodies carry emails). Visitor IPs are personal data the site stores
     // nowhere else: userInfo false drops user.ip_address and the client-IP headers (cf-connecting-ip, x-forwarded-for,
-    // …; requestdata.js, checked on @sentry/core 11.8.0). Query strings and other headers keep the SDK's key filtering.
-    dataCollection: { httpBodies: [], userInfo: false },
+    // …; requestdata.js, checked on @sentry/core 11.9.0). Query strings and the Referer can carry tokens, so neither is
+    // sent. A deny list adds to the SDK's sensitive-key filter (filterKeyValueData.js), so cookies stay filtered.
+    dataCollection: { httpBodies: [], userInfo: false, urlQueryParams: false, httpHeaders: { request: { deny: ["referer"] } } },
+    beforeSend(event) {
+      if (event.transaction) event.transaction = redactResetToken(event.transaction);
+      if (event.request?.url) event.request.url = redactResetToken(event.request.url);
+      return event;
+    },
   });
 }
 
@@ -94,5 +104,5 @@ export function captureError(error: unknown, extra?: Record<string, unknown>): v
 
 // Path only: query strings can carry tokens (e.g. /reset-password?token=…).
 export function captureServerError(error: unknown, request: Request): void {
-  captureError(error, { method: request.method, path: new URL(request.url).pathname });
+  captureError(error, { method: request.method, path: redactResetToken(new URL(request.url).pathname) });
 }
