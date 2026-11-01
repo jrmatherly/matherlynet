@@ -57,8 +57,8 @@ web/                   Astro SSR app (start.mjs entry, otel.mjs, migrate.mjs, se
 .github/pull_request_template.md  PR body: summary, verification evidence, deployment impact, docs
 .github/renovate.json5 Renovate version updates: weekly, 7-day release age, exact pins, the version caps, and
                        pins outside package.json (Sentry CLI, Aspire packages and CLI, the Postgres and Compose
-                       dashboard images, the markdownlint-cli2 hook); Dependabot security updates, CodeQL default
-                       setup and private reporting are repo settings
+                       dashboard images, the markdownlint-cli2 hook, workflow and config `$schema`); Dependabot
+                       security updates, CodeQL default setup and private reporting are repo settings
 SECURITY.md            policy: report privately via GitHub's "Report a vulnerability"; only `main` is supported
 docs/deployment.md     production runbook: publish settings, .env, Cloudflare Tunnel + rules, Umami, Sentry, K8s,
                        live playground
@@ -237,9 +237,9 @@ out/                   aspire publish output (gitignored)
   got a 500 there. The E2E suite ages a session row through `APPDB_URI` to keep the page open (`account.spec.ts`).
 - Server Sentry is initialised once (`web/src/lib/sentry.ts`); a /admin DSN change only retargets
   `makeMultiplexedTransport` (`@sentry/core`). A second `Sentry.init` inside a request binds to that request's scope
-  only and stacks process handlers, so later requests kept the old client. It collects no query strings or Referer and
-  redacts the reset token in the URL path (the SDK filters only query and header values by key); `sentry-wiring.test.ts`
-  sends a real request through the SDK to a local sink to check it.
+  only and stacks process handlers, so later requests kept the old client. It collects no request bodies, query strings
+  or Referer and redacts the reset token in the URL path (the SDK filters only query and header values by key);
+  `sentry-wiring.test.ts` sends a real request through the SDK to a local sink to check it.
 - The Sentry DSN is admin-supplied and the server posts to it, so `web/src/lib/settings-form.ts` rejects private,
   loopback, link-local and shared (100.64/10) hosts, including IPv6 forms that embed IPv4. `isPrivateAddress()` is
   reused at connect time by server Sentry's DNS lookup (`sentry.ts`), so a name that resolves locally is refused;
