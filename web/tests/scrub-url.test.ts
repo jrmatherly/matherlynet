@@ -1,5 +1,25 @@
+import * as Sentry from "@sentry/browser";
 import { describe, expect, it } from "vitest";
-import { scrubBreadcrumb, scrubEvent, stripQuery } from "../src/lib/scrub-url";
+import { browserSentryOptions, scrubBreadcrumb, scrubEvent, stripQuery } from "../src/lib/scrub-url";
+
+describe("browserSentryOptions", () => {
+  it("sends an event with no inferred IP and no timezone or locale", async () => {
+    const sent: Sentry.ErrorEvent[] = [];
+    const client = new Sentry.BrowserClient({
+      dsn: "https://k@o1.ingest.sentry.io/1",
+      stackParser: Sentry.defaultStackParser,
+      transport: () => ({ send: async (envelope) => (sent.push(envelope[1][0]?.[1] as Sentry.ErrorEvent), {}), flush: async () => true }),
+      ...browserSentryOptions,
+      integrations: browserSentryOptions.integrations(Sentry.getDefaultIntegrations({})),
+    });
+    client.init();
+    client.captureException(new Error("probe"));
+    await client.flush(2000);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.sdk?.settings?.infer_ip).toBe("never");
+    expect(sent[0]?.contexts?.culture).toBeUndefined();
+  });
+});
 
 describe("stripQuery", () => {
   it("drops query strings and fragments", () => {

@@ -48,7 +48,8 @@ How the site is put together and why. The file-by-file map is `web-architecture.
   `themeColor` (a string for a forced mode, a light/dark pair when following the system; `themeColorFor()` decides)
   and emits `theme-color` meta tags.
 - Nav visibility is the `nav` flag in `publicRoutes`; the same flag drives the footer's page links and the 404 page's
-  links. The header's "Let's talk" button links to `person.sameAs[0]`; RSS and Account/Sign in live in the footer.
+  links. The header's "Let's talk" button links to `person.sameAs[0]`; RSS, Privacy and Account/Sign in live in the
+  footer.
 - Each page has one job, so facts aren't retold across pages: home is the overview (perspectives, case study),
   /changelog the timeline (recruiter facts, roles with highlights and their year-dated milestones; the milestones
   name what happened when, and leave the how and the results to /work),

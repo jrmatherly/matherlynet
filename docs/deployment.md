@@ -157,6 +157,12 @@ of the security headers pages get (checked on a production build), and the clien
 `SENTRY_AUTH_TOKEN` is a GitHub Actions secret; CI uploads source maps for each pushed image. The DSN and the
 server/browser switches are runtime settings on `/admin` (an https DSN on a public host).
 
+The Sentry project also scrubs at ingest, as a backstop for the SDK settings: Security & Privacy has "Prevent Storing
+of IP Addresses" on and the Advanced Data Scrubbing rule `[Remove] [Anything] from [$user.geo.**]`. A new project needs
+both set again. A settings change took a few minutes to apply to new events (measured 2026-11-01). `/privacy` describes
+what these settings exclude and states the Sentry region and retention, the mail provider and the 30-day backup
+retention (home-cluster's `objectstore.yaml`), so update it if any of them change.
+
 ## 7. Kubernetes
 
 CI pushes the chart with each image from `main`, to `oci://ghcr.io/jrmatherly/matherlynet/charts/matherlynet`.

@@ -1,0 +1,64 @@
+---
+import { contact } from "../data/profile";
+import Base from "../layouts/Base.astro";
+import { inlineLink } from "../lib/form";
+
+// What this site collects. The Sentry and Umami sections appear only while /admin has them switched on.
+const { sentry, umami } = Astro.locals.siteSettings;
+const browserReports = Boolean(sentry.dsn && sentry.browser);
+const errorReports = Boolean(sentry.dsn && (sentry.server || sentry.browser));
+const heading = "display text-2xl";
+---
+
+<Base title="Privacy" description="What this site collects, who else sees it, and how to have your data removed.">
+  <article class="mx-auto grid max-w-3xl gap-10 px-4 py-16 sm:px-6 sm:py-20">
+    <header class="grid gap-4">
+      <h1 class="display text-4xl sm:text-5xl">Privacy</h1>
+      <p class="text-lg text-muted">This is a personal site. You can read all of it without an account, and it collects as little as I can manage.</p>
+    </header>
+
+    <section class="grid gap-3">
+      <h2 class={heading}>If you create an account</h2>
+      <p>I store your name, your email address and a hash of your password. If you sign in with GitHub or Google instead, I store your account id there, the tokens they issue and your profile picture, and that provider knows you signed in here.</p>
+      <p>Each session also stores your IP address and browser details. You can see and end your sessions on <a href="/account" class={inlineLink}>your account page</a>.</p>
+      <p>When you set a password, the first five characters of its hash go to Have I Been Pwned to check it against known breaches. The password itself never leaves this site. Verification and password-reset emails are sent through Apple's iCloud mail service.</p>
+    </section>
+
+    <section class="grid gap-3">
+      <h2 class={heading}>If you use the playground</h2>
+      <p>Prompts you send go to a model I host myself to produce the answer. This site doesn't store or log them. Each call saves a usage record with no prompt text and no IP address: how long the prompt and answer were, the token counts, which caller you picked and the outcome. It's tied to your account or, if you're signed out, to a code derived from your IP address.</p>
+    </section>
+
+    <section class="grid gap-3">
+      <h2 class={heading}>Every visit</h2>
+      <p>All traffic passes through Cloudflare, which sees your IP address and approximate location as part of protecting and delivering the site. Sign-in attempts and other account requests are counted by IP address to limit abuse, and that counter holds the address in my database for a short time.</p>
+      <p>My cookies keep you signed in and remember your theme choices. Cloudflare may set its own while protecting the site. None are used for advertising.</p>
+    </section>
+
+    {
+      errorReports && (
+        <section class="grid gap-3">
+          <h2 class={heading}>Error reports</h2>
+          <p>When something breaks, a report goes to Sentry, stored in the United States for about 30 days. It holds the error, the page's path, your browser and operating system, the site that linked you here, and the steps leading up to it, such as pages visited, buttons clicked, network requests and log messages. It's set up to exclude your IP address, location, language, cookies, form contents and any query string.</p>
+          {browserReports && <p>Each page you open also sends Sentry an anonymous session count with your browser details, even when nothing breaks.</p>}
+        </section>
+      )
+    }
+
+    {
+      umami.enabled && umami.scriptUrl && (
+        <section class="grid gap-3">
+          <h2 class={heading}>Analytics</h2>
+          <p>Page views are counted with Umami, which I host myself. It sets no cookies. It records the page's path without any query string, the page that linked you here, and general details such as browser, device, language and approximate location.</p>
+        </section>
+      )
+    }
+
+    <section class="grid gap-3">
+      <h2 class={heading}>Removing your data</h2>
+      <p>To have your account and data removed, or to ask what I hold about you, <a href={contact.href} rel="me noopener" class={inlineLink}>message me on LinkedIn</a>. Nightly database backups are kept in Cloudflare's storage for 30 days, so removed data can stay in them until then.</p>
+    </section>
+
+    <p class="text-sm text-muted">Last updated November 2026.</p>
+  </article>
+</Base>
