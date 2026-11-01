@@ -19,6 +19,7 @@ prepared.queryWithCache = function (...args) {
       error.message = message;
       error.params = [];
       // Postgres puts column values here ("Key (email)=(…) already exists"); its code and message stay for debugging.
+      // A failed cast's message quotes its value, but tokens and emails bind to text columns, which never cast.
       const cause = error.cause as unknown as Record<string, unknown> | undefined;
       for (const field of ["detail", "where", "hint", "internalQuery"]) delete cause?.[field];
     }

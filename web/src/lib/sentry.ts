@@ -84,10 +84,11 @@ export function configureSentry(dsn: string | null): void {
         makeMultiplexedTransport(publicOnlyTransport, () => (activeDsn ? [activeDsn] : []))(options),
         () => activeDsn !== null,
       ),
-    // Request bodies stay out of events (sign-up bodies carry emails). Visitor IPs are personal data the site stores
-    // nowhere else: userInfo false drops user.ip_address and the client-IP headers (cf-connecting-ip, x-forwarded-for,
-    // …; requestdata.js, checked on @sentry/core 11.9.0). Query strings and the Referer can carry tokens, so neither is
-    // sent. A deny list adds to the SDK's sensitive-key filter (filterKeyValueData.js), so cookies stay filtered.
+    // Request bodies stay out of events (sign-up bodies carry emails and passwords). Visitor IPs are personal data that
+    // a third party doesn't need: userInfo false drops user.ip_address and the client-IP headers (cf-connecting-ip,
+    // x-forwarded-for, …; requestdata.js, checked on @sentry/core 11.9.0). Query strings and the Referer can carry
+    // tokens, so neither is sent. A deny list adds to the SDK's sensitive-key filter (filterKeyValueData.js), so cookies
+    // stay filtered.
     dataCollection: { httpBodies: [], userInfo: false, urlQueryParams: false, httpHeaders: { request: { deny: ["referer"] } } },
     beforeSend(event) {
       if (event.transaction) event.transaction = redactResetToken(event.transaction);

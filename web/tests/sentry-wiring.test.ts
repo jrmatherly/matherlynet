@@ -1,3 +1,4 @@
+import { AsyncResource } from "node:async_hooks";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { inspect } from "node:util";
@@ -126,6 +127,37 @@ it("sends no reset token or other secret from a failed request, anywhere in the 
   expect(event.request?.url).toContain("/api/auth/reset-password/REDACTED");
 });
 
+it("sends no request body: a sign-up's email and password stay out of the event", async () => {
+  const { dsn, bodies } = await sink();
+  configureSentry(dsn);
+  const app = createServer((req, res) => {
+    // A listener, not req.resume(): with resume() the test still passes when httpBodies is removed.
+    req.on("data", () => {});
+    // Bound, or the callback leaves the request's scope and the event has no `request` to check.
+    req.on(
+      "end",
+      AsyncResource.bind(() => {
+        captureServerError(new Error("sign-up failed"), new Request(`http://matherly.net${req.url}`, { method: req.method }));
+        res.statusCode = 500;
+        res.end();
+      }),
+    );
+  });
+  sinks.push(app);
+  await new Promise<void>((resolve) => app.listen(0, "127.0.0.1", resolve));
+  const secret = crypto.randomUUID();
+  await fetch(`http://127.0.0.1:${(app.address() as AddressInfo).port}/api/auth/sign-up/email`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: `${secret}@example.test`, password: secret }),
+  });
+  await Sentry.flush(2000);
+
+  expect(bodies).toHaveLength(1);
+  expect((bodies[0] as { request?: { method?: string } }).request?.method).toBe("POST");
+  expect(JSON.stringify(bodies[0])).not.toContain(secret);
+});
+
 it("keeps a failed query's text but not its parameters, in the error, a log line and the event", async () => {
   const { dsn, bodies } = await sink();
   configureSentry(dsn);
@@ -135,10 +167,18 @@ it("keeps a failed query's text but not its parameters, in the error, a log line
   vi.unstubAllEnvs();
   // Random, not a literal: Sentry sends the source lines around each stack frame, and a literal would be on one.
   const secret = crypto.randomUUID();
+  // Node formats a stack on first read. Reading it as the error is made pins the case where something reads it early.
+  const capture = Error.captureStackTrace;
+  const earlyRead = vi.spyOn(Error, "captureStackTrace").mockImplementation((target, fn) => {
+    capture(target, fn);
+    void (target as Error).stack;
+  });
   const failed: unknown = await db.execute(sql`select ${secret}`).then(
     () => null,
     (error: unknown) => error,
   );
+  expect(earlyRead.mock.calls.some(([target]) => target === failed)).toBe(true);
+  earlyRead.mockRestore();
 
   expect(failed).toBeInstanceOf(DrizzleQueryError);
   // inspect is what a logger prints: the message, the stack and every property.
@@ -163,6 +203,9 @@ it("removes the column values Postgres puts on a failed query's cause, and keeps
   const violation = Object.assign(new Error('duplicate key value violates unique constraint "user_email_unique"'), {
     code: "23505",
     detail: `Key (email)=(${secret}) already exists.`,
+    where: `where ${secret}`,
+    hint: `hint ${secret}`,
+    internalQuery: `select ${secret}`,
   });
   const query = vi.spyOn(db.$client, "query").mockImplementation(() => Promise.reject(violation) as never);
   const failed: unknown = await db.execute(sql`select 1`).then(
