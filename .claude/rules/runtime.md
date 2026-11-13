@@ -19,9 +19,11 @@ paths:
   filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
 - `web/e2e/global-setup.ts` opens Vite's HMR socket from Node and takes the `full-reload` Vite keeps for the first
-  client (checked on vite 8.3.4): Astro sends it (checked on astro 7.4.2) when a dev start rewrites its content
-  store (every `aspire start`: `astro dev` gets a new port behind the 4321 proxy, and that port is in the store's
-  config digest). A first test's browser would otherwise take it mid-test and reload the page.
+  client (checked on vite 8.3.7): Astro sent it when a dev start rewrote its content store (every `aspire start`:
+  `astro dev` gets a new port behind the 4321 proxy, and that port is in the store's config digest). A first test's
+  browser would otherwise take it mid-test and reload the page. Astro now skips the reload for that first sync
+  (astro#18568, checked on astro 7.4.7), so the socket may no longer be needed: run E2E on a fresh `aspire start`
+  without it before deleting it.
 - `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
   Postgres restart or failover drops idle connections and the unhandled `error` event kills the web process. Each
   pool also puts an `error` listener on every client it connects: pg-pool removes its own from a client taken with
@@ -53,7 +55,7 @@ paths:
   builds the image and runs this entry as UID 1000 on a read-only root filesystem: migrations, serving, the fast
   failures, and a stop before and after the server is up.
 - `session.freshAge` is 0 in `web/src/lib/auth.ts`: better-auth gates `listSessions` (the /account page) on a
-  session created within `freshAge` (default one day; checked on better-auth 1.7.12), so a visitor signed in longer
+  session created within `freshAge` (default one day; checked on better-auth 1.7.18), so a visitor signed in longer
   got a 500 there. The E2E suite ages a session row through `APPDB_URI` to keep the page open (`account.spec.ts`).
 - Admins: the verified account whose email matches the `admin-email` parameter is promoted on verify.
   Keep `requireEmailVerification` on; without it anyone could register that email. Promotion happens only when
