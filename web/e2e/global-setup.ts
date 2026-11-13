@@ -3,11 +3,9 @@ import { fileURLToPath } from "node:url";
 import type { FullConfig } from "@playwright/test";
 
 // Vite (checked on vite 8.3.7) keeps a full-reload sent while no client is connected and hands it to the first socket
-// that connects. Astro sent one when a dev start rewrote its content store, which every `aspire start` does: Aspire
-// gives `astro dev` a new port behind its 4321 proxy, and that port is part of the store's config digest. Astro now
-// skips the reload for that first sync (astro#18568, checked on astro 7.4.7); whether a later store write can still
-// leave one is untested, so this stays. Left in the buffer, a reload goes to the first page a test opens, sometimes
-// under the form the test is filling. This socket connects first and takes it. Vite checks its connection token only when a request has an
+// that connects: the first page a test opens, sometimes under the form the test is filling. Astro (checked on astro
+// 7.4.7) sends none for the content sync at dev start (astro#18568), but does for any later content store write. This
+// socket connects first and takes whatever is kept. Vite checks its connection token only when a request has an
 // Origin header, and Node's WebSocket sends none. A built app has no Vite client and is left alone.
 // Both waits have a limit: Playwright puts none on global setup, and Aspire's proxy accepts a connection to a
 // stopped resource without answering it.

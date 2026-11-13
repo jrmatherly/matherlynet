@@ -61,8 +61,8 @@ const publicOnlyTransport = (options: Parameters<typeof Sentry.makeNodeTransport
   return Sentry.makeNodeTransport({ ...options, httpModule: publicOnlyHttp });
 };
 
-// The emailed link carries the reset token in its path, and the SDK filters only query and header values by key
-// (requestdata.js, checked on @sentry/core 11.11.0), so the URL and the transaction name would pass it through.
+// The emailed link carries the reset token in its path, and the SDK filters only query, header and cookie values by
+// key (requestdata.js, checked on @sentry/core 11.11.0), so the URL and the transaction name would pass it through.
 const redactResetToken = (text: string) => text.replace(/(\/reset-password\/)[^/?#\s]+/, "$1REDACTED");
 
 // Called whenever site settings are (re)loaded. Sentry's options are fixed when the client is created, and a
