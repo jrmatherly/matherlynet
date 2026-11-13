@@ -61,8 +61,8 @@ const publicOnlyTransport = (options: Parameters<typeof Sentry.makeNodeTransport
   return Sentry.makeNodeTransport({ ...options, httpModule: publicOnlyHttp });
 };
 
-// The emailed link carries the reset token in its path, and the SDK filters only query and header values by key
-// (requestdata.js, checked on @sentry/core 11.9.0), so the URL and the transaction name would pass it through.
+// The emailed link carries the reset token in its path, and the SDK filters only query, header and cookie values by
+// key (requestdata.js, checked on @sentry/core 11.11.0), so the URL and the transaction name would pass it through.
 const redactResetToken = (text: string) => text.replace(/(\/reset-password\/)[^/?#\s]+/, "$1REDACTED");
 
 // Called whenever site settings are (re)loaded. Sentry's options are fixed when the client is created, and a
@@ -86,7 +86,7 @@ export function configureSentry(dsn: string | null): void {
       ),
     // Request bodies stay out of events (sign-up bodies carry emails and passwords). Visitor IPs are personal data that
     // a third party doesn't need: userInfo false drops user.ip_address and the client-IP headers (cf-connecting-ip,
-    // x-forwarded-for, …; requestdata.js, checked on @sentry/core 11.9.0). Query strings can carry tokens. Cloudflare adds
+    // x-forwarded-for, …; requestdata.js, checked on @sentry/core 11.11.0). Query strings can carry tokens. Cloudflare adds
     // visitor location headers and a clearance cookie, so cookies are off and headers are an allow list: anything else,
     // the Referer included, arrives as [Filtered]. Terms match as substrings (filterKeyValueData.js), so "accept" would
     // let accept-language through: use full, specific names.
