@@ -19,9 +19,9 @@ paths:
   filesystem session driver would diverge across replicas, and better-auth already keeps sessions in Postgres.
 - The dev web endpoint is pinned to port 4321 so OAuth callback URLs stay stable.
 - `web/e2e/global-setup.ts` opens Vite's HMR socket from Node and takes the `full-reload` Vite keeps for the first
-  client (checked on vite 8.3.7). A first test's browser would otherwise take it mid-test and reload the page. Astro
+  client (checked on vite 8.3.8). A first test's browser would otherwise take it mid-test and reload the page. Astro
   sends none for the content sync at dev start (astro#18568), but does for any later content store write made before
-  a client connects (checked on astro 7.4.7).
+  a client connects (checked on astro 7.4.11).
 - `web/src/db/index.ts` builds its `pg.Pool`s itself and keeps a `pool.on("error")` listener on each: without it, a
   Postgres restart or failover drops idle connections and the unhandled `error` event kills the web process. Each
   pool also puts an `error` listener on every client it connects: pg-pool removes its own from a client taken with
@@ -36,8 +36,9 @@ paths:
   line, Sentry event and span that sees the error repeats them. `sentry-wiring.test.ts` fails if a Drizzle bump moves
   it.
 - `security.allowedDomains` (`matherly.net`, https) in `web/astro.config.mjs` makes Astro trust `X-Forwarded-Proto`
-  behind Cloudflare; without it form POSTs fail the origin check with 403. Don't use `Astro.clientAddress`: a client
-  can spoof it through `X-Forwarded-Host`/`X-Forwarded-For`.
+  for that host behind Cloudflare; without it, or on any other host, a form POST sent with `Origin` and no
+  `Sec-Fetch-Site: same-origin` fails the origin check with 403 (checked on astro 7.4.11). Don't use
+  `Astro.clientAddress`: it is the first `X-Forwarded-For` value, which a client can set.
 - The image runs `node start.mjs` as the `node` user (`publishAsNodeServer`; `publishAsPackageScript`'s
   `pnpm run start` fails as non-root: pnpm 12 tries to reinstall into the root-owned `node_modules`). `start.mjs`
   dynamically imports `otel.mjs`, `migrate.mjs`, then `server.mjs` in one process: static imports would load
@@ -53,7 +54,7 @@ paths:
   builds the image and runs this entry as UID 1000 on a read-only root filesystem: migrations, serving, the fast
   failures, and a stop before and after the server is up.
 - `session.freshAge` is 0 in `web/src/lib/auth.ts`: better-auth gates `listSessions` (the /account page) on a
-  session created within `freshAge` (default one day; checked on better-auth 1.7.18), so a visitor signed in longer
+  session created within `freshAge` (default one day; checked on better-auth 1.7.22), so a visitor signed in longer
   got a 500 there. The E2E suite ages a session row through `APPDB_URI` to keep the page open (`account.spec.ts`).
 - Admins: the verified account whose email matches the `admin-email` parameter is promoted on verify.
   Keep `requireEmailVerification` on; without it anyone could register that email. Promotion happens only when

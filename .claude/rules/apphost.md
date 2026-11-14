@@ -65,7 +65,7 @@ paths:
 - Chart upgrade from 0.29.1 or earlier is not a rolling update: object names gained the `matherlynet-` prefix, so Helm
   deletes and recreates them and the site is down until the new pod is ready. Each pod logs one better-auth "Rate
   limiting could not determine a client IP" warning at start (the first kubelet probe has no `cf-connecting-ip`;
-  checked on better-auth 1.7.18); it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not
+  checked on better-auth 1.7.22); it is harmless. Cloudflare's tunnel was checked on 2026-10-04: it does not
   buffer the playground stream, and a disconnect reaches web (the row closed as `cut` / `left`).
 - Optional AppHost parameters go through `optionalParameter()`: `addParameter`'s `value` overrides user
   secrets and `Parameters__*` env vars, so a plain `{ value: '' }` default can never be set.

@@ -93,10 +93,13 @@ on the host, use `http://127.0.0.1:4321` instead.
 ### Check the forwarded protocol at first deploy
 
 Behind the tunnel the container sees plain HTTP. `web/astro.config.mjs` trusts `X-Forwarded-Proto: https` (its
-`security.allowedDomains`), which is how Astro's origin check accepts form POSTs. If the header doesn't arrive,
-every form POST (sign-in, sign-up, account, admin) fails with `403 Cross-site POST form submissions are
-forbidden`. Right after the first deploy, submit the sign-in form once; a 403 means the header is missing (confirm
-with `cloudflared --loglevel debug`).
+`security.allowedDomains`), which is how Astro's origin check accepts a form POST by its `Origin`. If the header
+doesn't arrive, a form POST (sign-in, sign-up, account, admin) that carries `Origin` without
+`Sec-Fetch-Site: same-origin` fails with `403 Cross-site POST form submissions are forbidden`. A browser form passes
+either way when it sends `Sec-Fetch-Site: same-origin`, so submitting the sign-in form does not show a missing header.
+Right after the first deploy, send the request the CI smoke test sends:
+`curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://matherly.net' -d action=revoke-others
+https://matherly.net/account`. A 403 means the header is missing (confirm with `cloudflared --loglevel debug`).
 
 ### Redirect www to the apex (required)
 
@@ -108,8 +111,9 @@ better-auth trusts only `APP_URL`'s origin: sign-in and sign-up from `https://ww
   query string (Cloudflare's "Redirect from WWW to root" template).
 - Check: `curl -sI https://www.matherly.net/sign-in` answers `301` with `location: https://matherly.net/sign-in`.
 
-The same applies to any other host name: `allowedDomains` (`web/astro.config.mjs`) only controls which forwarded
-headers Astro trusts, but better-auth accepts requests from `APP_URL`'s origin alone.
+The same applies to any other host name: Astro builds the request URL only from a host in `allowedDomains`
+(`web/astro.config.mjs`) and compares `http://localhost:<port>` for any other, and better-auth accepts requests from
+`APP_URL`'s origin alone.
 
 ## 4. Umami (when enabled)
 
@@ -144,7 +148,7 @@ of the security headers pages get (checked on a production build), and the clien
   address, then blocks the address for 10 s. The route writes a `playground_call` row for every accepted POST even
   with the model off, and the app's own limits only stop the model call.
 - **No rule for mail.** The Free plan has no second rate limiting rule, so the auth routes that send mail are
-  limited in the app. better-auth's defaults (`api/rate-limiter/index.mjs`, checked on better-auth 1.7.18) allow 3
+  limited in the app. better-auth's defaults (`api/rate-limiter/index.mjs`, checked on better-auth 1.7.22) allow 3
   requests per 10 s on sign-in and sign-up and 3 per 60 s on password reset and resending the verification mail, all
   per IP and path;
   nothing counts per recipient. `web/src/lib/mail-throttle.ts` adds that: at most 5 mails an hour to one address,
@@ -250,7 +254,7 @@ no foreign key and expire on their own). It spares any user with a GitHub or Goo
 the email unverified leaves `email_verified = false`, and that user can still sign in, because no provider sets
 `requireEmailVerification`. Unverified users with no account row at all are deleted too. `rate_limit` (better-auth's
 per-IP counters, `last_request` in epoch milliseconds) prunes itself: each time a key's window resets, better-auth
-deletes rows older than its longest window (checked on better-auth 1.7.18). The first statement is only a fallback:
+deletes rows older than its longest window (checked on better-auth 1.7.22). The first statement is only a fallback:
 
 ```sql
 delete from rate_limit where last_request < extract(epoch from now() - interval '1 day') * 1000;
@@ -284,7 +288,7 @@ restart pods.
 
 Each pod logs `WARN [Better Auth]: Rate limiting could not determine a client IP` once, a few seconds after it
 starts. The first probe causes it: a kubelet request carries no `cf-connecting-ip`, and better-auth warns before
-it applies the `/ok` exemption (checked on better-auth 1.7.18). Probes are still not limited. The warning is logged
+it applies the `/ok` exemption (checked on better-auth 1.7.22). Probes are still not limited. The warning is logged
 once per process, so it will not appear again if a visitor's request later arrives without the header.
 
 ## 8. Live playground (when a model URL is set)

@@ -2,9 +2,9 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import type { FullConfig } from "@playwright/test";
 
-// Vite (checked on vite 8.3.7) keeps a full-reload sent while no client is connected and hands it to the first socket
+// Vite (checked on vite 8.3.8) keeps a full-reload sent while no client is connected and hands it to the first socket
 // that connects: the first page a test opens, sometimes under the form the test is filling. Astro (checked on astro
-// 7.4.7) sends none for the content sync at dev start (astro#18568), but does for any later content store write. This
+// 7.4.11) sends none for the content sync at dev start (astro#18568), but does for any later content store write. This
 // socket connects first and takes whatever is kept. Vite checks its connection token only when a request has an
 // Origin header, and Node's WebSocket sends none. A built app has no Vite client and is left alone.
 // Both waits have a limit: Playwright puts none on global setup, and Aspire's proxy accepts a connection to a
