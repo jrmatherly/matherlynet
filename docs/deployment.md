@@ -93,10 +93,13 @@ on the host, use `http://127.0.0.1:4321` instead.
 ### Check the forwarded protocol at first deploy
 
 Behind the tunnel the container sees plain HTTP. `web/astro.config.mjs` trusts `X-Forwarded-Proto: https` (its
-`security.allowedDomains`), which is how Astro's origin check accepts form POSTs. If the header doesn't arrive,
-every form POST (sign-in, sign-up, account, admin) fails with `403 Cross-site POST form submissions are
-forbidden`. Right after the first deploy, submit the sign-in form once; a 403 means the header is missing (confirm
-with `cloudflared --loglevel debug`).
+`security.allowedDomains`), which is how Astro's origin check accepts a form POST by its `Origin`. If the header
+doesn't arrive, a form POST (sign-in, sign-up, account, admin) that carries `Origin` without
+`Sec-Fetch-Site: same-origin` fails with `403 Cross-site POST form submissions are forbidden`. A browser form passes
+either way when it sends `Sec-Fetch-Site: same-origin`, so submitting the sign-in form does not show a missing header.
+Right after the first deploy, send the request the CI smoke test sends:
+`curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://matherly.net' -d action=revoke-others
+https://matherly.net/account`. A 403 means the header is missing (confirm with `cloudflared --loglevel debug`).
 
 ### Redirect www to the apex (required)
 
@@ -108,8 +111,9 @@ better-auth trusts only `APP_URL`'s origin: sign-in and sign-up from `https://ww
   query string (Cloudflare's "Redirect from WWW to root" template).
 - Check: `curl -sI https://www.matherly.net/sign-in` answers `301` with `location: https://matherly.net/sign-in`.
 
-The same applies to any other host name: `allowedDomains` (`web/astro.config.mjs`) only controls which forwarded
-headers Astro trusts, but better-auth accepts requests from `APP_URL`'s origin alone.
+The same applies to any other host name: Astro builds the request URL only from a host in `allowedDomains`
+(`web/astro.config.mjs`) and compares `http://localhost:<port>` for any other, and better-auth accepts requests from
+`APP_URL`'s origin alone.
 
 ## 4. Umami (when enabled)
 

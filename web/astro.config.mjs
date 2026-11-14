@@ -22,11 +22,13 @@ export default defineConfig({
   security: {
     // Behind Cloudflare the container sees plain HTTP. For a request whose Host (or X-Forwarded-Host) is this
     // hostname, Astro trusts X-Forwarded-Proto: https, so the origin check compares https://matherly.net, which is
-    // what browsers send. Any other host gets neither: its URL is http://localhost:<port> and every form POST is
-    // refused with 403 (checked on astro 7.4.11, dist/core/app/validate-headers.js and node.js). A matching host
-    // also makes Astro.clientAddress the first X-Forwarded-For value, which a client can send through Cloudflare.
-    // Don't use clientAddress; better-auth reads cf-connecting-ip. better-auth also accepts only BETTER_AUTH_URL's
-    // origin: www must redirect to the apex (docs/deployment.md). Read at build time.
+    // what browsers send. For any other host the URL is http://localhost:<port>, so a form POST with an Origin
+    // header is refused with 403 unless it also carries Sec-Fetch-Site: same-origin, which passes the check before
+    // any origin is compared (checked on astro 7.4.11, dist/core/app/validate-headers.js, node.js and
+    // origin-check.js). A matching host also makes Astro.clientAddress the first X-Forwarded-For value, which a
+    // client can send through Cloudflare. Don't use clientAddress; better-auth reads cf-connecting-ip. better-auth
+    // also accepts only BETTER_AUTH_URL's origin: www must redirect to the apex (docs/deployment.md). Read at build
+    // time.
     allowedDomains: [{ hostname: "matherly.net", protocol: "https" }],
     csp: {
       directives: [

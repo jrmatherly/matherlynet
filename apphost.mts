@@ -29,7 +29,7 @@ if (!k8s) {
   await target.configureDashboard(async (dashboard) => {
     // The publisher's default is the dotnet/nightly dashboard image; pin a release image instead (MCR has no tag for
     // every SDK patch; Renovate's aspire group bumps it).
-    await dashboard.withImage('mcr.microsoft.com/dotnet/aspire-dashboard', { tag: '13.6.2' });
+    await dashboard.withImage('mcr.microsoft.com/dotnet/aspire-dashboard', { tag: '13.6.5' });
     await dashboard.publishAsDockerComposeService(async (_resource, service) => {
       await service.ports.clear();
       await service.ports.add('127.0.0.1:18888:18888');

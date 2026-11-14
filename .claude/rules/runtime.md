@@ -36,8 +36,9 @@ paths:
   line, Sentry event and span that sees the error repeats them. `sentry-wiring.test.ts` fails if a Drizzle bump moves
   it.
 - `security.allowedDomains` (`matherly.net`, https) in `web/astro.config.mjs` makes Astro trust `X-Forwarded-Proto`
-  behind Cloudflare; without it form POSTs fail the origin check with 403. Don't use `Astro.clientAddress`: a client
-  can spoof it through `X-Forwarded-Host`/`X-Forwarded-For`.
+  for that host behind Cloudflare; without it, or on any other host, a form POST sent with `Origin` and no
+  `Sec-Fetch-Site: same-origin` fails the origin check with 403 (checked on astro 7.4.11). Don't use
+  `Astro.clientAddress`: it is the first `X-Forwarded-For` value, which a client can set.
 - The image runs `node start.mjs` as the `node` user (`publishAsNodeServer`; `publishAsPackageScript`'s
   `pnpm run start` fails as non-root: pnpm 12 tries to reinstall into the root-owned `node_modules`). `start.mjs`
   dynamically imports `otel.mjs`, `migrate.mjs`, then `server.mjs` in one process: static imports would load
