@@ -20,13 +20,13 @@ export default defineConfig({
   // check against a build. Astro hashes its own scripts and styles; Telemetry.astro adds the Umami/Sentry
   // origins configured on /admin per request.
   security: {
-    // Behind Cloudflare the container sees plain HTTP. With a protocol pattern here, Astro trusts
-    // X-Forwarded-Proto: https, so the origin check compares https://<Host>, which is what browsers send (any host:
-    // the URL is built from the raw Host header). The hostname only decides whether X-Forwarded-Host is trusted
-    // and, with it, Astro.clientAddress: a request with X-Forwarded-Host: matherly.net (clients can send it
-    // through Cloudflare) makes clientAddress the first X-Forwarded-For value. Don't use clientAddress; better-auth
-    // reads cf-connecting-ip. better-auth also accepts only BETTER_AUTH_URL's origin: www must redirect to the apex
-    // (docs/deployment.md). Read at build time.
+    // Behind Cloudflare the container sees plain HTTP. For a request whose Host (or X-Forwarded-Host) is this
+    // hostname, Astro trusts X-Forwarded-Proto: https, so the origin check compares https://matherly.net, which is
+    // what browsers send. Any other host gets neither: its URL is http://localhost:<port> and every form POST is
+    // refused with 403 (checked on astro 7.4.11, dist/core/app/validate-headers.js and node.js). A matching host
+    // also makes Astro.clientAddress the first X-Forwarded-For value, which a client can send through Cloudflare.
+    // Don't use clientAddress; better-auth reads cf-connecting-ip. better-auth also accepts only BETTER_AUTH_URL's
+    // origin: www must redirect to the apex (docs/deployment.md). Read at build time.
     allowedDomains: [{ hostname: "matherly.net", protocol: "https" }],
     csp: {
       directives: [
@@ -48,7 +48,7 @@ export default defineConfig({
       // Geist and Geist Mono: Latin only, through the local provider. The npm provider reads every @font-face in the
       // package, so Cyrillic, Greek and Latin Extended were preloaded on every page too. With `remote: false`
       // unifont 0.7.5 still pointed the files at jsDelivr, and unifont 1.x returns file:// URLs that Astro's font
-      // fetcher hands to fetch(), which can't read them (checked on astro 7.4.7).
+      // fetcher hands to fetch(), which can't read them (checked on astro 7.4.11).
       provider: fontProviders.local(),
       name: "Geist Variable",
       cssVariable: "--font-geist",

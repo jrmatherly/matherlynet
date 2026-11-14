@@ -185,7 +185,7 @@ const publishDir = async (step: string) => {
 if (!(await builder.executionContext().isRunMode())) {
   if (k8s) {
     // Aspire.Hosting.Kubernetes writes probe schemes in lower case
-    // (checked on Aspire.Hosting.Kubernetes 13.6.4-preview.1.26523.11), and the API server accepts only HTTP or
+    // (checked on Aspire.Hosting.Kubernetes 13.6.5-preview.1.26559.7), and the API server accepts only HTTP or
     // HTTPS: it rejects the Deployment at install. A scheme line in a shape this doesn't know fails the publish rather
     // than ship a chart the cluster refuses; an Aspire that writes them correctly retires the step.
     await builder.pipeline().addStep('fix-probe-scheme', async () => {
@@ -198,7 +198,7 @@ if (!(await builder.executionContext().isRunMode())) {
       await writeFile(file, fixed);
     }, { dependsOn: ['publish-k8s'], requiredBy: ['publish'] });
     // Aspire.Hosting.Kubernetes names each object after its resource alone (web-deployment;
-    // checked on Aspire.Hosting.Kubernetes 13.6.4-preview.1.26523.11), and the TS SDK's publishAsKubernetesService
+    // checked on Aspire.Hosting.Kubernetes 13.6.5-preview.1.26559.7), and the TS SDK's publishAsKubernetesService
     // callback exposes no object to rename, only a read-only name(). In a pod list across namespaces that name says
     // nothing, so every `name: "<resource>-…"` gets the chart's name in front: the objects and the envFrom references
     // to them. The generated container names, labels and value paths don't have that shape and stay as they are;
