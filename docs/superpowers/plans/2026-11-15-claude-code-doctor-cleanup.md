@@ -1,5 +1,28 @@
 # Claude Code doctor cleanup implementation plan
 
+## Status
+
+Both tasks are done (2026-11-15). Task 2 is on `main` as e5add92. Task 1's file is git-ignored, so no commit holds
+it. One decision is still open: Task 1 step 7.
+
+Measured with `claude -p "/context"` in this repository, once with `.claude/settings.local.json` moved aside and
+once with it in place:
+
+| Row | Before | After |
+| :--- | :--- | :--- |
+| Custom agents | 19.7k | 4.9k |
+| Skills | 9.9k | 9.9k |
+| Total | 75.1k | 57.3k |
+
+- The subagent list dropped by 14.8k tokens, more than the 8.8k estimate. The before report had 164 lines naming
+  `voltagent` and 28 naming `azure:`. The after report has none.
+- The Skills row did not move, as the Global constraints predict. It sits at the 1% cap in both reports.
+- Task 1 step 6 passes: none of the 12 skills is listed, and `sentry-cli:sentry-cli` still is.
+- Task 2 step 7 passes: a session that read `web/src/lib/site.ts` did not have `gateway-figure.md`, and it had the
+  rule after it read `web/src/components/GatewayPath.astro`.
+- Task 1 step 7 is open. `/skill-doctor` did not run in a `claude -p` session on Claude Code 2.1.322, so Jason
+  runs it in a terminal session. Used skills still show without a description, so the choice in that step is live.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -105,7 +128,7 @@ The Claude Code docs confirm both keys work from this file (checked 2026-11-15 a
 - `skillOverrides` does not affect plugin skills. Turning off the personal `sentry-cli` skill leaves the plugin's
   `sentry-cli:sentry-cli` alone.
 
-- [ ] **Step 1: Record the baseline**
+- [x] **Step 1: Record the baseline**
 
 Ask Jason to run `/context` in a new matherlynet session and note the token figures for skills and for subagents.
 If the desktop app does not show `/context`, run it from `claude` in a terminal.
@@ -163,7 +186,7 @@ git status --short .claude/
 
 Expected: `[29,12]`, then no output from `git status`.
 
-- [ ] **Step 6: Confirm in a new session**
+- [x] **Step 6: Confirm in a new session**
 
 Ask Jason to open a new matherlynet session and run `/context`. Expected:
 
@@ -275,7 +298,7 @@ git add .claude/rules/gateway-figure.md .claude/rules/web-architecture.md .claud
 git commit -m "docs: load the gateway figure notes only with the figure's files"
 ```
 
-- [ ] **Step 7: Confirm the rule loads on demand**
+- [x] **Step 7: Confirm the rule loads on demand**
 
 In a new session on this branch, read `web/src/lib/site.ts` and run `/context`. Expected: `gateway-figure.md` is
 not among the memory files. Then read `web/src/components/GatewayPath.astro` and run `/context` again. Expected:
