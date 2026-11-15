@@ -2,8 +2,8 @@
 
 This file provides guidance to AI coding agents when working with code in this repository. Area detail lives in
 `.claude/rules/`: Claude Code loads each file when it touches matching paths; other tools should read the one for
-the area they change (`apphost.md`, `database.md`, `integrations.md`, `runtime.md`, `web-architecture.md`,
-`web-patterns.md`, `workflows.md`).
+the area they change (`apphost.md`, `database.md`, `gateway-figure.md`, `integrations.md`, `runtime.md`,
+`web-architecture.md`, `web-patterns.md`, `workflows.md`).
 
 <!-- AUTO-MANAGED: project-description -->
 ## Overview

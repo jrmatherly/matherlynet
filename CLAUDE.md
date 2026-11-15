@@ -5,7 +5,8 @@
 ## Claude Code specifics
 
 - Code navigation: see `.claude/rules/code-navigation.md` (CodeGraph first; Serena only for `.ts`/`.mts`/`.mjs`).
-- Area rules load by path from `.claude/rules/` (AppHost, database, integrations, runtime, web, workflows).
+- Area rules load by path from `.claude/rules/` (AppHost, database, gateway figure, integrations, runtime, web,
+  workflows).
 - `/verify` runs the full local check (AppHost lint and tsc, Markdown and workflow lint, web check, lint, tests and
   build, then the Aspire smoke test and Playwright E2E; `--no-stack` skips the last two).
   `/bump-deps` is the dependency-update procedure; `/ship` pushes and watches CI (only when asked to push); `/release`

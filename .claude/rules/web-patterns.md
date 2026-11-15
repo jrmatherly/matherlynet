@@ -77,8 +77,8 @@ How the site is put together and why. The file-by-file map is `web-architecture.
   A caller that changes the width class passes the matching `sizes` with it (the props type requires both or
   neither); `lazy` adds `loading="lazy"` and `decoding="async"`. /about's is eager (above the fold); the other two are
   lazy, so a phone never downloads the one /changelog hides below `md`. `pages.test.ts` pins this.
-- The home gateway figure (`GatewayPath.astro`), its engine and its SVG snapshots: see the "Gateway figure" section of
-  `.claude/rules/web-architecture.md`.
+- The home gateway figure (`GatewayPath.astro`), its engine and its SVG snapshots: see
+  `.claude/rules/gateway-figure.md`.
 - /playground is a browser simulation of the gateway, with a live path when `PLAYGROUND_MODEL_URL` is set. Live, the
   page POSTs the visitor's own request to `/api/playground`, and the server checks it, sends it to a self-hosted
   model and streams the answer back. The scenario chips and the no-script replay stay simulated in both modes.
