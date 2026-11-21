@@ -42,8 +42,8 @@ describe("profile data", () => {
   it("gives every platform a period and a one-line result", () => {
     for (const item of work) {
       expect(item.period).toMatch(/^20\d\d( to (20\d\d|now))?$/);
-      // 104: the cap that held before one confirmed 135-character sentence raised it; that sentence is gone.
-      expect(item.result.length).toBeLessThanOrEqual(104);
+      // A result is one short line under its card; raise this only for a sentence Jason confirms.
+      expect(item.result.length).toBeLessThanOrEqual(100);
     }
   });
 
