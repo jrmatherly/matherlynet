@@ -52,7 +52,7 @@ export const recruiterFacts = [
 
 // The home page says "three corporate offices" in the intro and the recruiters' facts, so the bio leaves it out.
 export const bio =
-  "I started in The Aaron's Company's IT call center in 2006 and moved into infrastructure as a Network Analyst in 2009. Since then I've designed and built the store network, the disaster recovery data center and the Azure footprint, and led the architecture of the primary data center. Now I work on how a 15,000-person company adopts AI without losing control of cost, data or risk.";
+  "I started in The Aaron's Company's IT call center in 2006 and moved into infrastructure as a Network Analyst in 2009. Since then I've designed and built the store network, the disaster recovery data center and the Azure footprint, and led the architecture of the primary data center. Now I work on how a 15,000-person company adopts AI without losing control of cost, data or risk. I start from the business problem, not the technology, then design and build the solution.";
 
 export interface Perspective {
   // Each id has a selector in the <style> of Perspectives.astro: a new one needs a line there, or its panel never
@@ -97,9 +97,9 @@ export const perspectives: Perspective[] = [
     body: "Every internal model call from the chat platform, the agents, Claude Code and Claude Desktop goes through the AI Gateway: signed in with SSO, rate limited, checked for personal data, secrets, prompt injection and restricted topics, and written to the audit log, with cost tracked per user and team. Tools sit behind the MCP Gateway, which reaches only servers approved into the registry, over OAuth.",
     points: [
       "Audit logs kept for at least 90 days and reviewed by audit and compliance",
-      "About 20 MCP servers, each approved into the registry before any agent or the chat platform can call it",
+      "About 20 MCP servers, each approved once by Information Security before any agent or the chat platform can call it",
       "Wrote the company's guidelines for building software with AI, and briefed the Information Security team on AI security",
-      "Responsible for privileged access (PAM) and identity; rolled out 802.1X network access control",
+      "Responsible for privileged access (PAM) and identity; extended 802.1X with Aruba ClearPass to all three corporate offices and the manufacturing facility",
     ],
   },
 ];
@@ -122,7 +122,7 @@ export const work: WorkItem[] = [
   {
     title: "MCP Gateway, Registry & Portal",
     summary:
-      "How Claude Code, Claude Desktop, company agents and the AI chat platform's users reach internal systems and data. A server is approved into the registry once; from then on, every call to it goes through the MCP Gateway.",
+      "How Claude Code, Claude Desktop, company agents and the AI chat platform's users reach internal systems and data. Information Security approves each server into the registry once; from then on, every call to it goes through the MCP Gateway. A plugin marketplace and skills catalog hold 50+ items, about a third of them from other teams.",
     period: "2025 to now",
     result: "About 20 MCP servers, each approved into the registry, behind OAuth",
     group: "AI platform",
@@ -130,15 +130,15 @@ export const work: WorkItem[] = [
   {
     title: "AI chat platform & agents",
     summary:
-      "An internal AI chat platform where teams build and run agents on third-party and open-source agent frameworks, with prompt composition, agent memory, multi-step orchestration with tool use, and model evaluations, built in Python and TypeScript. Designed the retrieval pipeline that grounds the agents in company knowledge: source documents are curated, chunked, embedded and indexed for RAG and Graph-RAG over a vector store.",
+      "An internal AI chat platform where teams build and run agents on third-party and open-source agent frameworks, with prompt composition, agent memory and multi-step orchestration with tool use, built in Python and TypeScript. Designed the retrieval pipeline that grounds the agents in company knowledge: source documents are curated, chunked, embedded and indexed for RAG and Graph-RAG over a vector store. Built evaluation in with Langfuse: LLM-as-a-judge scoring, user ratings and operations review of sampled conversations. RAG retrieval is scored on a known question set (MRR, nDCG) with grounding checks. Every agent passes review before launch.",
     period: "2025 to now",
-    result: "About 30 agents grounded in company knowledge, used company-wide",
+    result: "About 30 agents for 2,000+ users, grounded in company knowledge, with no per-seat licensing",
     group: "AI platform",
   },
   {
     title: gateway.title,
     summary:
-      "The single inference path for the company's internal AI workloads, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team. The current generation is a Go backend with a Next.js console, running on the on-prem Talos Kubernetes clusters through GitOps.",
+      "The single inference path for the company's internal AI workloads, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team. The current generation is a Go backend with a Next.js console, running on the on-prem Talos Kubernetes clusters through GitOps. Wrote its enterprise layer: Entra group-to-quota provisioning, cache-aware routing, cost reconciliation against provider bills and OpenTelemetry tracing. Its guardrails block a few hundred requests a day. Information Security and audit approved the controls. Model fallback kept service up through a provider outage.",
     period: "2024 to now",
     result: "6B+ tokens a month; projected licensing from $100K+ a year to near zero",
     group: "AI platform",
@@ -167,9 +167,9 @@ export const work: WorkItem[] = [
   },
   {
     title: "Self-service automation",
-    summary: "Self-service requests for VMs, storage, VDI, accounts and firewall changes, fulfilled by automation instead of tickets.",
+    summary: "Self-service portals and runbooks for VMs, storage, VDI, accounts and firewall changes, fulfilled by automation instead of tickets.",
     period: "2023",
-    result: "Dozens of tickets a week removed across about 20 teams; DBA-related requests alone account for about 50 a week at 10 to 15 minutes each",
+    result: "About 50 DBA-related tickets a week removed, across about 20 teams",
     group: "Infrastructure",
   },
   {
@@ -181,22 +181,22 @@ export const work: WorkItem[] = [
   },
   {
     title: "Disaster recovery data center",
-    summary: "Designed and built the disaster recovery data center and moved storage from HPE Nimble to Pure Storage.",
+    summary: "Designed and built the disaster recovery data center and moved 400+ TB of storage from HPE Nimble to Pure Storage.",
     period: "2021",
     result: "A second data center, with zero unplanned downtime",
     group: "Infrastructure",
   },
   {
     title: "SD-WAN for every store",
-    summary: "Led the SD-WAN rollout to every store on CloudGenix. Later moved SD-WAN onto the Meraki equipment the stores already had, which simplified each store's hardware and cut licensing costs.",
+    summary: "Selected CloudGenix and led the SD-WAN rollout to every store, giving each store two connections with automatic failover. Later moved SD-WAN onto the Meraki appliances the stores already had, removing one device per store.",
     period: "2015 to 2021",
-    result: "2,300+ stores at the time; later moved onto existing Meraki gear for a simpler stack and lower licensing",
+    result: "2,300+ stores at the time; the move to Meraki saved about $600K a year",
     group: "Infrastructure",
   },
   {
     title: "Primary data center, corporate offices & Azure",
     summary:
-      "Led the architecture of the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications). Built its Cisco Nexus 9K core, Palo Alto firewalls and ExpressRoute, and led its migration. Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018). Established the Azure tenant and subscriptions.",
+      "Led the architecture of the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications). Built its Cisco Nexus 9K core, Palo Alto firewalls and ExpressRoute, and led its migration. Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018). Established the Azure landing zone, with 1 Gbps ExpressRoute from both data centers and IPsec VPN backup.",
     period: "2015 to 2021",
     result: "Primary data center, three offices, Azure with ExpressRoute; zero unplanned downtime",
     group: "Infrastructure",
@@ -204,16 +204,16 @@ export const work: WorkItem[] = [
   {
     title: "Store network re-IP & firewall migrations",
     summary:
-      "Designed a standard IP plan and re-IP'd every store network. Migrated the stores from SonicWALL to Meraki with under 30 minutes of downtime per store, and converted the corporate firewall standard from SonicWALL to Palo Alto at the new IT office.",
+      "Designed a standard IP plan and re-IP'd every store network. Migrated the stores from SonicWALL to Meraki with under 30 minutes of downtime per store, and converted the new IT office (about 400 users) from SonicWALL to Palo Alto, which became the corporate firewall standard still in use.",
     period: "2012 to 2015",
     result: "2,300+ stores on one addressing plan",
     group: "Infrastructure",
   },
   {
     title: "Secret Server PAM rollout",
-    summary: "Rolled out Secret Server, vaulting every organization service account and elevated-credential account with rotation.",
+    summary: "Rolled out Secret Server, vaulting 10,000+ secrets. Service accounts rotate automatically and elevated credentials rotate on each use.",
     period: "2012 to 2015",
-    result: "Every privileged credential vaulted and rotated",
+    result: "10,000+ secrets vaulted; its access records are PCI DSS and SOX audit evidence",
     group: "Infrastructure",
   },
 ];
@@ -245,11 +245,11 @@ export const career: Role[] = [
     title: currentTitle,
     start: "Jul 2021",
     highlights: [
-      "Designed and built the disaster recovery data center (2021) and moved storage from HPE Nimble to Pure Storage, with zero unplanned downtime",
-      "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime while supporting PCI DSS and SOX requirements; leads a team of 4",
+      "Designed and built the disaster recovery data center (2021), moved 400+ TB from HPE Nimble to Pure Storage, and replaced the Cisco UCS fleet (50+ blade servers across 10+ chassis) one blade at a time, all with zero unplanned downtime",
+      "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime while supporting PCI DSS and SOX requirements; leads a team of 4 with about $2M a year in renewals and operating spend",
       "Leads company-wide AI strategy and adoption; rolled out Microsoft Copilot and Copilot Studio to 600 users",
-      "With no standing annual budget through downsizing and acquisitions, funds each project on its own business case; replaced paid tools with in-house platforms (SolarWinds with Zabbix and Grafana, ADAudit Plus with a custom auditing platform), saving $100K a year in licensing",
-      "Rolled out self-service automation for VMs, storage, VDI, accounts and firewall changes, saving from 10 minutes to several hours per request",
+      "Cut about $300K a year in recurring spend by right-sizing licenses against usage and replacing paid tools with in-house platforms (SolarWinds with Zabbix and Grafana, ADAudit Plus with a custom auditing platform)",
+      "Built self-service portals and runbooks for VMs, storage, VDI, accounts and firewall changes, used by about 20 teams; DBA-related requests alone dropped by about 50 tickets a week",
     ],
     heading: "Manager, and a second data center",
     milestones: [
@@ -268,7 +268,7 @@ export const career: Role[] = [
         heading: "Tools and agents behind a gateway, too",
         highlights: [
           "Designed and delivered the MCP Gateway, Registry and Portal",
-          "Built the internal AI chat platform, which runs about 30 agents grounded in company knowledge",
+          "Built the internal AI chat platform, which runs about 30 agents for 2,000+ users",
         ],
       },
       {
@@ -295,8 +295,12 @@ export const career: Role[] = [
     highlights: [
       "Led the architecture of the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications); built its Cisco Nexus 9K core, Palo Alto firewalls and ExpressRoute, and led its migration with zero unplanned downtime",
       "Fitted out the full infrastructure for two corporate offices: the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018)",
-      "Established the Azure tenant and subscriptions",
-      "Led SD-WAN to every store (2,300+ at the time); switched the existing VPN to Always-On when the company went remote (about 1,200 users)",
+      "Extended 802.1X with Aruba ClearPass to all three corporate offices (about 400 users each) and the manufacturing facility, assigning VLANs by user and device",
+      "Established the Azure landing zone that now hosts most of the e-commerce and payments platforms: the tenant, VNets and peerings and about 20 subscriptions (50+ now)",
+      "Connected Azure with 1 Gbps ExpressRoute from both data centers, with IPsec VPN backup",
+      "Selected CloudGenix and led SD-WAN to every store (2,300+ at the time), giving each store two connections with automatic failover",
+      "Later moved SD-WAN onto the stores' Meraki appliances, removing one device per store and saving about $600K a year",
+      "Switched the existing VPN to Always-On when the company went remote (about 1,200 users)",
     ],
     heading: "A new data center, two offices, and SD-WAN to every store",
   },
@@ -306,7 +310,8 @@ export const career: Role[] = [
     end: "Apr 2015",
     highlights: [
       "Designed a standard IP plan and re-IP'd every store network (2,300+ at the time)",
-      "Migrated the stores from SonicWALL to Meraki, converted the corporate firewall standard to Palo Alto at the new IT office, and led the Secret Server PAM rollout, vaulting 10,000+ secrets with rotation",
+      "Migrated the stores from SonicWALL to Meraki and converted the new IT office (about 400 users) to Palo Alto, which became the corporate firewall standard still in use",
+      "Led the Secret Server PAM rollout, vaulting 10,000+ secrets with rotation; its access records are PCI DSS and SOX audit evidence",
       "Designed and built the network for the new IT corporate office (2015), the design reused at two later offices",
     ],
     heading: "One addressing plan for 2,300 stores",
@@ -328,7 +333,7 @@ export const career: Role[] = [
 ];
 
 export const skills: { group: string; items: string[] }[] = [
-  { group: "AI platform engineering", items: ["AI gateways & Model Context Protocol (MCP)", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure API Management (APIM)", "AI agents & agent skills", "Agent frameworks (Microsoft, Anthropic, OpenAI, open source)", "Agent memory & orchestration", "Prompt composition", "RAG, Graph-RAG & vector stores", "Model evaluations", "LLMOps", "AI security & governance", "Responsible AI policy", "AI cost management (FinOps)", "AI enablement & adoption"] },
+  { group: "AI platform engineering", items: ["AI gateways & Model Context Protocol (MCP)", "Azure AI Foundry", "Copilot & Copilot Studio", "Anthropic & OpenAI", "Azure API Management (APIM)", "AI agents & agent skills", "Agent frameworks (Microsoft, Anthropic, OpenAI, open source)", "Agent memory & orchestration", "Prompt composition", "RAG, Graph-RAG & vector stores", "Model evaluations (Langfuse)", "LLMOps", "AI security & governance", "Responsible AI policy", "AI cost management (FinOps)", "AI enablement & adoption"] },
   { group: "Platform engineering & cloud", items: ["Kubernetes", "Docker", "Talos Linux", "Helm", "Terraform", "GitOps (Flux & Argo CD)", "CI/CD (GitHub Actions)", "Cilium", "External Secrets Operator", "Observability (OpenTelemetry, Grafana & Zabbix)", "ITIL", "Azure & ExpressRoute"] },
   { group: "Networking", items: ["Cisco ASR & Nexus 9K", "Aruba / Meraki / Ubiquiti", "SD-WAN", "F5", "Infoblox", "Wireless", "WAN circuits"] },
   { group: "Security & identity", items: ["Palo Alto & GlobalProtect", "Meraki firewalls", "Aruba ClearPass (802.1X)", "Secret Server (PAM)", "Active Directory & Entra ID", "Microsoft 365", "Intune", "PCI DSS & SOX"] },
