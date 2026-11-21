@@ -42,8 +42,8 @@ describe("profile data", () => {
   it("gives every platform a period and a one-line result", () => {
     for (const item of work) {
       expect(item.period).toMatch(/^20\d\d( to (20\d\d|now))?$/);
-      // 135: the self-service result is Jason's confirmed sentence at 135 characters; the next longest is 104.
-      expect(item.result.length).toBeLessThanOrEqual(135);
+      // A result is one short line under its card; raise this only for a sentence Jason confirms.
+      expect(item.result.length).toBeLessThanOrEqual(100);
     }
   });
 

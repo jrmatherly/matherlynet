@@ -65,6 +65,10 @@ The current gateway runs on our on-prem Kubernetes platform, managed through Git
 - is routed to Azure AI Foundry or Anthropic;
 - is written to an audit log kept for at least 90 days and reviewed by audit and compliance.
 
+I wrote the enterprise layer on top of the fork: Entra group-to-quota provisioning, cache-aware routing, cost
+reconciled against provider bills, and OpenTelemetry tracing. The guardrails block a few hundred requests a day, and
+model fallback kept service up through a provider outage. Information Security and audit approved the controls.
+
 Tools sit behind a separate MCP Gateway, which reaches only the MCP servers approved into our registry, over OAuth.
 
 ## Results
