@@ -295,7 +295,7 @@ export const career: Role[] = [
     highlights: [
       "Led the architecture of the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications); built its Cisco Nexus 9K core, Palo Alto firewalls and ExpressRoute, and led its migration with zero unplanned downtime",
       "Fitted out the full infrastructure for two corporate offices: the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018)",
-      "Established the Azure tenant, subscriptions and ExpressRoute hybrid connectivity",
+      "Established the Azure tenant and subscriptions",
       "Led SD-WAN to every store (2,300+ at the time); switched the existing VPN to Always-On when the company went remote (about 1,200 users)",
     ],
     heading: "A new data center, two offices, and SD-WAN to every store",
