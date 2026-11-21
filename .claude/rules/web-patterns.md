@@ -64,8 +64,7 @@ How the site is put together and why. The file-by-file map is `web-architecture.
   `knowsAbout` is not shown on a page, and `employer.name` in `profile.ts` reuses `worksFor`; it carries no
   `alumniOf`: education is not published anywhere, by the owner's decision). `profile.ts` `intro` is
   a list of paragraphs where `*word*` marks emphasis (home page splits on `*`); `og.ts` reuses `headline` for the home
-  card, swapping U+2011 (non-breaking hyphen, which keeps "15,000‑person" together) for "-": the card font lacks it.
-  `sameAs` holds LinkedIn only (the footer and JSON-LD read it).
+  card. `sameAs` holds LinkedIn only (the footer and JSON-LD read it).
 - `aboutHeadline` in `profile.ts` is /about's h1, its share card title (`og.ts`) and the home recruiters headline.
   `currentTitle` (not exported) feeds `career[0].title`, the recruiter facts and the recruiters perspective, so a
   retitle is one edit. `BANNED` (`tests/banned.ts`: retired claims such as "Manager of Infrastructure", "nearly 17",

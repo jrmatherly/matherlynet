@@ -4,7 +4,7 @@ import { person } from "../lib/site";
 
 export const resumeUrl = "https://resume.matherly.net/jason/matherly";
 
-export const headline = "Every AI request at a 15,000‑person company runs through the platform I designed and run."; // ‑: non-breaking hyphen
+export const headline = "Twenty years building infrastructure at scale. Now I build the AI platforms that run on it.";
 export const aboutHeadline = "Twenty years, one company, four promotions.";
 export const workHeadline = "Platforms I designed, built and run at The Aaron's Company.";
 // The current role's title, as the résumé writes it; career[0].title, recruiterFacts and the recruiters perspective
@@ -13,8 +13,8 @@ const currentTitle = "Manager, Infrastructure Services";
 // One paragraph each for what was built and what comes next. Asterisks mark the phrases the home page sets in the
 // foreground color, so a skim of those alone still tells the story.
 export const intro = [
-  "In *twenty years* at The Aaron's Company I designed and built its primary and disaster recovery *data centers*, the infrastructure for three corporate offices, and SD‑WAN to every store.",
-  "Now I lead its move into *agentic AI*. The gateway carries *2B+ tokens a month* and took projected licensing from $100K+ a year to near zero.",
+  "In *twenty years* at The Aaron's Company I led the architecture of its primary *data center*, and designed and built its disaster recovery data center, the infrastructure for three corporate offices, and SD‑WAN to every store.",
+  "Now I lead its move into *agentic AI*. The gateway carries *6B+ tokens a month* and took projected licensing from $100K+ a year to near zero.",
 ];
 // Rendered only when set. Jason supplies the wording (roles, remote/Atlanta, timing).
 export const availability: string | null = "Interested in roles leading AI platform, AI enablement or infrastructure teams.";
@@ -23,9 +23,9 @@ export const contact = { label: "Message me on LinkedIn", href: person.sameAs[0]
 export const gateway = {
   title: "AI Gateway",
   summary:
-    "Started as a quick way to give teams safe access to models. Each generation was replaced when it could no longer answer the questions the business asked: who is spending what, on which model, and under which rules. Before building the third, I evaluated Portkey, Kong AI Gateway, Envoy, Agent Gateway and kgateway; each lacked features we needed or cost too much.",
+    "Started as a quick way to give teams safe access to models. I replaced the first two generations because each still needed custom work on top of a license fee. If we had to modify a product, we did not want to pay for it too. Before building the third, I evaluated Portkey, Kong AI Gateway, Envoy, Agent Gateway and kgateway; each lacked features we needed or cost too much.",
   generations: [
-    { name: "LiteLLM", since: "Dec 2024", note: "It was fast to stand up and it proved the demand. It couldn't attribute cost per team or enforce policy per use case, and licensing was projected at $100K+ a year.", current: false },
+    { name: "LiteLLM", since: "Dec 2024", note: "It was fast to stand up and it proved the demand. It needed custom work for two things: per-team and per-user cost attribution, and MCP server OAuth with Entra ID. Licensing was projected at $100K+ a year.", current: false },
     { name: "Azure API Management", since: "Feb 2026", note: "Added SSO and rate limits, and cut projected licensing to about $38K a year. Every further capability became a custom integration bounded by what Azure allows.", current: false },
     {
       name: "In-house platform",
@@ -35,7 +35,7 @@ export const gateway = {
     },
   ],
   results: [
-    { value: "15M to 2B+", label: "tokens a month, launch to today" },
+    { value: "15M to 6B+", label: "tokens a month, launch to today" },
     { value: "$100K+ to near zero", label: "projected yearly licensing" },
     { value: "Every call", label: "signed in, rate limited, logged for 90 days" },
   ],
@@ -45,14 +45,14 @@ export const recruiterFacts = [
   { term: "Current title", detail: currentTitle },
   { term: "Reports to", detail: "Director of IT" },
   { term: "Team", detail: "4 direct reports; 8 while also leading BrandsMart's team, 2023 to 2026" },
-  { term: "Built", detail: "Two data centers, three corporate offices, SD-WAN to 2,300+ stores (at the time), and the AI platform" },
+  { term: "Built", detail: "The disaster recovery data center, the primary data center's core, three corporate offices, SD-WAN to 2,300+ stores (at the time), and the AI platform" },
   { term: "Location", detail: "Atlanta, remote since 2020" },
   { term: "Writes code in", detail: "Python, TypeScript, Go" },
 ];
 
 // The home page says "three corporate offices" in the intro and the recruiters' facts, so the bio leaves it out.
 export const bio =
-  "I started in The Aaron's Company's IT call center in 2006 and moved into infrastructure as a Network Analyst in 2009. Since then I've designed and built the store network, two data centers and the Azure footprint. Now I work on how a 15,000-person company adopts AI without losing control of cost, data or risk.";
+  "I started in The Aaron's Company's IT call center in 2006 and moved into infrastructure as a Network Analyst in 2009. Since then I've designed and built the store network, the disaster recovery data center and the Azure footprint, and led the architecture of the primary data center. Now I work on how a 15,000-person company adopts AI without losing control of cost, data or risk.";
 
 export interface Perspective {
   // Each id has a selector in the <style> of Perspectives.astro: a new one needs a line there, or its panel never
@@ -84,17 +84,17 @@ export const perspectives: Perspective[] = [
     headline: "A platform leader who still writes the code.",
     body: "I run infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime. I designed the AI Gateway and the MCP platform, both on GitOps-managed Kubernetes, and I write production code in Python, TypeScript and Go.",
     points: [
-      "AI Gateway carrying 2B+ tokens a month across Azure AI Foundry and Anthropic",
+      "AI Gateway carrying 6B+ tokens a month across Azure AI Foundry and Anthropic",
       "Took the gateway from LiteLLM to Azure API Management to an in-house platform, and projected licensing from $100K+ a year to about $38K to near zero",
       "Led teams of up to 8 engineers, including an acquired company's infrastructure team",
-      "Designed and built the primary and DR data centers, three corporate offices, and SD-WAN to 2,300+ stores (at the time)",
+      "Led the architecture of the primary data center, and designed and built the DR data center, three corporate offices, and SD-WAN to 2,300+ stores (at the time)",
     ],
   },
   {
     id: "security",
     label: "Security & governance",
     headline: "AI adoption with the guardrails built in.",
-    body: "Every model call goes through the AI Gateway: signed in with SSO, rate limited, checked for personal data, secrets, prompt injection and restricted topics, and written to the audit log, with cost tracked per user and team. Tools sit behind the MCP Gateway, which reaches only servers approved into the registry, over OAuth.",
+    body: "Every internal model call from the chat platform, the agents, Claude Code and Claude Desktop goes through the AI Gateway: signed in with SSO, rate limited, checked for personal data, secrets, prompt injection and restricted topics, and written to the audit log, with cost tracked per user and team. Tools sit behind the MCP Gateway, which reaches only servers approved into the registry, over OAuth.",
     points: [
       "Audit logs kept for at least 90 days and reviewed by audit and compliance",
       "About 20 MCP servers, each approved into the registry before any agent or the chat platform can call it",
@@ -130,7 +130,7 @@ export const work: WorkItem[] = [
   {
     title: "AI chat platform & agents",
     summary:
-      "An internal AI chat platform and agents on third-party and open-source agent frameworks, with prompt composition, agent memory, multi-step orchestration with tool use, and model evaluations, built in Python and TypeScript. Designed the retrieval pipeline that grounds the agents in company knowledge: source documents are curated, chunked, embedded and indexed for RAG and Graph-RAG over a vector store.",
+      "An internal AI chat platform where teams build and run agents on third-party and open-source agent frameworks, with prompt composition, agent memory, multi-step orchestration with tool use, and model evaluations, built in Python and TypeScript. Designed the retrieval pipeline that grounds the agents in company knowledge: source documents are curated, chunked, embedded and indexed for RAG and Graph-RAG over a vector store.",
     period: "2025 to now",
     result: "About 30 agents grounded in company knowledge, used company-wide",
     group: "AI platform",
@@ -138,14 +138,14 @@ export const work: WorkItem[] = [
   {
     title: gateway.title,
     summary:
-      "The company's single path to large language models, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team. The current generation is a Go backend with a Next.js console, running on the on-prem Talos Kubernetes clusters through GitOps.",
+      "The single inference path for the company's internal AI workloads, rebuilt twice: LiteLLM, then Azure API Management, then an in-house platform. Every call is signed in with SSO, rate limited, checked by guardrails, routed across Azure AI Foundry and Anthropic with model fallback, and written to the audit log, with cost tracked per user and team. The current generation is a Go backend with a Next.js console, running on the on-prem Talos Kubernetes clusters through GitOps.",
     period: "2024 to now",
-    result: "2B+ tokens a month; projected licensing from $100K+ a year to near zero",
+    result: "6B+ tokens a month; projected licensing from $100K+ a year to near zero",
     group: "AI platform",
   },
   {
     title: "On-prem Kubernetes platform",
-    summary: "100-plus nodes across three on-prem Talos Linux clusters, plus Rancher and AKS clusters, run as code: GitOps with Flux and Argo CD across dev, staging and prod, Cilium networking and Envoy ingress, External Secrets Operator backed by Secret Server with per-workload RBAC, self-hosted GitHub Actions runners, ephemeral AI sandbox environments, and Portworx Enterprise for persistent data.",
+    summary: "Three on-prem Talos Linux clusters (30 nodes) run as code: GitOps with Flux CD across dev, staging and prod, Cilium networking and Envoy ingress, External Secrets Operator backed by Secret Server with per-workload RBAC, self-hosted GitHub Actions runners, and ephemeral AI sandbox environments.",
     period: "2024 to now",
     result: "Runs the AI Gateway, the MCP platform and the chat platform, managed through GitOps",
     group: "AI platform",
@@ -169,7 +169,7 @@ export const work: WorkItem[] = [
     title: "Self-service automation",
     summary: "Self-service requests for VMs, storage, VDI, accounts and firewall changes, fulfilled by automation instead of tickets.",
     period: "2023",
-    result: "Dozens of tickets a week removed; the DBA team's VM self-service alone handles about 50 requests a week at 10 minutes saved each",
+    result: "Dozens of tickets a week removed across about 20 teams; DBA-related requests alone account for about 50 a week at 10 to 15 minutes each",
     group: "Infrastructure",
   },
   {
@@ -196,7 +196,7 @@ export const work: WorkItem[] = [
   {
     title: "Primary data center, corporate offices & Azure",
     summary:
-      "Designed and built the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications), and led its migration. Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018). Established the Azure tenant, subscriptions and ExpressRoute hybrid connectivity.",
+      "Led the architecture of the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications). Built its Cisco Nexus 9K core, Palo Alto firewalls and ExpressRoute, and led its migration. Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018). Established the Azure tenant and subscriptions.",
     period: "2015 to 2021",
     result: "Primary data center, three offices, Azure with ExpressRoute; zero unplanned downtime",
     group: "Infrastructure",
@@ -204,7 +204,7 @@ export const work: WorkItem[] = [
   {
     title: "Store network re-IP & firewall migrations",
     summary:
-      "Designed a standard IP plan and re-IP'd every store network. Led the firewall migrations: corporate offices and data centers to Palo Alto, stores from SonicWALL to Meraki.",
+      "Designed a standard IP plan and re-IP'd every store network. Migrated the stores from SonicWALL to Meraki with under 30 minutes of downtime per store, and converted the corporate firewall standard from SonicWALL to Palo Alto at the new IT office.",
     period: "2012 to 2015",
     result: "2,300+ stores on one addressing plan",
     group: "Infrastructure",
@@ -249,7 +249,7 @@ export const career: Role[] = [
       "Owns core infrastructure for 15,000+ employees and 1,200+ stores at 99.999% uptime while supporting PCI DSS and SOX requirements; leads a team of 4",
       "Leads company-wide AI strategy and adoption; rolled out Microsoft Copilot and Copilot Studio to 600 users",
       "With no standing annual budget through downsizing and acquisitions, funds each project on its own business case; replaced paid tools with in-house platforms (SolarWinds with Zabbix and Grafana, ADAudit Plus with a custom auditing platform), saving $100K a year in licensing",
-      "Rolled out self-service automation for VMs, storage, VDI, accounts and firewall changes, saving 10 minutes to several hours per request",
+      "Rolled out self-service automation for VMs, storage, VDI, accounts and firewall changes, saving from 10 minutes to several hours per request",
     ],
     heading: "Manager, and a second data center",
     milestones: [
@@ -257,7 +257,7 @@ export const career: Role[] = [
         year: "2026",
         heading: "One gateway, three generations",
         summary:
-          "The company's single path to large language models since December 2024. Each generation was retired when it couldn't answer the business's questions: who is spending what, on which model, under which rules.",
+          "The single inference path for internal AI workloads since December 2024. I retired the first two generations because each still needed custom work on top of a license fee.",
         highlights: [
           "Moved the gateway from LiteLLM to Azure API Management in February, then to the in-house platform in June",
           "Packaged managed Claude Code and Claude Desktop for Windows and macOS via Intune for 400 users, and hosts a weekly AI community of practice",
@@ -268,7 +268,7 @@ export const career: Role[] = [
         heading: "Tools and agents behind a gateway, too",
         highlights: [
           "Designed and delivered the MCP Gateway, Registry and Portal",
-          "Built the internal AI chat platform and its agents, grounded in company knowledge",
+          "Built the internal AI chat platform, which runs about 30 agents grounded in company knowledge",
         ],
       },
       {
@@ -293,12 +293,12 @@ export const career: Role[] = [
     start: "Apr 2015",
     end: "Jul 2021",
     highlights: [
-      "Designed and built the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications), and led its migration with zero unplanned downtime",
-      "Fitted out the full infrastructure for three corporate offices: the IT building (2015), the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018)",
-      "Established the Azure tenant, subscriptions and ExpressRoute hybrid connectivity",
-      "Led SD-WAN to every store (2,300+ at the time); had Always-On VPN ready the day the company went remote (about 1,200 users)",
+      "Led the architecture of the new primary data center, a $2M project (10 racks, 1,400+ VMs, hundreds of applications); built its Cisco Nexus 9K core, Palo Alto firewalls and ExpressRoute, and led its migration with zero unplanned downtime",
+      "Fitted out the full infrastructure for two corporate offices: the corporate headquarters (2016) and an office for payroll, procurement and other business units (2018)",
+      "Established the Azure tenant and subscriptions",
+      "Led SD-WAN to every store (2,300+ at the time); switched the existing VPN to Always-On when the company went remote (about 1,200 users)",
     ],
-    heading: "A new data center, three offices, and SD-WAN to every store",
+    heading: "A new data center, two offices, and SD-WAN to every store",
   },
   {
     title: "Network Engineer",
@@ -306,7 +306,8 @@ export const career: Role[] = [
     end: "Apr 2015",
     highlights: [
       "Designed a standard IP plan and re-IP'd every store network (2,300+ at the time)",
-      "Led the firewall migrations (corporate offices and data centers to Palo Alto, stores from SonicWALL to Meraki) and the Secret Server PAM rollout, vaulting every organization service account and elevated-credential account with rotation",
+      "Migrated the stores from SonicWALL to Meraki, converted the corporate firewall standard to Palo Alto at the new IT office, and led the Secret Server PAM rollout, vaulting 10,000+ secrets with rotation",
+      "Designed and built the network for the new IT corporate office (2015), the design reused at two later offices",
     ],
     heading: "One addressing plan for 2,300 stores",
   },
@@ -314,11 +315,11 @@ export const career: Role[] = [
     title: "Network Analyst",
     start: "Nov 2009",
     end: "Aug 2012",
-    highlights: ["Supported network connectivity and deployed SonicWALL firewalls for 2,300+ stores"],
+    highlights: ["Supported network connectivity for 2,300+ stores, diagnosing and replacing failed SonicWALL firewalls, and rolled out Aruba wireless access points"],
     heading: "Started where the packets start",
   },
   {
-    title: "Call Center & Quality Assurance",
+    title: "IT Call Center & Quality Assurance",
     start: "Nov 2006",
     end: "Nov 2009",
     highlights: ["Started in the IT call center and quality assurance before moving into infrastructure"],

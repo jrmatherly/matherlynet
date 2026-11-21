@@ -130,6 +130,8 @@ describe("retired copy", () => {
   it("never repeats a retired claim on a page, in the profile data or on a share card, and gives every page the one call to action", async () => {
     const pages = await Promise.all([page(About, "/about"), page(Home, "/"), page(Changelog, "/changelog"), page(Work, "/work"), page(Playground, "/playground")]);
     for (const text of [...pages, JSON.stringify(profile), JSON.stringify(ogCards)]) expect(text).not.toMatch(BANNED);
+    // The card font has no non-breaking hyphen glyph (U+2011), which profile.ts uses in page copy.
+    expect(JSON.stringify(ogCards)).not.toContain("‑");
     const title = "Ask me about the gateway, the MCP registry or the Kubernetes platform.";
     const body = "Or about how we went from LiteLLM to Azure API Management to an in-house gateway.";
     for (const html of pages) {

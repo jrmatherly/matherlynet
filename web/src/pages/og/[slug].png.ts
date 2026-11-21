@@ -23,8 +23,8 @@ const ready = Promise.all([
 );
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-// A plain hyphen is a line-break opportunity, and the card font has no non-breaking hyphen (og.ts swaps it out), so
-// hyphenated words ("15,000-person") are kept on one line here instead.
+// A plain hyphen is a line-break opportunity, and the card font has no non-breaking hyphen, so hyphenated words
+// are kept on one line here instead.
 const keepHyphenated = (html: string) => html.replace(/\S+-\S+/g, (word) => `<span style="white-space:nowrap">${word}</span>`);
 
 export const GET: APIRoute = async ({ params, url }) => {
