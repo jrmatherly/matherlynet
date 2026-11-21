@@ -19,9 +19,9 @@ overrides:
   # GHSA-67mh-4wv8-2f99: drizzle-kit's @esbuild-kit/core-utils asks for esbuild 0.18.
   "@esbuild-kit/core-utils>esbuild": 0.28.2
   # GHSA-3g3m-2fjr-6pw4: gaxios's rimraf asks for glob 10.
-  glob: 14.0.3
+  glob: 14.0.6
   # GHSA-g3hv-75wg-m249: no 10.x patch; eslint, @eslint/config-array, typescript-estree and jsx-a11y-x ask for 10.x.
-  minimatch: 11.0.5
+  minimatch: 11.0.8
   # Not an advisory: keeps every package's Node types on web's own pin (the Node 24 runtime). @types/pg and others ask
   # for any version, and `/// <reference types="node" />` would bring the newest one's globals into the type-check.
   "@types/node": $@types/node
