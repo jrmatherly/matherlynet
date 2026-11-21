@@ -24,7 +24,7 @@ export default defineConfig({
     // hostname, Astro trusts X-Forwarded-Proto: https, so the origin check compares https://matherly.net, which is
     // what browsers send. For any other host the URL is http://localhost:<port>, so a form POST with an Origin
     // header is refused with 403 unless it also carries Sec-Fetch-Site: same-origin, which passes the check before
-    // any origin is compared (checked on astro 7.4.11, dist/core/app/validate-headers.js, node.js and
+    // any origin is compared (checked on astro 7.4.12, dist/core/app/validate-headers.js, node.js and
     // origin-check.js). A matching host also makes Astro.clientAddress the first X-Forwarded-For value, which a
     // client can send through Cloudflare. Don't use clientAddress; better-auth reads cf-connecting-ip. better-auth
     // also accepts only BETTER_AUTH_URL's origin: www must redirect to the apex (docs/deployment.md). Read at build
@@ -50,7 +50,7 @@ export default defineConfig({
       // Geist and Geist Mono: Latin only, through the local provider. The npm provider reads every @font-face in the
       // package, so Cyrillic, Greek and Latin Extended were preloaded on every page too. With `remote: false`
       // unifont 0.7.5 still pointed the files at jsDelivr, and unifont 1.x returns file:// URLs that Astro's font
-      // fetcher hands to fetch(), which can't read them (checked on astro 7.4.11).
+      // fetcher hands to fetch(), which can't read them (checked on astro 7.4.12).
       provider: fontProviders.local(),
       name: "Geist Variable",
       cssVariable: "--font-geist",
