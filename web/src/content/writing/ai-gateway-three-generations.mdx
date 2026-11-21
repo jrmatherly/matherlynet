@@ -1,36 +1,38 @@
 ---
 title: "One gateway, three generations"
-description: "How The Aaron's Company's AI Gateway was built three times in eighteen months, and why each version was retired."
+description: "How The Aaron's Company's AI Gateway was built three times in eighteen months, and why the first two versions were retired."
 pubDate: 2026-10-02
+updatedDate: 2026-11-21
 tags: [ai, platforms, governance]
 ---
 
 import GatewayMap from "../../components/GatewayMap.astro";
 import GatewayPath from "../../components/GatewayPath.astro";
 
-Every model call at The Aaron's Company, a 15,000-person retailer, goes through one gateway. Claude Code, Claude
-Desktop, our agents and the people using our internal tools all reach Azure AI Foundry and Anthropic through it.
+Every internal model call at The Aaron's Company, a 15,000-person retailer, goes through one gateway. Claude Code,
+Claude Desktop, our agents and the people using our internal tools all reach Azure AI Foundry and Anthropic through it.
 I designed it, then rebuilt it twice in eighteen months.
 
 ## Quick facts
 
 - **Role:** architect and lead engineer; Manager, Infrastructure Services. My four-engineer team runs it with me.
 - **Timeline:** December 2024 to June 2026; since June 2026, in-house on a customized fork of TokenHub
-- **Scale:** from about 15 million tokens a month at launch to 2B+, a level reached in March 2026
+- **Scale:** from about 15 million tokens a month at launch to 6B+ by October 2026
 - **Cost:** projected licensing from $100K+ a year to about $38K, then to near zero
 
 ## The problem
 
 The first version was a quick way to give teams safe access to models. Demand showed up immediately, and so did
-three questions the business kept asking: who is spending what, on which model, and under which rules. Each
-generation was retired when it could no longer answer them.
+needs that no product met out of the box, such as cost tracked per team and user and MCP server sign-in through
+Entra ID. The first two generations were retired for the same reason: each still needed custom work on top of a
+license fee.
 
 ## Generation 1: LiteLLM (December 2024)
 
 <GatewayMap generation="litellm" />
 
-LiteLLM was fast to stand up and proved the demand. It couldn't attribute cost per team or enforce policy per use
-case, and its licensing was projected at more than $100,000 a year.
+LiteLLM was fast to stand up and proved the demand. It needed custom work for two things: per-team and per-user cost
+attribution, and MCP server OAuth with Entra ID. Its licensing was projected at more than $100,000 a year.
 
 ## Generation 2: Azure API Management (February 2026)
 
@@ -43,8 +45,8 @@ what Azure allows.
 ## Choosing to build
 
 Before building the third generation I evaluated Portkey, Kong AI Gateway, Envoy, Agent Gateway and kgateway. Each
-one either lacked features we needed or cost too much. Bringing the gateway back in-house was the option that answered
-all three questions at a licensing cost close to zero.
+one either lacked features we needed or cost too much. If we had to modify a product, we did not want to pay for it
+too. Bringing the gateway in-house on an open-source base gave us full control at a licensing cost close to zero.
 
 We forked TokenHub, an Apache-licensed open-source gateway, because it didn't offer what we needed out of the box: JIT
 provisioning, Entra ID support, token caching, LLM costs that vary with short or long context and cache windows, cost
@@ -69,10 +71,10 @@ Tools sit behind a separate MCP Gateway, which reaches only the MCP servers appr
 
 | Metric | Before | Now |
 | --- | --- | --- |
-| Tokens a month | about 15 million (launch) | 2B+ |
+| Tokens a month | about 15 million (launch) | 6B+ |
 | Projected licensing | $100K+ a year (LiteLLM) | near zero |
 
 ## What I'd do differently
 
-Talk to the business units sooner. Each generation was replaced because a need surfaced after it shipped; asking
-earlier would have found some of those needs before I built around them.
+Talk to the business units sooner. The first two generations were replaced after needs surfaced that they could
+meet only with custom work; asking earlier would have found some of those needs before I built around them.

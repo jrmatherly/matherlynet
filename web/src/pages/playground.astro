@@ -13,8 +13,8 @@ const description = live
   ? "The AI gateway's checks (SSO, rate limits, guardrails, cache and routing) on simulated examples in your browser, and on your own request, which a small self-hosted model answers."
   : "A simulation of the AI gateway's checks (SSO, rate limits, guardrails, cache and routing) running on your text, in your browser.";
 const lead = live
-  ? "The checks every model call meets at work. The examples run in your browser. Your own request runs for real."
-  : "The checks every model call meets at work, running on your text, in your browser.";
+  ? "The checks every internal model call meets at work. The examples run in your browser. Your own request runs for real."
+  : "The checks every internal model call meets at work, running on your text, in your browser.";
 ---
 
 <Base title="Playground" description={description} image={ogImage("playground", Astro.locals.siteSettings)}>

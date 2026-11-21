@@ -14,7 +14,10 @@ const { Content } = await render(post);
     <header class="grid gap-3">
       <a href="/writing" class="text-sm text-muted hover:text-foreground">← Writing</a>
       <h1 class="display text-4xl sm:text-5xl">{post.data.title}</h1>
-      <time datetime={post.data.pubDate.toISOString()} class="font-mono text-xs text-muted">{formatDate(post.data.pubDate)}</time>
+      <p class="font-mono text-xs text-muted">
+        <time datetime={post.data.pubDate.toISOString()}>{formatDate(post.data.pubDate)}</time>
+        {post.data.updatedDate && <> · Updated <time datetime={post.data.updatedDate.toISOString()}>{formatDate(post.data.updatedDate)}</time></>}
+      </p>
     </header>
     <div class="prose-content grid gap-5 text-lg leading-relaxed">
       <Content />
