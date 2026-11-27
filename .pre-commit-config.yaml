@@ -8,7 +8,7 @@ default_language_version:
   node: system
 repos:
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: 341e2a331ba578029e66c2e01183e7a6b5ca9ab4 # frozen: v0.24.0
+    rev: d4df4cec471ce155946474590d7b95920f623ccb # frozen: v0.24.2
     hooks:
       - id: markdownlint-cli2 # uses .markdownlint-cli2.jsonc
         args: [--no-globs] # lint only the files pre-commit passes, not the config's "globs"
